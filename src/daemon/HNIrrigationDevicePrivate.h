@@ -1,17 +1,11 @@
 #ifndef __HN_SWITCH_DAEMON_H__
 #define __HN_SWITCH_DAEMON_H__
 
-//#include <sys/epoll.h>
-
 #include <string>
 #include <vector>
 
 #include "Poco/Util/ServerApplication.h"
 #include "Poco/Util/OptionSet.h"
-
-//#include "HNDaemonHealth.h"
-//#include "HNSwitchManager.h"
-//#include "HNScheduleMatrix.h"
 
 typedef enum HNIrrigationDeviceResultEnum
 {
