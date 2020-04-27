@@ -88,3 +88,34 @@ HNIrrigationZone::~HNIrrigationZone()
 
 }
 
+HNISPeriod::HNISPeriod()
+{
+
+}
+
+HNISPeriod::~HNISPeriod()
+{
+
+}
+
+HNISDay::HNISDay()
+{
+
+}
+
+HNISDay::~HNISDay()
+{
+
+}
+
+HNIrrigationSchedule::HNIrrigationSchedule()
+{
+
+}
+
+HNIrrigationSchedule::~HNIrrigationSchedule()
+{
+
+}
+
+
