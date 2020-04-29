@@ -88,34 +88,39 @@ HNIrrigationZone::~HNIrrigationZone()
 
 }
 
-HNISPeriod::HNISPeriod()
+std::string 
+HNIrrigationZone::getID()
 {
-
+    return zoneID;
 }
 
-HNISPeriod::~HNISPeriod()
+std::string 
+HNIrrigationZone::getName()
 {
-
+    return zoneName;
 }
 
-HNISDay::HNISDay()
+std::string 
+HNIrrigationZone::getDesc()
 {
-
+    return zoneDesc;
 }
 
-HNISDay::~HNISDay()
+uint 
+HNIrrigationZone::getWeeklySeconds()
 {
-
+    return (((5 * 60) * 2) * 7);
 }
 
-HNIrrigationSchedule::HNIrrigationSchedule()
+uint 
+HNIrrigationZone::getTargetCyclesPerDay()
 {
-
+    return 2;
 }
 
-HNIrrigationSchedule::~HNIrrigationSchedule()
+uint 
+HNIrrigationZone::getMinimumCycleTimeSeconds()
 {
-
+    return (2 * 60);
 }
-
 

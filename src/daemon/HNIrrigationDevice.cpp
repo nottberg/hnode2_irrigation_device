@@ -81,6 +81,21 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     hnDevice.start();
 
+
+    // std::vector< HNIrrigationZone > zoneList;
+
+    // std::vector< HNExlusionSpec > exclusionList;
+
+    // HNIrrigationSchedule schdule;
+
+    HNExclusionSpec testExclude;
+    exclusionList.push_back( testExclude );
+
+    HNIrrigationZone testZone;
+    zoneList.push_back( testZone );
+
+    schdule.buildSchedule( exclusionList, zoneList );
+
     waitForTerminationRequest();
 
     return Application::EXIT_OK;

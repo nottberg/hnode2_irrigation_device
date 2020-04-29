@@ -7,6 +7,9 @@
 #include "Poco/Util/ServerApplication.h"
 #include "Poco/Util/OptionSet.h"
 
+#include "HNIrrigationZone.h"
+#include "HNIrrigationSchedule.h"
+
 typedef enum HNIrrigationDeviceResultEnum
 {
   HNID_RESULT_SUCCESS,
@@ -23,6 +26,12 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication
         std::string _instance; 
 
         std::string instanceName;
+
+        std::vector< HNIrrigationZone > zoneList;
+
+        std::vector< HNExclusionSpec > exclusionList;
+
+        HNIrrigationSchedule schdule;
 
         void displayHelp();
 
