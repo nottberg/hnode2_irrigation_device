@@ -31,7 +31,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication
 
         std::vector< HNExclusionSpec > exclusionList;
 
-        HNIrrigationSchedule schdule;
+        //HNIrrigationSchedule schedule;
 
         void displayHelp();
 

@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "HNIrrigationZone.h"
 
 HNI24HTime::HNI24HTime()
@@ -24,16 +26,25 @@ HNI24HTime::getHMS( uint &hour, uint &minute, uint &second )
     second  = secOfDay - ((hour * 60 * 60) + (minute * 60));
 }
 
+//#include <string.h>
+
 std::string
 HNI24HTime::getHMSStr()
 {
-    char tmpBuf[128];
+    std::string result;
+    char tmpBuf[256];
     uint hour, minute, second;
 
     getHMS( hour, minute, second );
+
+//    std::cout << "hms: " << hour << " " << minute << " " << second << std::endl;
+
     sprintf( tmpBuf, "%2.2d:%2.2d:%2.2d", hour, minute, second );
 
-    std::string result( tmpBuf );
+    //std::cout << "sl: " << strlen(tmpBuf) << "<str>" << tmpBuf << "<eos>" << std::endl;
+
+    result.assign( tmpBuf );
+
     return result;
 }
 
@@ -88,22 +99,52 @@ HNIrrigationZone::~HNIrrigationZone()
 
 }
 
+void 
+HNIrrigationZone::setID( std::string id )
+{
+    m_zoneID = id;
+}
+
+void 
+HNIrrigationZone::setName( std::string name )
+{
+    m_zoneName = name;
+}
+
+void 
+HNIrrigationZone::setDesc( std::string desc )
+{
+    m_zoneDesc = desc;
+}
+       
+void 
+HNIrrigationZone::setSWIDList( std::string swidList )
+{
+    m_swidList = swidList;
+}
+
 std::string 
 HNIrrigationZone::getID()
 {
-    return zoneID;
+    return m_zoneID;
 }
 
 std::string 
 HNIrrigationZone::getName()
 {
-    return zoneName;
+    return m_zoneName;
 }
 
 std::string 
 HNIrrigationZone::getDesc()
 {
-    return zoneDesc;
+    return m_zoneDesc;
+}
+
+std::string 
+HNIrrigationZone::getSWIDListStr()
+{
+    return m_swidList;
 }
 
 uint 

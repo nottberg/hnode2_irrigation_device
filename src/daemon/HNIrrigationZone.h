@@ -37,23 +37,31 @@ class HNI24HTime
 class HNIrrigationZone
 {
     private:
-        std::string zoneID;
-        std::string zoneName;
-        std::string zoneDesc;
+        std::string m_zoneID;
+        std::string m_zoneName;
+        std::string m_zoneDesc;
 
-        HNI24HTime totalWeeklyDuration;
-        HNI24HTime minOnDuration;
-        HNI24HTime maxOnDuration;
+        HNI24HTime m_totalWeeklyDuration;
+        HNI24HTime m_minOnDuration;
+        HNI24HTime m_maxOnDuration;
 
-        std::string swIDList;
+        std::string m_swidList;
 
     public:
         HNIrrigationZone();
        ~HNIrrigationZone();
 
+        void setID( std::string id );
+        void setName( std::string name );
+        void setDesc( std::string desc );
+       
+        void setSWIDList( std::string swidList );
+
         std::string getID();
         std::string getName();
         std::string getDesc();
+
+        std::string getSWIDListStr();
 
         uint getWeeklySeconds();
         uint getTargetCyclesPerDay();

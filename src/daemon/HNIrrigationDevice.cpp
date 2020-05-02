@@ -88,13 +88,33 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     // HNIrrigationSchedule schdule;
 
-    HNExclusionSpec testExclude;
-    exclusionList.push_back( testExclude );
+    HNISPeriod period;
+    std::string tst = period.getStartTimeStr();
+    std::cout << "Tst str: " << tst << std::endl;
 
-    HNIrrigationZone testZone;
-    zoneList.push_back( testZone );
+    HNExclusionSpec *testExclude = new HNExclusionSpec;
+    testExclude->setType( HNIS_EXCLUDE_TYPE_EVERYDAY );
+    testExclude->setTimesFromStr( "06:00:00", "20:00:00" ); 
+    //exclusionList.push_back( testExclude );
 
-    schdule.buildSchedule( exclusionList, zoneList );
+    HNIrrigationZone *testZone = new HNIrrigationZone;
+
+    testZone->setID("z1");
+    testZone->setName("Test Zone");
+    testZone->setDesc("test zone desc");
+    testZone->setSWIDList("s1");
+
+    //zoneList.push_back( testZone );
+
+    HNIrrigationSchedule schedule;
+
+    schedule.clear();
+    schedule.addExclusion( testExclude );
+    schedule.addZone( testZone );
+
+    //schedule.buildSchedule( exclusionList, zoneList );
+
+    std::cout << "=== Schedule Matrix ===" << std::endl << schedule.getSwitchDaemonJSON() << std::endl;
 
     waitForTerminationRequest();
 

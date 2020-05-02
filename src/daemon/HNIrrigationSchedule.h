@@ -11,7 +11,8 @@
 #include "HNIrrigationZone.h"
 
 // Forward Declaration
-class HNISDay;
+//class HNISDay;
+//class HNIrrigationSchedule;
 
 typedef enum HNIrrigationScheduleResultEnum
 {
@@ -40,16 +41,20 @@ typedef enum HNExclusionSpecTypeEnum
 class HNExclusionSpec
 {
     private:
-        HNIS_EXCLUDE_TYPE_T type;
+        HNIS_EXCLUDE_TYPE_T m_type;
 
-        HNI24HTime startTime;
-        HNI24HTime endTime;
+        HNI24HTime m_startTime;
+        HNI24HTime m_endTime;
       
-        HNIS_DAY_INDX_T dayIndx;
+        HNIS_DAY_INDX_T m_dayIndx;
 
     public:
         HNExclusionSpec();
        ~HNExclusionSpec();
+
+        void setType( HNIS_EXCLUDE_TYPE_T value );
+
+        HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
 
         HNIS_EXCLUDE_TYPE_T getType();
 
@@ -62,6 +67,7 @@ class HNExclusionSpec
 
 typedef enum HNISPeriodTypeEnum
 {
+    HNIS_PERIOD_TYPE_NOTSET,
     HNIS_PERIOD_TYPE_EXCLUSION,
     HNIS_PERIOD_TYPE_ZONE_ON
 }HNIS_PERIOD_TYPE_T;
@@ -69,29 +75,36 @@ typedef enum HNISPeriodTypeEnum
 class HNISPeriod
 {
     private:
-        HNIS_PERIOD_TYPE_T type;
+        HNIS_PERIOD_TYPE_T m_type;
 
-        HNI24HTime startTime;
-        HNI24HTime endTime;
+        HNI24HTime m_startTime;
+        HNI24HTime m_endTime;
 
-        HNIrrigationZone *zone;
-
-    protected:
-        static bool sortCompare( const HNISPeriod& first, const HNISPeriod& second );
+        HNIrrigationZone *m_zone;
 
     public:
         HNISPeriod();
        ~HNISPeriod();
 
         void setType( HNIS_PERIOD_TYPE_T value );
+        void setZone( HNIrrigationZone *zone );
 
         HNIS_RESULT_T setStartTime( HNI24HTime &time );
         HNIS_RESULT_T setEndTime( HNI24HTime &time );
 
-        HNI24HTime& getStartTime();
-        HNI24HTime& getEndTime();
+        HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
 
-    friend HNISDay;
+        HNIS_PERIOD_TYPE_T getType();
+        HNIrrigationZone *getZone();
+
+        HNI24HTime& getStartTime();
+        std::string getStartTimeStr();
+
+        HNI24HTime& getEndTime();
+        std::string getEndTimeStr();
+
+        static bool sortCompare( const HNISPeriod& first, const HNISPeriod& second );
+
 };
 
 typedef enum HNISDayCollisionAssessResultEnum
@@ -105,10 +118,9 @@ typedef enum HNISDayCollisionAssessResultEnum
 class HNISDay
 {
     private:
-        HNIS_DAY_INDX_T dindx;
-        std::string    dayName;
+        HNIS_DAY_INDX_T m_dayIndex;
   
-        std::list< HNISPeriod > periodList;
+        std::list< HNISPeriod > m_periodList;
 
         HNIS_CAR_T assessCollision( HNISPeriod &value, bool moveLater, uint &boundary );
 
@@ -116,14 +128,21 @@ class HNISDay
         HNISDay();
        ~HNISDay();
 
+        void setIndex( HNIS_DAY_INDX_T dayIndex );
+
         void clear();
 
         void sort();
         void coalesce();
 
-        HNIS_RESULT_T addPeriod( HNISPeriod &value );
+        HNIS_RESULT_T addPeriod( HNISPeriod value );
 
-        HNIS_RESULT_T scheduleTimeSlots( uint totalSeconds, uint cycleCnt, HNIrrigationZone &zone );
+        HNIS_RESULT_T scheduleTimeSlots( uint totalSeconds, uint cycleCnt, HNIrrigationZone *zone );
+
+        std::string getDayName();
+
+        void getPeriodList( std::vector< HNISPeriod > &periodList );
+
 };
 
 class HNIrrigationSchedule
@@ -138,7 +157,15 @@ class HNIrrigationSchedule
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
 
-        HNIS_RESULT_T buildSchedule( std::vector< HNExclusionSpec > &exclusionList, std::vector< HNIrrigationZone > &zoneList );
+        void clear();
+
+        HNIS_RESULT_T addExclusion( HNExclusionSpec *exclusion );
+
+        HNIS_RESULT_T addZone( HNIrrigationZone *zone );
+
+        //HNIS_RESULT_T buildSchedule( std::vector< HNExclusionSpec > &exclusionList, std::vector< HNIrrigationZone > &zoneList );
+
+        std::string getSwitchDaemonJSON();
 };
 
 #endif // _HN_IRRIGATION_SCHEDULE_H_
