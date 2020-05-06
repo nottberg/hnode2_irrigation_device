@@ -23,6 +23,93 @@ static const char *gDayNames[] =
     "Not Set"
 };
 
+HNI24HTime::HNI24HTime()
+{
+    secOfDay = 0;
+}
+
+HNI24HTime::~HNI24HTime()
+{
+
+}
+
+uint
+HNI24HTime::getSeconds() const
+{
+    return secOfDay;
+}
+
+void
+HNI24HTime::getHMS( uint &hour, uint &minute, uint &second )
+{
+    hour    = (secOfDay / (60 * 60));
+    minute  = (secOfDay - (hour * 60 * 60))/60;
+    second  = secOfDay - ((hour * 60 * 60) + (minute * 60));
+}
+
+//#include <string.h>
+
+std::string
+HNI24HTime::getHMSStr()
+{
+    std::string result;
+    char tmpBuf[256];
+    uint hour, minute, second;
+
+    getHMS( hour, minute, second );
+
+//    std::cout << "hms: " << hour << " " << minute << " " << second << std::endl;
+
+    sprintf( tmpBuf, "%2.2d:%2.2d:%2.2d", hour, minute, second );
+
+    //std::cout << "sl: " << strlen(tmpBuf) << "<str>" << tmpBuf << "<eos>" << std::endl;
+
+    result.assign( tmpBuf );
+
+    return result;
+}
+
+HNIS_RESULT_T
+HNI24HTime::setFromHMS( uint hour, uint min, uint sec )
+{
+    secOfDay = (hour * 60 * 60) + (min *60) + sec;
+
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNI24HTime::setFromSeconds( uint seconds )
+{
+    // Set to provided value, cieling 24 hours.
+    secOfDay = seconds;
+    if( secOfDay > (24 * 60 * 60) )
+        secOfDay = (24 * 60 * 60);
+
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNI24HTime::parseTime( std::string value )
+{
+    uint hour;
+    uint min;
+    uint sec;
+
+    sscanf( value.c_str(), "%d:%d:%d", &hour, &min, &sec );
+
+    return setFromHMS( hour, min, sec );
+}
+
+void
+HNI24HTime::addSeconds( uint seconds )
+{
+    // Add the two times, cap 24 hours
+    secOfDay = (secOfDay + seconds); 
+    if( secOfDay > (24 * 60 * 60) )
+        secOfDay = (24 * 60 * 60);
+
+}
+
 HNExclusionSpec::HNExclusionSpec()
 {
 
@@ -31,6 +118,12 @@ HNExclusionSpec::HNExclusionSpec()
 HNExclusionSpec::~HNExclusionSpec()
 {
 
+}
+
+void 
+HNExclusionSpec::setID( std::string id )
+{
+    m_id = id;
 }
 
 void 
@@ -47,6 +140,12 @@ HNExclusionSpec::setTimesFromStr( std::string startTime, std::string endTime )
     std::cout << "mst: " << m_startTime.getHMSStr() << std::endl;
 
     m_endTime.parseTime( endTime );
+}
+
+std::string 
+HNExclusionSpec::getID()
+{
+    return m_id;
 }
 
 HNIS_EXCLUDE_TYPE_T 
@@ -76,12 +175,17 @@ HNExclusionSpec::getDayIndex()
 HNISPeriod::HNISPeriod()
 {
     m_type = HNIS_PERIOD_TYPE_NOTSET;
-    m_zone = NULL;
 }
 
 HNISPeriod::~HNISPeriod()
 {
 
+}
+
+void 
+HNISPeriod::setID( std::string id )
+{
+    m_id = id;
 }
 
 void 
@@ -91,28 +195,46 @@ HNISPeriod::setType( HNIS_PERIOD_TYPE_T value )
 }
 
 void 
-HNISPeriod::setZone( HNIrrigationZone *zone )
+HNISPeriod::setZoneID( std::string zoneID )
 {
-    m_zone = zone;
+    m_zoneID = zoneID;
 }
 
-HNIS_RESULT_T
+void
 HNISPeriod::setStartTime( HNI24HTime &time )
 {
     m_startTime.setFromSeconds( time.getSeconds() );
 }
 
-HNIS_RESULT_T 
+void
+HNISPeriod::setStartTimeSeconds( uint seconds )
+{
+    m_startTime.setFromSeconds( seconds );
+}
+
+void
 HNISPeriod::setEndTime( HNI24HTime &time )
 {
     m_endTime.setFromSeconds( time.getSeconds() );
 }
 
-HNIS_RESULT_T 
+void
+HNISPeriod::setEndTimeSeconds( uint seconds )
+{
+    m_endTime.setFromSeconds( seconds );
+}
+
+void
 HNISPeriod::setTimesFromStr( std::string startTime, std::string endTime )
 {
     m_startTime.parseTime( startTime );
     m_endTime.parseTime( endTime );
+}
+
+std::string
+HNISPeriod::getID()
+{
+    return m_id;
 }
 
 HNIS_PERIOD_TYPE_T 
@@ -121,16 +243,22 @@ HNISPeriod::getType()
     return m_type;
 }
 
-HNIrrigationZone*
-HNISPeriod::getZone()
+std::string
+HNISPeriod::getZoneID()
 {
-    return m_zone;
+    return m_zoneID;
 }
 
 HNI24HTime& 
 HNISPeriod::getStartTime()
 {
     return m_startTime;
+}
+
+uint
+HNISPeriod::getStartTimeSeconds()
+{
+    return m_startTime.getSeconds();
 }
 
 std::string 
@@ -145,10 +273,34 @@ HNISPeriod::getEndTime()
     return m_endTime;
 }
 
+uint
+HNISPeriod::getEndTimeSeconds()
+{
+    return m_endTime.getSeconds();
+}
+
 std::string 
 HNISPeriod::getEndTimeStr()
 {
     return m_endTime.getHMSStr();
+}
+
+void 
+HNISPeriod::moveStartToSecond( uint seconds )
+{
+    std::cout << "moveStartToSeconds - " << seconds << "  " << getStartTimeSeconds() << std::endl;
+
+    if( seconds <= getStartTimeSeconds() )
+        return;
+
+    uint duration = ( seconds - getStartTimeSeconds() );
+
+    std::cout << "moveStartToSeconds - duration: " << duration << std::endl;
+
+    m_startTime.addSeconds( duration );
+    m_endTime.addSeconds( duration );
+
+    std::cout << "moveStartToSeconds - fin: " << getStartTimeSeconds() << "  " << getEndTimeSeconds() << std::endl;
 }
 
 bool 
@@ -157,6 +309,181 @@ HNISPeriod::sortCompare( const HNISPeriod& first, const HNISPeriod& second )
   return ( first.m_startTime.getSeconds() < second.m_startTime.getSeconds() );
 }
 
+HNIZScheduleState::HNIZScheduleState()
+{
+
+}
+
+HNIZScheduleState::~HNIZScheduleState()
+{
+
+}
+
+HNIrrigationZone::HNIrrigationZone()
+{
+
+}
+
+HNIrrigationZone::~HNIrrigationZone()
+{
+
+}
+
+void 
+HNIrrigationZone::setID( std::string id )
+{
+    m_zoneID = id;
+}
+
+void 
+HNIrrigationZone::setName( std::string name )
+{
+    m_zoneName = name;
+}
+
+void 
+HNIrrigationZone::setDesc( std::string desc )
+{
+    m_zoneDesc = desc;
+}
+       
+void 
+HNIrrigationZone::setSWIDList( std::string swidList )
+{
+    m_swidList = swidList;
+}
+
+std::string 
+HNIrrigationZone::getID()
+{
+    return m_zoneID;
+}
+
+std::string 
+HNIrrigationZone::getName()
+{
+    return m_zoneName;
+}
+
+std::string 
+HNIrrigationZone::getDesc()
+{
+    return m_zoneDesc;
+}
+
+std::string 
+HNIrrigationZone::getSWIDListStr()
+{
+    return m_swidList;
+}
+
+uint 
+HNIrrigationZone::getWeeklySeconds()
+{
+    return (((5 * 60) * 2) * 7);
+}
+
+uint 
+HNIrrigationZone::getTargetCyclesPerDay()
+{
+    return 2;
+}
+
+uint 
+HNIrrigationZone::getMinimumCycleTimeSeconds()
+{
+    return (2 * 60);
+}
+
+HNIS_RESULT_T 
+HNIrrigationZone::getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod )
+{
+    std::cout << "getNextSchulingPeriod: " << dayIndex << "  " << cycleIndex << std::endl;
+
+    // Nothing to do if already completely scheduled.
+    if( cycleIndex >= getTargetCyclesPerDay() )
+        return HNIS_RESULT_SCH_NONE;
+
+    // Figure out how many days of the week can be supported
+    uint perDayMinimum = getMinimumCycleTimeSeconds() * getTargetCyclesPerDay();
+
+    uint dayCnt = getWeeklySeconds() / perDayMinimum;
+
+    std::cout << "weeklySec: " << getWeeklySeconds() << std::endl;
+    std::cout << "cyclePerDay: " << getTargetCyclesPerDay() << std::endl;
+    std::cout << "minCycleDuration: " << getMinimumCycleTimeSeconds() << std::endl;
+    std::cout << "perDayMinimum: " << perDayMinimum << std::endl;
+    std::cout << "dayCnt: " << dayCnt << std::endl;
+
+    if( dayCnt > 7 )
+        dayCnt = 7;
+
+    uint perDaySec   = getWeeklySeconds() / dayCnt;
+    uint perCycleSec = perDaySec / getTargetCyclesPerDay();
+
+    switch( dayCnt )
+    {
+        // Less than one days worth of time
+        case 0:
+            if( dayIndex != HNIS_DINDX_MONDAY )
+                return HNIS_RESULT_SCH_NONE;
+        break;
+
+        case 1:
+            if( dayIndex != HNIS_DINDX_TUESDAY )
+                return HNIS_RESULT_SCH_NONE;
+        break;
+
+        case 2:
+            if( (dayIndex != HNIS_DINDX_TUESDAY) && (dayIndex != HNIS_DINDX_THURSDAY) )
+                return HNIS_RESULT_SCH_NONE;     
+        break;
+
+        case 3:
+            if( (dayIndex != HNIS_DINDX_MONDAY) && (dayIndex != HNIS_DINDX_WEDNESDAY) && (dayIndex != HNIS_DINDX_FRIDAY) )
+                return HNIS_RESULT_SCH_NONE;                
+        break;
+
+        case 4:
+            if( (dayIndex != HNIS_DINDX_SUNDAY) && (dayIndex != HNIS_DINDX_TUESDAY) && (dayIndex != HNIS_DINDX_THURSDAY) && (dayIndex != HNIS_DINDX_FRIDAY) )
+                return HNIS_RESULT_SCH_NONE;                
+        break;
+
+        case 5:
+             if( (dayIndex == HNIS_DINDX_TUESDAY) && (dayIndex == HNIS_DINDX_THURSDAY) )
+                return HNIS_RESULT_SCH_NONE;     
+        break;
+
+        case 6:
+            if( dayIndex == HNIS_DINDX_WEDNESDAY )
+                return HNIS_RESULT_SCH_NONE;
+        break;
+ 
+        // Schedule something on every week day.
+        case 7:
+        break;
+    }
+   
+    uint cycleWidth = (60 * 60 * 24) / getTargetCyclesPerDay();
+
+    uint startSec = cycleIndex * ( cycleWidth );
+
+    tgtPeriod.setID( getID() );
+    tgtPeriod.setType( HNIS_PERIOD_TYPE_ZONE_ON );
+    tgtPeriod.setStartTimeSeconds( startSec );
+    tgtPeriod.setEndTimeSeconds( startSec + perCycleSec );
+
+    if( (cycleIndex + 1) >= getTargetCyclesPerDay() )
+        return HNIS_RESULT_SUCCESS;
+
+    return HNIS_RESULT_SCH_CONTINUE;
+}
+
+HNIS_RESULT_T 
+HNIrrigationZone::accountPeriodPlacement( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod )
+{
+    return HNIS_RESULT_SUCCESS;
+}
 
 
 HNISDay::HNISDay()
@@ -201,9 +528,11 @@ HNISDay::coalesce()
 HNIS_RESULT_T 
 HNISDay::addPeriod( HNISPeriod value )
 {
-    std::cout << "addPeriod" << std::endl;
+    std::cout << "addPeriod: " << value.getID() << std::endl;
 
     m_periodList.push_back( value );
+
+    sort();
 }
 
 HNIS_CAR_T
@@ -259,91 +588,53 @@ HNISDay::assessCollision( HNISPeriod &value, bool moveLater, uint &boundary )
 }
 
 HNIS_RESULT_T 
-HNISDay::scheduleTimeSlots( uint totalSeconds, uint cycleCnt, HNIrrigationZone *zone )
+HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigationZone &zone )
 {
-    std::vector< uint > cycleMidTimes;
+    HNISPeriod znPeriod;
 
-    std::cout << "scheduleTimeSlots - ts: " << totalSeconds << "  cc: " << cycleCnt << "  zone: " << zone->getName() << std::endl;
+    std::cout << "scheduleTimeSlots - start: " << m_dayIndex << "  " << cycleIndex << std::endl;
 
-    uint secPerCycle = totalSeconds / cycleCnt;
+    // Get the zones next desired period position
+    HNIS_RESULT_T result = zone.getNextSchedulingPeriod( m_dayIndex, cycleIndex, state, znPeriod );
 
-    uint halfCycleWidth = (60 * 60 * 24) / (cycleCnt * 2 );
+    if( ( result != HNIS_RESULT_SCH_CONTINUE ) && ( result != HNIS_RESULT_SUCCESS ) )
+        return result;
 
-    uint midPoint = halfCycleWidth;
-    for( uint indx = 0; indx < cycleCnt; indx++ )
+    // Process collisions
+    while( znPeriod.getEndTimeSeconds() <= (24 * 60 * 60) )
     {
-        std::cout << "scheduleTimeSlots - addMidpoint: " << midPoint << std::endl;
+        uint nextOpening;
 
-        cycleMidTimes.push_back( midPoint );
-        midPoint += (2 * halfCycleWidth );
-    }
+        std::cout << "scheduleTimeSlots - collision loop1: " << znPeriod.getStartTimeSeconds() << "  " << znPeriod.getEndTimeSeconds() << std::endl;
 
-    sort();
-
-    for( std::vector< uint >::iterator it = cycleMidTimes.begin(); it != cycleMidTimes.end(); it++ )
-    {
-        bool moveForward = true;
-        HNISPeriod zmPeriod;
-
-        zmPeriod.setType( HNIS_PERIOD_TYPE_ZONE_ON );
-        zmPeriod.setZone( zone );
-        zmPeriod.getStartTime().setFromSeconds( *it );
-        zmPeriod.getEndTime().setFromSeconds( (*it + secPerCycle) );  
-        
-        std::cout << "==scheduleTimeSlots - midpoint: " << zmPeriod.getStartTime().getSeconds() << "  " << zmPeriod.getEndTime().getSeconds() << "==" << std::endl;
-
-        if( *it >= (12 * 60 * 60) )
+        if( assessCollision( znPeriod, true, nextOpening  ) == HNIS_CAR_NONE )
         {
-            while( zmPeriod.getEndTime().getSeconds() <= (24 * 60 * 60) )
-            {
-                uint boundary;
+            // Found a spot, add the zone on period
+            addPeriod( znPeriod );
 
-                std::cout << "scheduleTimeSlots - collision loop1: " << zmPeriod.getStartTime().getSeconds() << "  " << zmPeriod.getEndTime().getSeconds() << std::endl;
-
-                if( assessCollision( zmPeriod, true, boundary  ) == HNIS_CAR_NONE )
-                {
-                    // Found a spot, add the zone on period
-                    addPeriod( zmPeriod );
-
-                    // Done looking
-                    break;
-                }
-
-                // Shift to the next boundary and try again.
-                zmPeriod.getStartTime().setFromSeconds( boundary );
-                zmPeriod.getEndTime().setFromSeconds( (boundary + secPerCycle) );                  
-
-            }
+            // Done looking
+            break;
         }
-        else 
-        {
-            while( zmPeriod.getStartTime().getSeconds() > 0 )
-            {
-                uint boundary;
 
-                std::cout << "scheduleTimeSlots - collision loop2: " << zmPeriod.getStartTime().getSeconds() << "  " << zmPeriod.getEndTime().getSeconds() << std::endl;
+        std::cout << "scheduleTimeSlots - nextOpening: " << nextOpening << std::endl;
 
-                if( assessCollision( zmPeriod, false, boundary  ) == HNIS_CAR_NONE )
-                {
-                    // Found a spot, add the zone on period
-                    addPeriod( zmPeriod );
+        sleep(1);
 
-                    // Done looking
-                    break;
-                }
-
-                // Shift to the next boundary and try again.
-                zmPeriod.getStartTime().setFromSeconds( (boundary - secPerCycle) );
-                zmPeriod.getEndTime().setFromSeconds( boundary );                  
-
-            }
-       }
-
-       std::cout << "== scheduleTimeSlots - midpoint done ==" << std::endl;
-
-
+        // Shift to the next boundary and try again.
+        znPeriod.moveStartToSecond( nextOpening ); 
     }
 
+    // Check if a spot was found
+    if( znPeriod.getStartTimeSeconds() >= (24 * 60 * 60) )
+    {
+        return HNIS_RESULT_NO_SLOT;
+    }
+
+    // Notify zone of final position of period
+    zone.accountPeriodPlacement( m_dayIndex, cycleIndex, state, znPeriod );
+    
+    // Done scheduling this zone.
+    return result;
 }
 
 void 
@@ -373,7 +664,7 @@ HNIrrigationSchedule::HNIrrigationSchedule()
     std::cout << "HNIrrigationSchedule -- create" << std::endl;
 
     for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-        dayArr[ indx ].setIndex( (HNIS_DAY_INDX_T) indx );
+        m_dayArr[ indx ].setIndex( (HNIS_DAY_INDX_T) indx );
 
 }
 
@@ -388,240 +679,129 @@ HNIrrigationSchedule::clear()
 {
     // Clear any existing data
     for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-        dayArr[ indx ].clear();
+        m_dayArr[ indx ].clear();
+
+    m_exclusionMap.clear();
+    m_zoneMap.clear();
 }
 
-HNIS_RESULT_T 
-HNIrrigationSchedule::addExclusion( HNExclusionSpec *exclusion )
+HNExclusionSpec*
+HNIrrigationSchedule::updateExclusion( std::string id )
 {
-    HNISPeriod period;
-    std::string st = period.getStartTimeStr();
-    
-    // Create a period for the exclusion spec
-    switch( exclusion->getType() )
+    std::map< std::string, HNExclusionSpec >::iterator it = m_exclusionMap.find( id );
+
+    if( it == m_exclusionMap.end() )
     {
-        case HNIS_EXCLUDE_TYPE_EVERYDAY:
-        {
-            period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
-            period.setStartTime( exclusion->getStartTime() );
-            period.setEndTime( exclusion->getEndTime() );
-
-            for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-            {
-                dayArr[ indx ].addPeriod( period );
-                dayArr[ indx ].sort();
-            }
-
-            std::cout << "Add: " << period.getStartTime().getSeconds() << std::endl;
-            std::string st = period.getStartTimeStr();
-            std::cout << "Add2: " << st << std::endl;
-        }
-        break;
-
-        case HNIS_EXCLUDE_TYPE_SINGLE:
-        {
-            period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
-            period.setStartTime( exclusion->getStartTime() );
-            period.setEndTime( exclusion->getEndTime() );
-
-            dayArr[ exclusion->getDayIndex() ].addPeriod( period );
-            dayArr[ exclusion->getDayIndex() ].sort();
-        }
-        break;
+        HNExclusionSpec nSpec;
+        nSpec.setID( id );
+        m_exclusionMap.insert( std::pair< std::string, HNExclusionSpec >( id, nSpec ) );\
+        return &( m_exclusionMap[ id ] );
     }
 
-    return HNIS_RESULT_SUCCESS;
+    return &(it->second);
 }
 
-HNIS_RESULT_T 
-HNIrrigationSchedule::addZone( HNIrrigationZone *zone )
+HNIrrigationZone*
+HNIrrigationSchedule::updateZone( std::string id )
 {
-    // Schedule a zones time slots.
-    // Get the total weekly amount of time
-    uint weeklySec = zone->getWeeklySeconds();
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( id );
 
-    // Get the desired number of cycles per day
-    uint cyclePerDay = zone->getTargetCyclesPerDay();
-
-    // Get the minimum time per cycle
-    uint minCycleDuration = zone->getMinimumCycleTimeSeconds();
-
-    // Figure out how many days of the week can be supported
-    uint perDayMin = minCycleDuration * cyclePerDay;
-
-    uint dayCnt = weeklySec / perDayMin;
-
-    std::cout << "weeklySec: " << weeklySec << std::endl;
-    std::cout << "cyclePerDay: " << cyclePerDay << std::endl;
-    std::cout << "minCycleDuration: " << minCycleDuration << std::endl;
-    std::cout << "perDayMin: " << perDayMin << std::endl;
-    std::cout << "dayCnt: " << dayCnt << std::endl;
-
-    if( dayCnt > 7 )
-        dayCnt = 7;
-
-    switch( dayCnt )
+    if( it == m_zoneMap.end() )
     {
-        // Less than one days worth of time
-        case 0:
-        break;
-
-        case 1:
-        break;
-
-        case 2:
-        break;
-
-        case 3:
-        break;
-
-        case 4:
-        break;
-
-        case 5:
-        break;
-
-        case 6:
-        break;
- 
-        // Schedule something on every week day.
-        case 7:
-        {
-            uint perDaySec   = weeklySec / dayCnt;
-            uint perCycleSec = perDaySec / cyclePerDay;
-
-            std::cout << "perDaySec: " << perDaySec << std::endl;
-            std::cout << "perCycleSec: " << perCycleSec << std::endl;
-
-            for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-            {
-                dayArr[ indx ].scheduleTimeSlots( perDaySec, cyclePerDay, zone );
-            }
-        }
-        break;
+        HNIrrigationZone nZone;
+        nZone.setID( id );
+        m_zoneMap.insert( std::pair< std::string, HNIrrigationZone >( id, nZone ) );\
+        return &( m_zoneMap[ id ] );
     }
 
-    return HNIS_RESULT_SUCCESS;
+    return &(it->second);
 
 }
 
-#if 0
 HNIS_RESULT_T 
-HNIrrigationSchedule::buildSchedule( std::vector< HNExclusionSpec > &excludeList, std::vector< HNIrrigationZone > &zoneList )
+HNIrrigationSchedule::buildSchedule()
 {
-    // Clear any existing data
+    // Clear any schedule data
     for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-        dayArr[ indx ].clear();
+        m_dayArr[ indx ].clear();
 
     // Create Periods for the exclusion specs.
-    for( std::vector< HNExclusionSpec >::iterator eit = excludeList.begin(); eit != excludeList.end(); eit++ )
+    for( std::map< std::string, HNExclusionSpec >::iterator eit = m_exclusionMap.begin(); eit != m_exclusionMap.end(); eit++ )
     {
         HNISPeriod period;
 
-        switch( eit->getType() )
+        HNExclusionSpec *curSpec = &(eit->second);
+
+        period.setID( curSpec->getID() );
+        period.setStartTime( curSpec->getStartTime() );
+        period.setEndTime( curSpec->getEndTime() );
+
+        switch( curSpec->getType() )
         {
             case HNIS_EXCLUDE_TYPE_EVERYDAY:
             {
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
-                period.setStartTime( eit->getStartTime() );
-                period.setEndTime( eit->getEndTime() );
 
                 for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
-                    dayArr[ indx ].addPeriod( period );
-
-                std::cout << "Add: " << period.getStartTime().getSeconds() << std::endl;
-                std::cout << "Add2: " << period.getStartTimeStr() << std::endl;
-
+                    m_dayArr[ indx ].addPeriod( period );
             }
             break;
 
             case HNIS_EXCLUDE_TYPE_SINGLE:
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
-                period.setStartTime( eit->getStartTime() );
-                period.setEndTime( eit->getEndTime() );
 
-                dayArr[ eit->getDayIndex() ].addPeriod( period );
+                m_dayArr[ curSpec->getDayIndex() ].addPeriod( period );
             break;
         }
     }
 
-    // Sort and Coalesce each day
-    for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
+    // Schedule zone time slots.
+    for( int dayIndex = 0; dayIndex < HNIS_DAY_CNT; dayIndex++ )
     {
-        dayArr[ indx ].sort();
-        dayArr[ indx ].coalesce();
-    }
-
-    // Schedule a zones time slots.
-    for( std::vector< HNIrrigationZone >::iterator zone = zoneList.begin(); zone != zoneList.end(); zone++ )
-    {
-        // Get the total weekly amount of time
-        uint weeklySec = zone->getWeeklySeconds();
-
-        // Get the desired number of cycles per day
-        uint cyclePerDay = zone->getTargetCyclesPerDay();
-
-        // Get the minimum time per cycle
-        uint minCycleDuration = zit->getMinimumCycleTimeSeconds();
-
-        // Figure out how many days of the week can be supported
-        uint perDayMin = minCycleDuration * cyclePerDay;
-
-        uint dayCnt = weeklySec / perDayMin;
-
-        std::cout << "weeklySec: " << weeklySec << std::endl;
-        std::cout << "cyclePerDay: " << cyclePerDay << std::endl;
-        std::cout << "minCycleDuration: " << minCycleDuration << std::endl;
-        std::cout << "perDayMin: " << perDayMin << std::endl;
-        std::cout << "dayCnt: " << dayCnt << std::endl;
-
-        if( dayCnt > 7 )
-            dayCnt = 7;
-
-        switch( dayCnt )
+        uint cycleIndex = 0;
+        bool slotsToSchedule = true;
+        while( slotsToSchedule )
         {
-            // Less than one days worth of time
-            case 0:
-            break;
+            // Start out assuming this loop will finish it.
+            slotsToSchedule = false;
 
-            case 1:
-            break;
-
-            case 2:
-            break;
-
-            case 3:
-            break;
-
-            case 4:
-            break;
-
-            case 5:
-            break;
-
-            case 6:
-            break;
- 
-            // Schedule something on every week day.
-            case 7:
+            for( std::map< std::string, HNIrrigationZone >::iterator zit = m_zoneMap.begin(); zit != m_zoneMap.end(); zit++ )
             {
-                uint perDaySec   = weeklySec / dayCnt;
-                uint perCycleSec = perDaySec / cyclePerDay;
+                HNIZScheduleState schState; // FIXME - one persistent per zone.
+                HNIS_RESULT_T result = m_dayArr[ dayIndex ].scheduleTimeSlots( cycleIndex, schState, zit->second );
 
-                std::cout << "perDaySec: " << perDaySec << std::endl;
-                std::cout << "perCycleSec: " << perCycleSec << std::endl;
-
-                for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
+                switch( result )
                 {
-                    dayArr[ indx ].scheduleTimeSlots( perDaySec, cyclePerDay, &(*zit) );
+                    // Zone has successfully completed scheduling
+                    case HNIS_RESULT_SCH_NONE:
+                    case HNIS_RESULT_SUCCESS:
+                    break;
+
+                    // This cycle completed successfully,
+                    // but more slots need to be scheduled.
+                    case HNIS_RESULT_SCH_CONTINUE:
+                        // Continue scheduling
+                        slotsToSchedule = true;
+                    break;
+
+                    // An error occurred during scheduling.
+                    default:
+                        return result;
+                    break;
                 }
             }
-            break;
+
+            // Add the next cycle of times
+            cycleIndex += 1;
+
+            std::cout << "Next Cycle: " << cycleIndex << std::endl;
         }
     }
 
+    return HNIS_RESULT_SUCCESS;
+
 }
-#endif
+
 
 std::string 
 HNIrrigationSchedule::getSwitchDaemonJSON()
@@ -645,7 +825,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
         std::cout << "js chk day: " << indx << std::endl;
 
         std::vector< HNISPeriod > periodList;
-        dayArr[ indx ].getPeriodList( periodList );
+        m_dayArr[ indx ].getPeriodList( periodList );
 
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
@@ -667,12 +847,14 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
 
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
-            jsSWAction.set( "swid", it->getZone()->getSWIDListStr() );
+
+   
+            jsSWAction.set( "swid", m_zoneMap[ it->getZoneID() ].getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }
         
-        jsDays.set( dayArr[ indx ].getDayName(), jsActions );
+        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
     }
 
     jsRoot.set( "scheduleMatrix", jsDays );

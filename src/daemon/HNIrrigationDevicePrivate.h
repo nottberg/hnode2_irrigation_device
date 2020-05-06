@@ -7,7 +7,7 @@
 #include "Poco/Util/ServerApplication.h"
 #include "Poco/Util/OptionSet.h"
 
-#include "HNIrrigationZone.h"
+//#include "HNIrrigationZone.h"
 #include "HNIrrigationSchedule.h"
 
 typedef enum HNIrrigationDeviceResultEnum

@@ -81,38 +81,30 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     hnDevice.start();
 
+    HNIrrigationSchedule schedule;
 
-    // std::vector< HNIrrigationZone > zoneList;
-
-    // std::vector< HNExlusionSpec > exclusionList;
-
-    // HNIrrigationSchedule schdule;
-
-    HNISPeriod period;
-    std::string tst = period.getStartTimeStr();
-    std::cout << "Tst str: " << tst << std::endl;
-
-    HNExclusionSpec *testExclude = new HNExclusionSpec;
+    HNExclusionSpec *testExclude = schedule.updateExclusion( "early" );
     testExclude->setType( HNIS_EXCLUDE_TYPE_EVERYDAY );
-    testExclude->setTimesFromStr( "06:00:00", "20:00:00" ); 
-    //exclusionList.push_back( testExclude );
+    testExclude->setTimesFromStr( "00:00:00", "08:00:00" ); 
 
-    HNIrrigationZone *testZone = new HNIrrigationZone;
+    testExclude = schedule.updateExclusion( "mid" );
+    testExclude->setType( HNIS_EXCLUDE_TYPE_EVERYDAY );
+    testExclude->setTimesFromStr( "11:00:00", "13:00:00" ); 
 
-    testZone->setID("z1");
+    testExclude = schedule.updateExclusion( "late" );
+    testExclude->setType( HNIS_EXCLUDE_TYPE_EVERYDAY );
+    testExclude->setTimesFromStr( "22:00:00", "23:59:59" ); 
+
+    HNIrrigationZone *testZone = schedule.updateZone( "z1" );
     testZone->setName("Test Zone");
     testZone->setDesc("test zone desc");
     testZone->setSWIDList("s1");
 
-    //zoneList.push_back( testZone );
-
-    HNIrrigationSchedule schedule;
-
-    schedule.clear();
-    schedule.addExclusion( testExclude );
-    schedule.addZone( testZone );
-
-    //schedule.buildSchedule( exclusionList, zoneList );
+    HNIS_RESULT_T result = schedule.buildSchedule();
+    if( schedule.buildSchedule() != HNIS_RESULT_SUCCESS )
+    {
+        return Application::EXIT_SOFTWARE;
+    }
 
     std::cout << "=== Schedule Matrix ===" << std::endl << schedule.getSwitchDaemonJSON() << std::endl;
 
