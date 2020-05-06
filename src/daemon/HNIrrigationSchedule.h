@@ -111,15 +111,12 @@ class HNISPeriod
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
 
-        std::string m_zoneID;
-
     public:
         HNISPeriod();
        ~HNISPeriod();
 
         void setID( std::string id );
         void setType( HNIS_PERIOD_TYPE_T value );
-        void setZoneID( std::string zoneID );
 
         void setStartTime( HNI24HTime &time );
         void setStartTimeSeconds( uint seconds );
@@ -131,7 +128,6 @@ class HNISPeriod
 
         std::string getID();
         HNIS_PERIOD_TYPE_T getType();
-        std::string getZoneID();
 
         HNI24HTime& getStartTime();
         uint getStartTimeSeconds();

@@ -194,12 +194,6 @@ HNISPeriod::setType( HNIS_PERIOD_TYPE_T value )
     m_type = value;
 }
 
-void 
-HNISPeriod::setZoneID( std::string zoneID )
-{
-    m_zoneID = zoneID;
-}
-
 void
 HNISPeriod::setStartTime( HNI24HTime &time )
 {
@@ -241,12 +235,6 @@ HNIS_PERIOD_TYPE_T
 HNISPeriod::getType()
 {
     return m_type;
-}
-
-std::string
-HNISPeriod::getZoneID()
-{
-    return m_zoneID;
 }
 
 HNI24HTime& 
@@ -618,8 +606,6 @@ HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigat
 
         std::cout << "scheduleTimeSlots - nextOpening: " << nextOpening << std::endl;
 
-        sleep(1);
-
         // Shift to the next boundary and try again.
         znPeriod.moveStartToSecond( nextOpening ); 
     }
@@ -848,8 +834,9 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
 
-   
-            jsSWAction.set( "swid", m_zoneMap[ it->getZoneID() ].getSWIDListStr() );
+            std::cout << "zone id: " << it->getID() << std::endl;
+
+            jsSWAction.set( "swid", m_zoneMap[ it->getID() ].getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }
