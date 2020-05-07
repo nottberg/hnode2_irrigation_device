@@ -72,7 +72,7 @@ HNI24HTime::getHMSStr()
 HNIS_RESULT_T
 HNI24HTime::setFromHMS( uint hour, uint min, uint sec )
 {
-    secOfDay = (hour * 60 * 60) + (min *60) + sec;
+    secOfDay = (hour * 60 * 60) + (min * 60) + sec;
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -82,8 +82,8 @@ HNI24HTime::setFromSeconds( uint seconds )
 {
     // Set to provided value, cieling 24 hours.
     secOfDay = seconds;
-    if( secOfDay > (24 * 60 * 60) )
-        secOfDay = (24 * 60 * 60);
+    if( secOfDay > HNIS_SECONDS_IN_24H )
+        secOfDay = HNIS_SECONDS_IN_24H;
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -105,9 +105,19 @@ HNI24HTime::addSeconds( uint seconds )
 {
     // Add the two times, cap 24 hours
     secOfDay = (secOfDay + seconds); 
-    if( secOfDay > (24 * 60 * 60) )
-        secOfDay = (24 * 60 * 60);
+    if( secOfDay > HNIS_SECONDS_IN_24H )
+        secOfDay = HNIS_SECONDS_IN_24H;
+}
 
+void
+HNI24HTime::subtractSeconds( uint seconds )
+{
+    // Subtract seconds, cap at 0 hour
+
+    if( secOfDay <= seconds )
+        secOfDay = 0;
+
+    secOfDay = (secOfDay - seconds); 
 }
 
 HNExclusionSpec::HNExclusionSpec()
@@ -291,6 +301,24 @@ HNISPeriod::moveStartToSecond( uint seconds )
     std::cout << "moveStartToSeconds - fin: " << getStartTimeSeconds() << "  " << getEndTimeSeconds() << std::endl;
 }
 
+void 
+HNISPeriod::moveEndToSecond( uint seconds )
+{
+    std::cout << "moveEndToSeconds - " << seconds << "  " << getEndTimeSeconds() << std::endl;
+
+    if( seconds >= getEndTimeSeconds() )
+        return;
+
+    uint duration = ( getEndTimeSeconds() - seconds );
+
+    std::cout << "moveEndToSeconds - duration: " << duration << std::endl;
+
+    m_startTime.subtractSeconds( duration );
+    m_endTime.subtractSeconds( duration );
+
+    std::cout << "moveEndToSeconds - fin: " << getStartTimeSeconds() << "  " << getEndTimeSeconds() << std::endl;
+}
+
 bool 
 HNISPeriod::sortCompare( const HNISPeriod& first, const HNISPeriod& second )
 {
@@ -299,7 +327,11 @@ HNISPeriod::sortCompare( const HNISPeriod& first, const HNISPeriod& second )
 
 HNIZScheduleState::HNIZScheduleState()
 {
+    m_nextTop = false;
 
+    m_lastBottomSec = 0;
+
+    m_lastTopSec = HNIS_SECONDS_IN_24H;
 }
 
 HNIZScheduleState::~HNIZScheduleState()
@@ -307,9 +339,53 @@ HNIZScheduleState::~HNIZScheduleState()
 
 }
 
+void 
+HNIZScheduleState::setNextTop( bool value )
+{
+    m_nextTop = value;
+}
+
+void 
+HNIZScheduleState::toggleNextTop()
+{
+    m_nextTop = ((m_nextTop == false) ? true : false);
+}
+
+void 
+HNIZScheduleState::setTopSeconds( uint value )
+{
+    m_lastTopSec = value;
+}
+
+void 
+HNIZScheduleState::setBottomSeconds( uint value )
+{
+    m_lastBottomSec = value;
+}
+
+bool 
+HNIZScheduleState::getNextTop()
+{
+    return m_nextTop;
+}
+
+uint 
+HNIZScheduleState::getTopSeconds()
+{
+    return m_lastTopSec;
+}
+
+uint 
+HNIZScheduleState::getBottomSeconds()
+{
+    return m_lastBottomSec;
+}
+
 HNIrrigationZone::HNIrrigationZone()
 {
-
+    m_weeklySec   = (((5 * 60) * 2) * 7);
+    m_dailyCycles = 2;
+    m_minCycleSec = (2 * 60);
 }
 
 HNIrrigationZone::~HNIrrigationZone()
@@ -334,7 +410,25 @@ HNIrrigationZone::setDesc( std::string desc )
 {
     m_zoneDesc = desc;
 }
-       
+     
+void
+HNIrrigationZone::setWeeklySeconds( uint value )
+{
+    m_weeklySec = value;
+}
+
+void
+HNIrrigationZone::setTargetCyclesPerDay( uint value )
+{
+    m_dailyCycles = value;
+}
+
+void
+HNIrrigationZone::setMinimumCycleTimeSeconds( uint value )
+{
+    m_minCycleSec = value;
+}
+  
 void 
 HNIrrigationZone::setSWIDList( std::string swidList )
 {
@@ -368,19 +462,19 @@ HNIrrigationZone::getSWIDListStr()
 uint 
 HNIrrigationZone::getWeeklySeconds()
 {
-    return (((5 * 60) * 2) * 7);
+    return m_weeklySec; // (((5 * 60) * 2) * 7);
 }
 
 uint 
 HNIrrigationZone::getTargetCyclesPerDay()
 {
-    return 2;
+    return m_dailyCycles; // 2;
 }
 
 uint 
 HNIrrigationZone::getMinimumCycleTimeSeconds()
 {
-    return (2 * 60);
+    return m_minCycleSec; // (2 * 60);
 }
 
 HNIS_RESULT_T 
@@ -589,7 +683,7 @@ HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigat
         return result;
 
     // Process collisions
-    while( znPeriod.getEndTimeSeconds() <= (24 * 60 * 60) )
+    while( znPeriod.getEndTimeSeconds() <= HNIS_SECONDS_IN_24H )
     {
         uint nextOpening;
 
@@ -611,7 +705,7 @@ HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigat
     }
 
     // Check if a spot was found
-    if( znPeriod.getStartTimeSeconds() >= (24 * 60 * 60) )
+    if( znPeriod.getStartTimeSeconds() >= HNIS_SECONDS_IN_24H )
     {
         return HNIS_RESULT_NO_SLOT;
     }

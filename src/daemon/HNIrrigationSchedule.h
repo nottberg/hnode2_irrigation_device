@@ -8,11 +8,7 @@
 #include <list>
 #include <vector>
 
-//#include "HNIrrigationZone.h"
-
-// Forward Declaration
-//class HNISDay;
-//class HNIrrigationSchedule;
+#define HNIS_SECONDS_IN_24H  (24 * 60 *60)
 
 typedef enum HNIrrigationScheduleResultEnum
 {
@@ -49,7 +45,7 @@ class HNI24HTime
         HNIS_RESULT_T parseTime( std::string value );
 
         void addSeconds( uint seconds );
-        void addDuration( HNI24HTime &duration );
+        void subtractSeconds( uint seconds );
 
         uint getSeconds() const;
         void getHMS( uint &hour, uint &minute, uint &second );
@@ -138,6 +134,7 @@ class HNISPeriod
         std::string getEndTimeStr();
 
         void moveStartToSecond( uint seconds );
+        void moveEndToSecond( uint seconds );
 
         static bool sortCompare( const HNISPeriod& first, const HNISPeriod& second );
 
@@ -146,11 +143,24 @@ class HNISPeriod
 class HNIZScheduleState
 {
     private:
+        bool m_nextTop;
+
+        uint m_lastBottomSec;
+        uint m_lastTopSec;
 
     public:
         HNIZScheduleState();
        ~HNIZScheduleState();
 
+        void setNextTop( bool value );
+        void setTopSeconds( uint value );
+        void setBottomSeconds( uint value );
+
+        void toggleNextTop();
+
+        bool getNextTop();
+        uint getTopSeconds();
+        uint getBottomSeconds();
 };
 
 class HNIrrigationZone
@@ -160,9 +170,9 @@ class HNIrrigationZone
         std::string m_zoneName;
         std::string m_zoneDesc;
 
-        HNI24HTime m_totalWeeklyDuration;
-        HNI24HTime m_minOnDuration;
-        HNI24HTime m_maxOnDuration;
+        uint m_weeklySec;
+        uint m_dailyCycles;
+        uint m_minCycleSec;
 
         std::string m_swidList;
 
@@ -174,6 +184,10 @@ class HNIrrigationZone
         void setName( std::string name );
         void setDesc( std::string desc );
        
+        void setWeeklySeconds( uint value );
+        void setTargetCyclesPerDay( uint value );
+        void setMinimumCycleTimeSeconds( uint value );
+
         void setSWIDList( std::string swidList );
 
         std::string getID();
