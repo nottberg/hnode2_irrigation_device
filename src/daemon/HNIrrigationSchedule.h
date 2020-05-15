@@ -107,12 +107,16 @@ class HNISPeriod
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
 
+        bool m_slideLater;
+
     public:
         HNISPeriod();
        ~HNISPeriod();
 
         void setID( std::string id );
         void setType( HNIS_PERIOD_TYPE_T value );
+
+        void setSlideLater( bool value );
 
         void setStartTime( HNI24HTime &time );
         void setStartTimeSeconds( uint seconds );
@@ -132,6 +136,8 @@ class HNISPeriod
         HNI24HTime& getEndTime();
         uint getEndTimeSeconds();
         std::string getEndTimeStr();
+
+        bool isSlideLater();
 
         void moveStartToSecond( uint seconds );
         void moveEndToSecond( uint seconds );
@@ -157,8 +163,8 @@ class HNIZScheduleState
         void setBottomSeconds( uint value );
 
         void toggleNextTop();
+        bool isTopNext();
 
-        bool getNextTop();
         uint getTopSeconds();
         uint getBottomSeconds();
 };
@@ -219,7 +225,7 @@ class HNISDay
   
         std::list< HNISPeriod > m_periodList;
 
-        HNIS_CAR_T assessCollision( HNISPeriod &value, bool moveLater, uint &boundary );
+        HNIS_CAR_T assessCollision( HNISPeriod &value, uint &boundary );
 
     public:
         HNISDay();
