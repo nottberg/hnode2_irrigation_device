@@ -30,6 +30,141 @@ using namespace Poco::Util;
 namespace pjs = Poco::JSON;
 namespace pdy = Poco::Dynamic;
 
+const std::string g_HNode2IrrigationRest = R"(
+{
+  "openapi": "3.0.0",
+  "info": {
+    "description": "",
+    "version": "1.0.0",
+    "title": ""
+  },
+  "paths": {
+      "/hnode2/irrigation/switches": {
+        "get": {
+          "summary": "Get a list of controllable switches.",
+          "operationId": "getSwitchList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/zones": {
+        "get": {
+          "summary": "Get information about controlled zones.",
+          "operationId": "getZoneList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/zones/{zoneid}": {
+        "get": {
+          "summary": "Get information about a specific zone.",
+          "operationId": "getZoneInfo",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "post": {
+          "summary": "Create a new zone association.",
+          "operationId": "createZone",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "put": {
+          "summary": "Update existing zone settings.",
+          "operationId": "updateZone",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing zone.",
+          "operationId": "deleteZone",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      }
+    }
+}
+)";
+
 void 
 HNIrrigationDevice::defineOptions( OptionSet& options )
 {
@@ -79,8 +214,20 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     hnDevice.setName("sp1");
 
+
+    HNDEndpoint hndEP;
+
+    hndEP.setDispatch( "hnode2Irrigation", this );
+    hndEP.setOpenAPIJson( g_HNode2IrrigationRest ); 
+
+    hnDevice.addEndpoint( hndEP );
+
+
     hnDevice.start();
 
+
+
+#if 0
     HNIrrigationSchedule schedule;
 
     HNExclusionSpec *testExclude = schedule.updateExclusion( "early" );
@@ -107,11 +254,97 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     }
 
     std::cout << "=== Schedule Matrix ===" << std::endl << schedule.getSwitchDaemonJSON() << std::endl;
+#endif
 
     waitForTerminationRequest();
 
     return Application::EXIT_OK;
 }
 
+void 
+HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
+{
+    std::cout << "HNIrrigationDevice::dispatchEP() - entry" << std::endl;
+    std::cout << "  dispatchID: " << opData->getDispatchID() << std::endl;
+    std::cout << "  opID: " << opData->getOpID() << std::endl;
+
+    std::string opID = opData->getOpID();
+
+#if 0
+    GET "/hnode2/irrigation/switches": "getSwitchList"
+
+    GET "/hnode2/irrigation/zones": "getZoneList"
+
+    GET "/hnode2/irrigation/zones/{zoneid}": "getZoneInfo"
+
+    POST "/hnode2/irrigation/zones/{zoneid}": "createZone"
+
+    PUT "/hnode2/irrigation/zones/{zoneid}": "updateZone"
+
+    DELETE "/hnode2/irrigation/zones/{zoneid}": "deleteZone"
+
+    if( "getDeviceInfo" == opID )
+    {
+        // Create a json root object
+        pjs::Object jsRoot;
+
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        jsRoot.set( "hnodeID", getHNodeIDStr() );
+        jsRoot.set( "crc32ID", getHNodeIDCRC32Str() );
+ 
+        jsRoot.set( "name", getName() );
+
+        jsRoot.set( "instance", getInstance() );
+
+        jsRoot.set( "deviceType", getDeviceType() );
+        jsRoot.set( "version", getVersionStr() );
+
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+    }
+    else if( "getDeviceOwner" == opID )
+    {
+        // Create a json root object
+        pjs::Object jsRoot;
+
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        jsRoot.set( "state", getOwnerState() );
+        jsRoot.set( "hnodeID", getOwnerHNodeIDStr() );
+
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+    }
+    else
+    {
+        // Send back not implemented
+        opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
+    }
+#endif
+
+}
 
 
