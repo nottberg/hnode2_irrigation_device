@@ -953,6 +953,26 @@ HNIrrigationSchedule::buildSchedule()
 
 }
 
+void 
+HNIrrigationSchedule::getZoneList( std::vector< HNIrrigationZone > &zoneList )
+{
+    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
+    {
+        zoneList.push_back( it->second );
+    }
+}
+
+HNIS_RESULT_T 
+HNIrrigationSchedule::getZone( std::string zoneID, HNIrrigationZone &zone )
+{
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
+
+    if( it == m_zoneMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    zone = it->second;
+    return HNIS_RESULT_SUCCESS;
+}
 
 std::string 
 HNIrrigationSchedule::getSwitchDaemonJSON()

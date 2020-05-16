@@ -29,11 +29,11 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         std::string instanceName;
 
-        std::vector< HNIrrigationZone > zoneList;
+        //std::vector< HNIrrigationZone > zoneList;
 
-        std::vector< HNExclusionSpec > exclusionList;
+        //std::vector< HNExclusionSpec > exclusionList;
 
-        //HNIrrigationSchedule schedule;
+        HNIrrigationSchedule schedule;
 
         void displayHelp();
 

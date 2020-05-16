@@ -270,19 +270,139 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 
     std::string opID = opData->getOpID();
 
+    // GET "/hnode2/irrigation/switches"
+    if( "getSwitchList" == opID )
+    {
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        pjs::Object swObj;
+
+        swObj.set( "swid", "s1" );
+        swObj.set( "description", "Garden Drip" );
+ 
+        jsRoot.add( swObj );
+
+        swObj.set( "swid", "s2" );
+        swObj.set( "description", "West Front" );
+ 
+        jsRoot.add( swObj );
+
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+    }
+    // GET "/hnode2/irrigation/zones"
+    else if( "getZoneList" == opID )
+    {
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        std::vector< HNIrrigationZone > zoneList;
+        schedule.getZoneList( zoneList );
+
+        for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
+        { 
+           pjs::Object znObj;
+
+           znObj.set( "zoneid", zit->getID() );
+
+           jsRoot.add( znObj );
+        }
+ 
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+    }
+    // GET "/hnode2/irrigation/zones/{zoneid}"
+    else if( "getZoneInfo" == opID )
+    {
+        std::string zoneID;
+        HNIrrigationZone zone;
+
+        if( opData->getParam( "zoneid", zoneID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            return; 
+        }
+
+        if( schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return; 
+        }
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Create a json root object
+        pjs::Object jsRoot;
+
+        jsRoot.set( "zoneid", zone.getID() );
+ 
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+
+    }
+    // POST "/hnode2/irrigation/zones/{zoneid}"
+    else if( "createZone" == opID )
+    {
+
+    }
+    // PUT "/hnode2/irrigation/zones/{zoneid}"
+    else if( "updateZone" == opID )
+    {
+
+    }
+    // DELETE "/hnode2/irrigation/zones/{zoneid}"
+    else if( "deleteZone" == opID )
+    {
+
+    }
+    else
+    {
+        // Send back not implemented
+        opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
+    }
+
 #if 0
-    GET "/hnode2/irrigation/switches": "getSwitchList"
-
-    GET "/hnode2/irrigation/zones": "getZoneList"
-
-    GET "/hnode2/irrigation/zones/{zoneid}": "getZoneInfo"
-
-    POST "/hnode2/irrigation/zones/{zoneid}": "createZone"
-
-    PUT "/hnode2/irrigation/zones/{zoneid}": "updateZone"
-
-    DELETE "/hnode2/irrigation/zones/{zoneid}": "deleteZone"
-
     if( "getDeviceInfo" == opID )
     {
         // Create a json root object

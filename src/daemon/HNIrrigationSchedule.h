@@ -270,6 +270,10 @@ class HNIrrigationSchedule
 
         HNIS_RESULT_T buildSchedule();
 
+        void getZoneList( std::vector< HNIrrigationZone > &zoneList );
+
+        HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
+
         std::string getSwitchDaemonJSON();
 };
 
