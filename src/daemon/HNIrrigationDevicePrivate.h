@@ -15,7 +15,9 @@
 typedef enum HNIrrigationDeviceResultEnum
 {
   HNID_RESULT_SUCCESS,
-  HNID_RESULT_FAILURE
+  HNID_RESULT_FAILURE,
+  HNID_RESULT_BAD_REQUEST,
+  HNID_RESULT_SERVER_ERROR
 }HNID_RESULT_T;
 
 class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf
@@ -29,13 +31,13 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         std::string instanceName;
 
-        //std::vector< HNIrrigationZone > zoneList;
-
-        //std::vector< HNExclusionSpec > exclusionList;
-
         HNIrrigationSchedule schedule;
 
         void displayHelp();
+
+        HNID_RESULT_T commitConfig();
+
+        HNID_RESULT_T updateZone( std::string zoneID, std::istream& bodyStream );
 
     protected:
         // HNDevice REST callback

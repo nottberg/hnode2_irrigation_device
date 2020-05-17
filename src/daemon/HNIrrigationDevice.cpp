@@ -261,6 +261,82 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     return Application::EXIT_OK;
 }
 
+HNID_RESULT_T
+HNIrrigationDevice::commitConfig()
+{
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_RESULT_T
+HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
+{
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        HNIrrigationZone *zone = schedule.updateZone( zoneID );
+
+        if( jsRoot->has( "name" ) )
+        {
+            zone->setName( jsRoot->getValue<std::string>( "name" ) );
+        }
+
+        if( jsRoot->has( "description" ) )
+        {
+            zone->setDesc( jsRoot->getValue<std::string>( "description" ) );
+        }
+
+        if( jsRoot->has( "secondsPerWeek" ) )
+        {
+            zone->setWeeklySeconds( jsRoot->getValue<uint>( "secondsPerWeek" ) );
+        }
+
+        if( jsRoot->has( "cyclesPerDay" ) )
+        {
+            zone->setTargetCyclesPerDay( jsRoot->getValue<uint>( "cyclePerDay" ) );
+        }
+
+        if( jsRoot->has( "secondsMinCycle" ) )
+        {
+            zone->setMinimumCycleTimeSeconds( jsRoot->getValue<uint>( "secondsMinCycle" ) );
+        }
+
+        if( jsRoot->has( "swidList" ) )
+        {
+            zone->setSWIDList( jsRoot->getValue<std::string>( "swidList" ) );
+        }
+        
+        if( zone->validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            // zoneid parameter is required
+            return HNID_RESULT_BAD_REQUEST;
+        }        
+    }
+    catch( Poco::Exception ex )
+    {
+        // Request body was not understood
+        return HNID_RESULT_BAD_REQUEST;
+    }
+
+    // Write any update to the config file
+    commitConfig();
+
+    // Calculate the new schedule
+    HNIS_RESULT_T result = schedule.buildSchedule();
+    if( result != HNIS_RESULT_SUCCESS )
+    {
+        return HNID_RESULT_SERVER_ERROR;        
+    }
+
+    return HNID_RESULT_SUCCESS;
+}
+
 void 
 HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 {
@@ -304,6 +380,8 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             return;
         }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
     // GET "/hnode2/irrigation/zones"
     else if( "getZoneList" == opID )
@@ -323,6 +401,12 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
            pjs::Object znObj;
 
            znObj.set( "zoneid", zit->getID() );
+           znObj.set( "name", zit->getName() );
+           znObj.set( "description", zit->getDesc() );
+           znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
+           znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
+           znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
+           znObj.set( "swidList", zit->getSWIDListStr() );
 
            jsRoot.add( znObj );
         }
@@ -339,6 +423,8 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             return;
         }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
     // GET "/hnode2/irrigation/zones/{zoneid}"
     else if( "getZoneInfo" == opID )
@@ -362,11 +448,19 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         opData->responseSetChunkedTransferEncoding(true);
         opData->responseSetContentType("application/json");
 
+        HNIS_RESULT_T updateZone( std::string zoneID, HNOperationData *opData );
+
         // Create a json root object
         pjs::Object jsRoot;
 
         jsRoot.set( "zoneid", zone.getID() );
- 
+        jsRoot.set( "name", zone.getName() );
+        jsRoot.set( "description", zone.getDesc() );
+        jsRoot.set( "secondsPerWeek", zone.getWeeklySeconds() );
+        jsRoot.set( "cyclesPerDay", zone.getTargetCyclesPerDay() );
+        jsRoot.set( "secondsMinCycle", zone.getMinimumCycleTimeSeconds() );
+        jsRoot.set( "swidList", zone.getSWIDListStr() );
+
         // Render the response
         std::ostream& ostr = opData->responseSend();
         try
@@ -380,21 +474,116 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return;
         }
 
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
     }
     // POST "/hnode2/irrigation/zones/{zoneid}"
     else if( "createZone" == opID )
     {
+        std::string zoneID;
 
+        // Make sure zoneid was provided
+        if( opData->getParam( "zoneid", zoneID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            return; 
+        }
+
+        // Make sure zone doesn't already exist
+        if( schedule.hasZone( zoneID ) == true )
+        {
+            // Zone already exists, return error
+            opData->responseSetStatusAndReason( HNR_HTTP_CONFLICT );
+            return; 
+        }
+
+        std::istream& bodyStream = opData->requestBody();
+        HNID_RESULT_T result = updateZone( zoneID, bodyStream );
+
+        switch( result )
+        {
+            case HNID_RESULT_SUCCESS:
+            break;
+
+            case HNID_RESULT_BAD_REQUEST:
+                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+                return;
+            break;
+
+            default:
+            case HNID_RESULT_SERVER_ERROR:
+            case HNID_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+        }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
     // PUT "/hnode2/irrigation/zones/{zoneid}"
     else if( "updateZone" == opID )
     {
+        std::string zoneID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "zoneid", zoneID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            return; 
+        }
+
+        // Make sure zone does exist
+        if( schedule.hasZone( zoneID ) == false )
+        {
+            // Zone already exists, return error
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            return; 
+        }
+
+        std::istream& bodyStream = opData->requestBody();
+        HNID_RESULT_T result = updateZone( zoneID, bodyStream );
+
+        switch( result )
+        {
+            case HNID_RESULT_SUCCESS:
+            break;
+
+            case HNID_RESULT_BAD_REQUEST:
+                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+                return;
+            break;
+
+            default:
+            case HNID_RESULT_SERVER_ERROR:
+            case HNID_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+
+        }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
     }
     // DELETE "/hnode2/irrigation/zones/{zoneid}"
     else if( "deleteZone" == opID )
     {
+        std::string zoneID;
 
+        // Make sure zoneid was provided
+        if( opData->getParam( "zoneid", zoneID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            return; 
+        }
+
+        // Remove the zone record
+        schedule.deleteZone( zoneID );
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
     else
     {

@@ -449,6 +449,12 @@ HNIrrigationZone::setSWIDList( std::string swidList )
     m_swidList = swidList;
 }
 
+HNIS_RESULT_T 
+HNIrrigationZone::validateSettings()
+{
+    // Add validation checking here
+}
+
 std::string 
 HNIrrigationZone::getID()
 {
@@ -838,20 +844,33 @@ HNIrrigationSchedule::updateExclusion( std::string id )
 }
 
 HNIrrigationZone*
-HNIrrigationSchedule::updateZone( std::string id )
+HNIrrigationSchedule::updateZone( std::string zoneID )
 {
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( id );
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
 
     if( it == m_zoneMap.end() )
     {
         HNIrrigationZone nZone;
-        nZone.setID( id );
-        m_zoneMap.insert( std::pair< std::string, HNIrrigationZone >( id, nZone ) );\
-        return &( m_zoneMap[ id ] );
+        nZone.setID( zoneID );
+        m_zoneMap.insert( std::pair< std::string, HNIrrigationZone >( zoneID, nZone ) );\
+        return &( m_zoneMap[ zoneID ] );
     }
 
     return &(it->second);
+}
 
+void 
+HNIrrigationSchedule::deleteZone( std::string zoneID )
+{
+    // Find the referenced zone
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
+
+    // If already no existant than nothing to do.
+    if( it == m_zoneMap.end() )
+        return;
+
+    // Get rid of the zone record
+    m_zoneMap.erase( it );
 }
 
 HNIS_RESULT_T 
@@ -960,6 +979,17 @@ HNIrrigationSchedule::getZoneList( std::vector< HNIrrigationZone > &zoneList )
     {
         zoneList.push_back( it->second );
     }
+}
+
+bool 
+HNIrrigationSchedule::hasZone( std::string zoneID )
+{
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
+
+    if( it == m_zoneMap.end() )
+        return false;
+
+    return true;
 }
 
 HNIS_RESULT_T 

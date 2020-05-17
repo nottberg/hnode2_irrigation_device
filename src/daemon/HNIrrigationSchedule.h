@@ -196,6 +196,8 @@ class HNIrrigationZone
 
         void setSWIDList( std::string swidList );
 
+        HNIS_RESULT_T validateSettings();
+
         std::string getID();
         std::string getName();
         std::string getDesc();
@@ -266,13 +268,15 @@ class HNIrrigationSchedule
         void clear();
 
         HNExclusionSpec  *updateExclusion( std::string id );
-        HNIrrigationZone *updateZone( std::string id );
+
+
+        bool hasZone( std::string zoneID );
+        HNIrrigationZone *updateZone( std::string zoneID );
+        void deleteZone( std::string zoneID );
+        void getZoneList( std::vector< HNIrrigationZone > &zoneList );
+        HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
 
         HNIS_RESULT_T buildSchedule();
-
-        void getZoneList( std::vector< HNIrrigationZone > &zoneList );
-
-        HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
 
         std::string getSwitchDaemonJSON();
 };
