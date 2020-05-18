@@ -340,7 +340,7 @@ HNIrrigationDevice::updateConfig()
     std::cout << "Saving config..." << std::endl;
     if( cfgFile.saveConfig( HNODE_IRRIGATION_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
     {
-        std::cout << "ERROR: Could not save initial configuration." << std::endl;
+        std::cout << "ERROR: Could not save configuration." << std::endl;
         return HNID_RESULT_FAILURE;
     }
 
