@@ -874,6 +874,63 @@ HNIrrigationSchedule::deleteZone( std::string zoneID )
 }
 
 HNIS_RESULT_T 
+HNIrrigationSchedule::initZoneListSection( HNodeConfig &cfg )
+{
+    HNCSection *secPtr;
+
+    cfg.updateSection( "irrZoneInfo", &secPtr );
+    
+    HNCObjList *listPtr;
+    secPtr->updateList( "zoneList", &listPtr );
+
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
+{
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationSchedule::updateZoneListSection( HNodeConfig &cfg )
+{
+    char tmpStr[256];
+    HNCSection *secPtr;
+    cfg.updateSection( "irrZoneInfo", &secPtr );
+    //secPtr->updateValue( "test1", "value1" );
+
+    HNCObjList *listPtr;
+    secPtr->updateList( "zoneList", &listPtr );
+
+    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
+    { 
+        HNCObj *objPtr;
+
+        // Aquire a new list entry
+        listPtr->appendObj( &objPtr );
+
+        // Fill the entry with the zone info
+        objPtr->updateValue( "zoneid", it->second.getID() );
+        objPtr->updateValue( "name", it->second.getName() );
+        objPtr->updateValue( "description", it->second.getDesc() );
+
+        sprintf( tmpStr, "%d", it->second.getWeeklySeconds() );
+        objPtr->updateValue( "secondsPerWeek", tmpStr );
+
+        sprintf( tmpStr, "%d", it->second.getTargetCyclesPerDay() );
+        objPtr->updateValue( "cyclesPerDay", tmpStr );
+
+        sprintf( tmpStr, "%d", it->second.getMinimumCycleTimeSeconds() );
+        objPtr->updateValue( "secondsMinCycle", tmpStr );
+
+        objPtr->updateValue( "swidList", it->second.getSWIDListStr() );    
+    }
+
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
 HNIrrigationSchedule::buildSchedule()
 {
     // Clear any schedule data

@@ -206,25 +206,35 @@ HNIrrigationDevice::displayHelp()
     helpFormatter.format(std::cout);
 }
 
+//m_hnodeDev.setName("sp1");
+
 int 
 HNIrrigationDevice::main( const std::vector<std::string>& args )
 {
-    std::string instance = "default";
-    HNodeDevice hnDevice( "hnode2-irrigation-device", instance );
+    m_instanceName = "default";
+    if( _instancePresent == true )
+        m_instanceName = _instance;
 
-    hnDevice.setName("sp1");
-
+    m_hnodeDev.setDeviceType( HNODE_IRRIGATION_DEVTYPE );
+    m_hnodeDev.setInstance( m_instanceName );
 
     HNDEndpoint hndEP;
 
     hndEP.setDispatch( "hnode2Irrigation", this );
     hndEP.setOpenAPIJson( g_HNode2IrrigationRest ); 
 
-    hnDevice.addEndpoint( hndEP );
+    m_hnodeDev.addEndpoint( hndEP );
 
+    std::cout << "Looking for config file" << std::endl;
+    
+    if( configExists() == false )
+    {
+        initConfig();
+    }
 
-    hnDevice.start();
+    readConfig();
 
+    m_hnodeDev.start();
 
 
 #if 0
@@ -261,9 +271,79 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     return Application::EXIT_OK;
 }
 
-HNID_RESULT_T
-HNIrrigationDevice::commitConfig()
+bool 
+HNIrrigationDevice::configExists()
 {
+    HNodeConfigFile cfgFile;
+
+    return cfgFile.configExists( HNODE_IRRIGATION_DEVTYPE, m_instanceName );
+}
+
+HNID_RESULT_T
+HNIrrigationDevice::initConfig()
+{
+    HNodeConfigFile cfgFile;
+    HNodeConfig     cfg;
+
+    m_hnodeDev.initConfigSections( cfg );
+
+    m_schedule.initZoneListSection( cfg );
+
+    cfg.debugPrint(2);
+    
+    std::cout << "Saving config..." << std::endl;
+    if( cfgFile.saveConfig( HNODE_IRRIGATION_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    {
+        std::cout << "ERROR: Could not save initial configuration." << std::endl;
+        return HNID_RESULT_FAILURE;
+    }
+
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_RESULT_T
+HNIrrigationDevice::readConfig()
+{
+    HNodeConfigFile cfgFile;
+    HNodeConfig     cfg;
+
+    if( configExists() == false )
+        return HNID_RESULT_FAILURE;
+
+    std::cout << "Loading config..." << std::endl;
+
+    if( cfgFile.loadConfig( HNODE_IRRIGATION_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    {
+        std::cout << "ERROR: Could not load saved configuration." << std::endl;
+        return HNID_RESULT_FAILURE;
+    }
+  
+    m_hnodeDev.readConfigSections( cfg );
+
+    m_schedule.readZoneListSection( cfg );
+
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_RESULT_T
+HNIrrigationDevice::updateConfig()
+{
+    HNodeConfigFile cfgFile;
+    HNodeConfig     cfg;
+
+    m_hnodeDev.updateConfigSections( cfg );
+
+    m_schedule.updateZoneListSection( cfg );
+
+    cfg.debugPrint(2);
+    
+    std::cout << "Saving config..." << std::endl;
+    if( cfgFile.saveConfig( HNODE_IRRIGATION_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    {
+        std::cout << "ERROR: Could not save initial configuration." << std::endl;
+        return HNID_RESULT_FAILURE;
+    }
+
     return HNID_RESULT_SUCCESS;
 }
 
@@ -280,7 +360,7 @@ HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        HNIrrigationZone *zone = schedule.updateZone( zoneID );
+        HNIrrigationZone *zone = m_schedule.updateZone( zoneID );
 
         if( jsRoot->has( "name" ) )
         {
@@ -325,10 +405,10 @@ HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
     }
 
     // Write any update to the config file
-    commitConfig();
+    updateConfig();
 
     // Calculate the new schedule
-    HNIS_RESULT_T result = schedule.buildSchedule();
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
     if( result != HNIS_RESULT_SUCCESS )
     {
         return HNID_RESULT_SERVER_ERROR;        
@@ -394,7 +474,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         pjs::Array jsRoot;
 
         std::vector< HNIrrigationZone > zoneList;
-        schedule.getZoneList( zoneList );
+        m_schedule.getZoneList( zoneList );
 
         for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
         { 
@@ -438,7 +518,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        if( schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
+        if( m_schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             return; 
@@ -491,7 +571,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         // Make sure zone doesn't already exist
-        if( schedule.hasZone( zoneID ) == true )
+        if( m_schedule.hasZone( zoneID ) == true )
         {
             // Zone already exists, return error
             opData->responseSetStatusAndReason( HNR_HTTP_CONFLICT );
@@ -535,7 +615,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         // Make sure zone does exist
-        if( schedule.hasZone( zoneID ) == false )
+        if( m_schedule.hasZone( zoneID ) == false )
         {
             // Zone already exists, return error
             opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
@@ -581,7 +661,10 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         // Remove the zone record
-        schedule.deleteZone( zoneID );
+        m_schedule.deleteZone( zoneID );
+
+        // Write the delete to the config file
+        updateConfig();
 
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
@@ -590,69 +673,6 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         // Send back not implemented
         opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
     }
-
-#if 0
-    if( "getDeviceInfo" == opID )
-    {
-        // Create a json root object
-        pjs::Object jsRoot;
-
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        jsRoot.set( "hnodeID", getHNodeIDStr() );
-        jsRoot.set( "crc32ID", getHNodeIDCRC32Str() );
- 
-        jsRoot.set( "name", getName() );
-
-        jsRoot.set( "instance", getInstance() );
-
-        jsRoot.set( "deviceType", getDeviceType() );
-        jsRoot.set( "version", getVersionStr() );
-
-        // Render the response
-        std::ostream& ostr = opData->responseSend();
-        try
-        {
-            // Write out the generated json
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-        }
-        catch( ... )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            return;
-        }
-    }
-    else if( "getDeviceOwner" == opID )
-    {
-        // Create a json root object
-        pjs::Object jsRoot;
-
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        jsRoot.set( "state", getOwnerState() );
-        jsRoot.set( "hnodeID", getOwnerHNodeIDStr() );
-
-        // Render the response
-        std::ostream& ostr = opData->responseSend();
-        try
-        {
-            // Write out the generated json
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-        }
-        catch( ... )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            return;
-        }
-    }
-    else
-    {
-        // Send back not implemented
-        opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
-    }
-#endif
 
 }
 

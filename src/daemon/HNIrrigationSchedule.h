@@ -8,6 +8,8 @@
 #include <list>
 #include <vector>
 
+#include <hnode2/HNodeConfig.h>
+
 #define HNIS_SECONDS_IN_24H  (24 * 60 *60)
 
 typedef enum HNIrrigationScheduleResultEnum
@@ -275,6 +277,10 @@ class HNIrrigationSchedule
         void deleteZone( std::string zoneID );
         void getZoneList( std::vector< HNIrrigationZone > &zoneList );
         HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
+
+        HNIS_RESULT_T initZoneListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T readZoneListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T updateZoneListSection( HNodeConfig &cfg );
 
         HNIS_RESULT_T buildSchedule();
 

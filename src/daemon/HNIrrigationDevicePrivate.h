@@ -8,9 +8,12 @@
 #include "Poco/Util/OptionSet.h"
 
 #include <hnode2/HNodeDevice.h>
+#include <hnode2/HNodeConfig.h>
 
 //#include "HNIrrigationZone.h"
 #include "HNIrrigationSchedule.h"
+
+#define HNODE_IRRIGATION_DEVTYPE   "hnode2-irrigation-device"
 
 typedef enum HNIrrigationDeviceResultEnum
 {
@@ -29,13 +32,19 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         std::string _instance; 
 
-        std::string instanceName;
+        std::string m_instanceName;
 
-        HNIrrigationSchedule schedule;
+        HNodeDevice m_hnodeDev;
+
+        HNIrrigationSchedule m_schedule;
+
 
         void displayHelp();
 
-        HNID_RESULT_T commitConfig();
+        bool configExists();
+        HNID_RESULT_T initConfig();
+        HNID_RESULT_T readConfig();
+        HNID_RESULT_T updateConfig();
 
         HNID_RESULT_T updateZone( std::string zoneID, std::istream& bodyStream );
 
