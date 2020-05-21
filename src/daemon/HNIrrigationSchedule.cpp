@@ -890,6 +890,65 @@ HNIrrigationSchedule::initZoneListSection( HNodeConfig &cfg )
 HNIS_RESULT_T 
 HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
 {
+    HNCSection  *secPtr;
+
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrZoneInfo", &secPtr );
+
+    // Get a list pointer
+    HNCObjList *listPtr;
+    secPtr->updateList( "zoneList", &listPtr );
+
+    for( uint indx = 0; indx < listPtr->size(); indx++ )
+    {
+        std::string zoneID;
+        std::string rstStr;
+        HNCObj *objPtr;
+
+        if( listPtr->getObjPtr( indx, &objPtr ) != HNC_RESULT_SUCCESS )
+            continue;
+
+        // Get the zoneID first, if missing skip the record
+        if( objPtr->getValueByName( "zoneid", zoneID ) != HNC_RESULT_SUCCESS )
+        {
+            continue;
+        }
+
+        // Get the internal reference to the zone.
+        HNIrrigationZone *zonePtr = updateZone( zoneID );
+
+        if( objPtr->getValueByName( "name", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setName( rstStr );
+        }
+
+        if( objPtr->getValueByName( "description", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setDesc( rstStr );
+        }
+
+        if( objPtr->getValueByName( "secondsPerWeek", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setWeeklySeconds( strtol( rstStr.c_str(), NULL, 0 ) );
+        }
+
+        if( objPtr->getValueByName( "cyclesPerDay", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setTargetCyclesPerDay( strtol( rstStr.c_str(), NULL, 0 ) );
+        }
+
+        if( objPtr->getValueByName( "secondsMinCycle", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setMinimumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
+        }
+
+        if( objPtr->getValueByName( "swidList", rstStr ) != HNC_RESULT_SUCCESS )
+        {
+            zonePtr->setSWIDList( rstStr );
+        }
+
+    }
+          
     return HNIS_RESULT_SUCCESS;
 }
 
