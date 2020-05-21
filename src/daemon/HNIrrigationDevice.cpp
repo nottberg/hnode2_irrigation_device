@@ -80,13 +80,11 @@ const std::string g_HNode2IrrigationRest = R"(
               "description": "Invalid status value"
             }
           }
-        }
-      },
+        },
 
-      "/hnode2/irrigation/zones/{zoneid}": {
-        "get": {
-          "summary": "Get information about a specific zone.",
-          "operationId": "getZoneInfo",
+        "post": {
+          "summary": "Create a new zone association.",
+          "operationId": "createZone",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -102,10 +100,13 @@ const std::string g_HNode2IrrigationRest = R"(
               "description": "Invalid status value"
             }
           }
-        },
-        "post": {
-          "summary": "Create a new zone association.",
-          "operationId": "createZone",
+        }
+      },
+
+      "/hnode2/irrigation/zones/{zoneid}": {
+        "get": {
+          "summary": "Get information about a specific zone.",
+          "operationId": "getZoneInfo",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -394,12 +395,14 @@ HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
         
         if( zone->validateSettings() != HNIS_RESULT_SUCCESS )
         {
+            std::cout << "updateZone validate failed" << std::endl;
             // zoneid parameter is required
             return HNID_RESULT_BAD_REQUEST;
         }        
     }
     catch( Poco::Exception ex )
     {
+        std::cout << "updateZone exception: " << ex.displayText() << std::endl;
         // Request body was not understood
         return HNID_RESULT_BAD_REQUEST;
     }
@@ -415,6 +418,31 @@ HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
     }
 
     return HNID_RESULT_SUCCESS;
+}
+
+bool
+HNIrrigationDevice::getUniqueZoneID( std::string &id )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    id.clear();
+
+    do
+    {
+        sprintf( tmpID, "z%d", idNum );
+
+        if( m_schedule.hasZone( tmpID ) == false )
+        {
+            id = tmpID;
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
 }
 
 void 
@@ -515,12 +543,14 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         if( opData->getParam( "zoneid", zoneID ) == true )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSend();
             return; 
         }
 
         if( m_schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
             return; 
         }
 
@@ -557,49 +587,50 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
     }
-    // POST "/hnode2/irrigation/zones/{zoneid}"
+    // POST "/hnode2/irrigation/zones"
     else if( "createZone" == opID )
     {
         std::string zoneID;
-
-        // Make sure zoneid was provided
-        if( opData->getParam( "zoneid", zoneID ) == true )
+ 
+        // Allocate a unique zone identifier
+        if( getUniqueZoneID( zoneID ) == false )
         {
-            // zoneid parameter is required
-            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
             return; 
         }
 
-        // Make sure zone doesn't already exist
-        if( m_schedule.hasZone( zoneID ) == true )
-        {
-            // Zone already exists, return error
-            opData->responseSetStatusAndReason( HNR_HTTP_CONFLICT );
-            return; 
-        }
+        std::cout << "CreateZone 1" << std::endl;
 
         std::istream& bodyStream = opData->requestBody();
         HNID_RESULT_T result = updateZone( zoneID, bodyStream );
 
+        std::cout << "CreateZone 2" << std::endl;
+
         switch( result )
         {
             case HNID_RESULT_SUCCESS:
+                opData->responseSetCreated( zoneID );
+                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
             break;
 
             case HNID_RESULT_BAD_REQUEST:
+                std::cout << "CreateZone 2.1" << std::endl;
                 opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-                return;
             break;
 
             default:
             case HNID_RESULT_SERVER_ERROR:
             case HNID_RESULT_FAILURE:
+                std::cout << "CreateZone 2.2" << std::endl;
                 opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
             break;
         }
 
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        std::cout << "CreateZone 3" << std::endl;
+
+        // Send the response
+        opData->responseSend();
     }
     // PUT "/hnode2/irrigation/zones/{zoneid}"
     else if( "updateZone" == opID )
@@ -611,6 +642,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         {
             // zoneid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
             return; 
         }
 
@@ -619,6 +651,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         {
             // Zone already exists, return error
             opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSend();
             return; 
         }
 
@@ -628,24 +661,23 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         switch( result )
         {
             case HNID_RESULT_SUCCESS:
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
             break;
 
             case HNID_RESULT_BAD_REQUEST:
                 opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-                return;
             break;
 
             default:
             case HNID_RESULT_SERVER_ERROR:
             case HNID_RESULT_FAILURE:
                 opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
             break;
 
         }
 
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
+        // Send the response
+        opData->responseSend();
     }
     // DELETE "/hnode2/irrigation/zones/{zoneid}"
     else if( "deleteZone" == opID )
@@ -667,11 +699,15 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         updateConfig();
 
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
+        // Send the response
+        opData->responseSend();
     }
     else
     {
         // Send back not implemented
         opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
+        opData->responseSend();
     }
 
 }

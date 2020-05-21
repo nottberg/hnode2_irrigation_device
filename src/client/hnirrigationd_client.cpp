@@ -12,12 +12,20 @@
 #include "Poco/Util/HelpFormatter.h"
 #include <Poco/Path.h>
 #include <Poco/File.h>
+#include <Poco/StreamCopier.h>
+
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
+
+#include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/HTTPRequest.h"
+#include "Poco/Net/HTTPResponse.h"
+#include "Poco/URI.h"
 
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <iterator>
 
 using Poco::Util::Application;
 using Poco::Util::Option;
@@ -27,29 +35,35 @@ using Poco::Util::OptionCallback;
 
 namespace pjs = Poco::JSON;
 namespace pdy = Poco::Dynamic;
+namespace pn  = Poco::Net;
 
 class HNIrrigationClient: public Application
 {
     private:
-        bool _helpRequested      = false;
-        bool _resetRequested     = false;
-        bool _monitorRequested   = false;
-        bool _statusRequested    = false;
-        bool _healthRequested    = false;
-        bool _seqaddRequested    = false;
-        bool _swinfoRequested    = false;
-        bool _seqcancelRequested = false;
-        bool _schstateRequested  = false;
-        bool _singleRequested    = false;
+        bool _helpRequested       = false;
+        bool _devInfoRequested    = false;
+        bool _createZoneRequested = false;
+        bool _updateZoneRequested = false;
+        bool _hostPresent         = false;
+        bool _namePresent         = false;
+        bool _descPresent         = false;
+        bool _spwPresent          = false;
+        bool _cpdPresent          = false;
+        bool _smcPresent          = false;
+        bool _swidPresent         = false;
+        bool _idPresent           = false;
 
-        bool _durationPresent    = false;
-        bool _instancePresent    = false;
-        
-        std::string _seqaddFilePath;
-        std::string _schstateNewState;
-        std::string _durationStr;
-        std::string _instanceStr;
-        std::string _swID;
+        std::string _hostStr;
+        std::string _nameStr;
+        std::string _descStr;
+        uint _spwInt;
+        uint _cpdInt;
+        uint _smcInt;
+        std::string _swidStr;
+        std::string _idStr;
+
+        std::string m_host;
+        uint16_t    m_port;
 
     public:
 	    HNIrrigationClient()
@@ -85,27 +99,27 @@ class HNIrrigationClient: public Application
 
 		    options.addOption( Option("help", "h", "display help information on command line arguments").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleHelp)));
 
-            options.addOption( Option("instance", "", "The instance of the daemon to connect to.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("device-info", "i", "Request Hnode2 Device Info").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("status", "s", "Make an explicit request for a status packet from the deamon.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("create-zone", "", "Create a new zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("reset", "r", "Reset the daemon, including a re-read of its configuration.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("update-zone", "", "Update an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("monitor", "m", "Leave the connection to the daemon open to monitor for asynch events.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("host", "u", "Host URL").required(false).repeatable(false).argument("<host>:<port>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("health", "c", "Request a component health report.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("name", "", "The name parameter.").required(false).repeatable(false).argument("<name>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("switch", "i", "Request information about managed switches.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("desc", "", "The description parameter").required(false).repeatable(false).argument("<description>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("seqadd", "q", "Add a uniform manual switch sequence.  Sequence is defined in provided json file.").required(false).repeatable(false).argument("seqfile").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("sec-per-week", "", "The seconds per week parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("seqcancel", "x", "Cancel any previously added switch sequences.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("cycle-per-day", "", "The cycles per day parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("schstate", "e", "Change the scheduler state. Possible states: enable|disable|inhibit. For inhibit the duration parameter is also required.").required(false).repeatable(false).argument("newstate").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("sec-min-cycle", "", "The minimum seconds per cycle parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("duration", "d", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("swid-list", "", "A space seperated list of switch IDs").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("single", "t", "Turn on a single switch for duration time.").required(false).repeatable(false).argument("swid").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("id", "", "Specify an object identifier").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
         }
 	
@@ -118,42 +132,51 @@ class HNIrrigationClient: public Application
 			
         void handleOptions( const std::string& name, const std::string& value )
         {
-            if( "monitor" == name )
-                _monitorRequested = true;
-            else if( "status" == name )
-                _statusRequested = true;
-            else if( "reset" == name )
-                _resetRequested = true;
-            else if( "health" == name )
-                _healthRequested = true;
-            else if( "seqadd" == name )
+            if( "device-info" == name )
+                _devInfoRequested = true;
+            else if( "create-zone" == name )
+                _createZoneRequested = true;
+            else if( "update-zone" == name )
+                _updateZoneRequested = true;
+            else if( "host" == name )
             {
-                _seqaddRequested = true;
-                _seqaddFilePath  = value;
+                _hostPresent = true;
+                _hostStr     = value;
             }
-            else if( "switch" == name )
-                _swinfoRequested = true;
-            else if( "seqcancel" == name )
-                _seqcancelRequested = true;
-            else if( "schstate" == name )
+            else if( "name" == name )
             {
-                _schstateRequested = true;
-                _schstateNewState  = value;
+                _namePresent = true;
+                _nameStr     = value;
             }
-            else if( "duration" == name )
+            else if( "desc" == name )
             {
-                _durationPresent = true;
-                _durationStr     = value;
+                _descPresent = true;
+                _descStr     = value;
             }
-            else if( "instance" == name )
+            else if( "sec-per-week" == name )
             {
-                _instancePresent = true;
-                _instanceStr     = value;
+                _spwPresent = true;
+                _spwInt     = strtol( value.c_str(), NULL, 0 );
             }
-            else if( "single" == name )
+            else if( "cycle-per-day" == name )
             {
-                _singleRequested = true;
-                _swID  = value;
+                _cpdPresent = true;
+                _cpdInt     = strtol( value.c_str(), NULL, 0 );
+            }
+            else if( "sec-min-cycle" == name )
+            {
+                _smcPresent = true;
+                _smcInt     = strtol( value.c_str(), NULL, 0 );
+            }
+            else if( "swid-list" == name )
+            {
+                _swidPresent = true;
+                _swidStr     = value;
+            }
+            else if( "id" == name )
+            {
+                _idPresent = true;
+                _idStr     = value;
             }
 
         }
@@ -197,16 +220,187 @@ class HNIrrigationClient: public Application
             return true;
         }
 #endif
+
+        void getHNodeDeviceInfo()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/device/info" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+        void createZoneRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/zones" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add request data fields
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _spwPresent )
+                jsRoot.set( "secondsPerWeek", _spwInt );
+
+            if( _cpdPresent )
+                jsRoot.set( "cyclePerDay", _cpdInt );
+
+            if( _smcPresent )
+                jsRoot.set( "secondsMinCycle", _smcInt );
+
+            if( _swidPresent )
+                jsRoot.set( "swidList", _swidStr );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+        void updateZoneRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/zones/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_PUT, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add request data fields
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _spwPresent )
+                jsRoot.set( "secondsPerWeek", _spwInt );
+
+            if( _cpdPresent )
+                jsRoot.set( "cyclePerDay", _cpdInt );
+
+            if( _smcPresent )
+                jsRoot.set( "secondsMinCycle", _smcInt );
+
+            if( _swidPresent )
+                jsRoot.set( "swidList", _swidStr );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
         int main( const ArgVec& args )
         {
             uint sockfd = 0;
+
+            // Default the host
+            m_host = "localhost";
+            m_port = 8080;
 
             // Bailout if help was requested.
             if( _helpRequested == true )
                 return Application::EXIT_OK;
  
-            if( _instancePresent == false )
-                _instanceStr = "default"; // HN_SWDAEMON_DEF_INSTANCE;
+            if( _devInfoRequested == true )
+            {
+                getHNodeDeviceInfo();
+            }
+            else if( _createZoneRequested == true )
+            {
+                createZoneRequest();
+            }
+            else if( _updateZoneRequested == true )
+            {
+                updateZoneRequest();
+            }
 
 #if 0
             // Establish the connection.

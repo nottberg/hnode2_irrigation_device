@@ -453,6 +453,7 @@ HNIS_RESULT_T
 HNIrrigationZone::validateSettings()
 {
     // Add validation checking here
+    return HNIS_RESULT_SUCCESS;
 }
 
 std::string 

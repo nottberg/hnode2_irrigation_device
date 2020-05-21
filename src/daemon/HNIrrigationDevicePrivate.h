@@ -46,6 +46,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNID_RESULT_T readConfig();
         HNID_RESULT_T updateConfig();
 
+        bool getUniqueZoneID( std::string &id );
+
         HNID_RESULT_T updateZone( std::string zoneID, std::istream& bodyStream );
 
     protected:
