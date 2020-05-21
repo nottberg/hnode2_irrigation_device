@@ -42,8 +42,11 @@ class HNIrrigationClient: public Application
     private:
         bool _helpRequested       = false;
         bool _devInfoRequested    = false;
+        bool _zoneListRequested   = false;
         bool _createZoneRequested = false;
+        bool _zoneInfoRequested   = false;
         bool _updateZoneRequested = false;
+        bool _deleteZoneRequested = false;
         bool _hostPresent         = false;
         bool _namePresent         = false;
         bool _descPresent         = false;
@@ -101,9 +104,15 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("device-info", "i", "Request Hnode2 Device Info").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("zone-list", "", "Get a list of defined zones.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
             options.addOption( Option("create-zone", "", "Create a new zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("zone-info", "", "Get info for a single zone.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
             options.addOption( Option("update-zone", "", "Update an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("delete-zone", "", "Delete an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("host", "u", "Host URL").required(false).repeatable(false).argument("<host>:<port>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -134,10 +143,16 @@ class HNIrrigationClient: public Application
         {
             if( "device-info" == name )
                 _devInfoRequested = true;
+            if( "zone-list" == name )
+                _zoneListRequested = true;
             else if( "create-zone" == name )
                 _createZoneRequested = true;
+            if( "zone-info" == name )
+                _zoneInfoRequested = true;
             else if( "update-zone" == name )
                 _updateZoneRequested = true;
+            else if( "delete-zone" == name )
+                _deleteZoneRequested = true;
             else if( "host" == name )
             {
                 _hostPresent = true;
@@ -247,6 +262,33 @@ class HNIrrigationClient: public Application
             std::cout << body << std::endl;
         }
 
+        void getZoneList()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/zones" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+
         void createZoneRequest()
         {
             Poco::URI uri;
@@ -297,6 +339,27 @@ class HNIrrigationClient: public Application
             }
 
             // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void getZoneInfo()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/zones/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
             std::istream& rs = session.receiveResponse( response );
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
 
@@ -366,15 +429,29 @@ class HNIrrigationClient: public Application
             // Wait for the response
             std::istream& rs = session.receiveResponse( response );
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
 
-            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
-            {
-                return;
-            }
+        void deleteZoneRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
 
-            std::string body;
-            Poco::StreamCopier::copyToString( rs, body );
-            std::cout << body << std::endl;
+            std::string path( "/hnode2/irrigation/zones/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_DELETE, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
         int main( const ArgVec& args )
@@ -393,13 +470,25 @@ class HNIrrigationClient: public Application
             {
                 getHNodeDeviceInfo();
             }
+            else if( _zoneListRequested == true )
+            {
+                getZoneList();
+            }
             else if( _createZoneRequested == true )
             {
                 createZoneRequest();
             }
+            else if( _zoneInfoRequested == true )
+            {
+                getZoneInfo();
+            }
             else if( _updateZoneRequested == true )
             {
                 updateZoneRequest();
+            }
+            else if( _deleteZoneRequested == true )
+            {
+                deleteZoneRequest();
             }
 
 #if 0
