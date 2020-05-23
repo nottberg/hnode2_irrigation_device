@@ -50,6 +50,10 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         HNID_RESULT_T updateZone( std::string zoneID, std::istream& bodyStream );
 
+        bool getUniqueEventID( std::string &id );
+
+        HNID_RESULT_T updateEvent( std::string eventID, std::istream& bodyStream );
+
     protected:
         // HNDevice REST callback
         virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );

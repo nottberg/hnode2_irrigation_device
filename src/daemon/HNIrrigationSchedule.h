@@ -54,17 +54,19 @@ class HNI24HTime
         std::string getHMSStr();
 };
 
-typedef enum HNExclusionSpecTypeEnum
+typedef enum HNScheduleStaticEventEnum
 {
-    HNIS_EXCLUDE_TYPE_EVERYDAY,
-    HNIS_EXCLUDE_TYPE_SINGLE
-}HNIS_EXCLUDE_TYPE_T;
+    HNIS_SETYPE_EVERYDAY_KEEPOUT,
+    HNIS_SETYPE_SINGLE_KEEPOUT,
+    HNIS_SETYPE_EVERYDAY_ZONE,
+    HNIS_SETYPE_SINGLE_ZONE
+}HNIS_SETYPE_T;
 
-class HNExclusionSpec
+class HNScheduleStaticEvent
 {
     private:
         std::string m_id;
-        HNIS_EXCLUDE_TYPE_T m_type;
+        HNIS_SETYPE_T m_type;
 
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
@@ -72,23 +74,25 @@ class HNExclusionSpec
         HNIS_DAY_INDX_T m_dayIndx;
 
     public:
-        HNExclusionSpec();
-       ~HNExclusionSpec();
+        HNScheduleStaticEvent();
+       ~HNScheduleStaticEvent();
 
         void setID( std::string id );
 
-        void setType( HNIS_EXCLUDE_TYPE_T value );
+        void setType( HNIS_SETYPE_T value );
 
         HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
 
         std::string getID();
 
-        HNIS_EXCLUDE_TYPE_T getType();
+        HNIS_SETYPE_T getType();
 
         HNI24HTime &getStartTime();
         HNI24HTime &getEndTime();
 
         HNIS_DAY_INDX_T getDayIndex();
+
+        HNIS_RESULT_T validateSettings();
 };
 
 
@@ -260,7 +264,7 @@ class HNIrrigationSchedule
 
         HNISDay  m_dayArr[ HNIS_DAY_CNT ];
 
-        std::map< std::string, HNExclusionSpec >   m_exclusionMap;
+        std::map< std::string, HNScheduleStaticEvent >   m_eventMap;
         std::map< std::string, HNIrrigationZone >  m_zoneMap;
 
     public:
@@ -269,8 +273,11 @@ class HNIrrigationSchedule
 
         void clear();
 
-        HNExclusionSpec  *updateExclusion( std::string id );
-
+        bool hasEvent( std::string eventID );
+        HNScheduleStaticEvent *updateEvent( std::string id );
+        void deleteEvent( std::string eventID );
+        void getEventList( std::vector< HNScheduleStaticEvent > &eventList );
+        HNIS_RESULT_T getEvent( std::string eventID, HNScheduleStaticEvent &event );
 
         bool hasZone( std::string zoneID );
         HNIrrigationZone *updateZone( std::string zoneID );
@@ -283,6 +290,8 @@ class HNIrrigationSchedule
         HNIS_RESULT_T updateZoneListSection( HNodeConfig &cfg );
 
         HNIS_RESULT_T buildSchedule();
+
+        HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
 
         std::string getSwitchDaemonJSON();
 };

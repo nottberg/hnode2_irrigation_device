@@ -120,30 +120,30 @@ HNI24HTime::subtractSeconds( uint seconds )
     secOfDay = (secOfDay - seconds); 
 }
 
-HNExclusionSpec::HNExclusionSpec()
+HNScheduleStaticEvent::HNScheduleStaticEvent()
 {
 
 }
 
-HNExclusionSpec::~HNExclusionSpec()
+HNScheduleStaticEvent::~HNScheduleStaticEvent()
 {
 
 }
 
 void 
-HNExclusionSpec::setID( std::string id )
+HNScheduleStaticEvent::setID( std::string id )
 {
     m_id = id;
 }
 
 void 
-HNExclusionSpec::setType( HNIS_EXCLUDE_TYPE_T value )
+HNScheduleStaticEvent::setType( HNIS_SETYPE_T value )
 {
     m_type = value;
 }
 
 HNIS_RESULT_T 
-HNExclusionSpec::setTimesFromStr( std::string startTime, std::string endTime )
+HNScheduleStaticEvent::setTimesFromStr( std::string startTime, std::string endTime )
 {
     m_startTime.parseTime( startTime );
  
@@ -153,33 +153,40 @@ HNExclusionSpec::setTimesFromStr( std::string startTime, std::string endTime )
 }
 
 std::string 
-HNExclusionSpec::getID()
+HNScheduleStaticEvent::getID()
 {
     return m_id;
 }
 
-HNIS_EXCLUDE_TYPE_T 
-HNExclusionSpec::getType()
+HNIS_SETYPE_T 
+HNScheduleStaticEvent::getType()
 {
      return m_type;
 }
 
 HNI24HTime&
-HNExclusionSpec::getStartTime()
+HNScheduleStaticEvent::getStartTime()
 {
     return m_startTime;
 }
 
 HNI24HTime&
-HNExclusionSpec::getEndTime()
+HNScheduleStaticEvent::getEndTime()
 {
     return m_endTime;
 }
 
 HNIS_DAY_INDX_T 
-HNExclusionSpec::getDayIndex()
+HNScheduleStaticEvent::getDayIndex()
 {
     return HNIS_DINDX_MONDAY;
+}
+
+HNIS_RESULT_T 
+HNScheduleStaticEvent::validateSettings()
+{
+    // Add validation checking here
+    return HNIS_RESULT_SUCCESS;
 }
 
 HNISPeriod::HNISPeriod()
@@ -824,24 +831,70 @@ HNIrrigationSchedule::clear()
     for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
         m_dayArr[ indx ].clear();
 
-    m_exclusionMap.clear();
+    m_eventMap.clear();
     m_zoneMap.clear();
 }
 
-HNExclusionSpec*
-HNIrrigationSchedule::updateExclusion( std::string id )
+bool 
+HNIrrigationSchedule::hasEvent( std::string eventID )
 {
-    std::map< std::string, HNExclusionSpec >::iterator it = m_exclusionMap.find( id );
+    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
 
-    if( it == m_exclusionMap.end() )
+    if( it == m_eventMap.end() )
+        return false;
+
+    return true;
+}
+
+HNScheduleStaticEvent*
+HNIrrigationSchedule::updateEvent( std::string id )
+{
+    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( id );
+
+    if( it == m_eventMap.end() )
     {
-        HNExclusionSpec nSpec;
+        HNScheduleStaticEvent nSpec;
         nSpec.setID( id );
-        m_exclusionMap.insert( std::pair< std::string, HNExclusionSpec >( id, nSpec ) );\
-        return &( m_exclusionMap[ id ] );
+        m_eventMap.insert( std::pair< std::string, HNScheduleStaticEvent >( id, nSpec ) );\
+        return &( m_eventMap[ id ] );
     }
 
     return &(it->second);
+}
+
+void 
+HNIrrigationSchedule::deleteEvent( std::string eventID )
+{
+    // Find the referenced zone
+    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
+
+    // If already no existant than nothing to do.
+    if( it == m_eventMap.end() )
+        return;
+
+    // Get rid of the zone record
+    m_eventMap.erase( it );
+}
+
+void 
+HNIrrigationSchedule::getEventList( std::vector< HNScheduleStaticEvent > &eventList )
+{
+    for( std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
+    {
+        eventList.push_back( it->second );
+    }
+}
+
+HNIS_RESULT_T 
+HNIrrigationSchedule::getEvent( std::string eventID, HNScheduleStaticEvent &event )
+{
+    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
+
+    if( it == m_eventMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    event = it->second;
+    return HNIS_RESULT_SUCCESS;
 }
 
 HNIrrigationZone*
@@ -998,11 +1051,11 @@ HNIrrigationSchedule::buildSchedule()
         m_dayArr[ indx ].clear();
 
     // Create Periods for the exclusion specs.
-    for( std::map< std::string, HNExclusionSpec >::iterator eit = m_exclusionMap.begin(); eit != m_exclusionMap.end(); eit++ )
+    for( std::map< std::string, HNScheduleStaticEvent >::iterator eit = m_eventMap.begin(); eit != m_eventMap.end(); eit++ )
     {
         HNISPeriod period;
 
-        HNExclusionSpec *curSpec = &(eit->second);
+        HNScheduleStaticEvent *curSpec = &(eit->second);
 
         period.setID( curSpec->getID() );
         period.setStartTime( curSpec->getStartTime() );
@@ -1010,7 +1063,7 @@ HNIrrigationSchedule::buildSchedule()
 
         switch( curSpec->getType() )
         {
-            case HNIS_EXCLUDE_TYPE_EVERYDAY:
+            case HNIS_SETYPE_EVERYDAY_KEEPOUT:
             {
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
 
@@ -1019,7 +1072,7 @@ HNIrrigationSchedule::buildSchedule()
             }
             break;
 
-            case HNIS_EXCLUDE_TYPE_SINGLE:
+            case HNIS_SETYPE_SINGLE_KEEPOUT:
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
 
                 m_dayArr[ curSpec->getDayIndex() ].addPeriod( period );
@@ -1118,6 +1171,61 @@ HNIrrigationSchedule::getZone( std::string zoneID, HNIrrigationZone &zone )
         return HNIS_RESULT_FAILURE;
 
     zone = it->second;
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
+{
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    // Add the timezone name field
+    jsRoot.set( "scheduleTimezone", "Americas/Denver" );
+
+    // Add data for each day
+    pjs::Object jsDays;
+
+    for( int indx = 0; indx < HNIS_DAY_CNT; indx++ )
+    {
+        pjs::Array jsActions;
+
+        std::vector< HNISPeriod > periodList;
+        m_dayArr[ indx ].getPeriodList( periodList );
+
+        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
+        {
+            pjs::Object jsSWAction;
+
+            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
+            {
+                std::cout << "js continue" << std::endl;                
+                continue;
+            }
+
+            jsSWAction.set( "action", "on" );
+            jsSWAction.set( "startTime", it->getStartTimeStr() );
+            jsSWAction.set( "endTime", it->getEndTimeStr() );
+            jsSWAction.set( "zoneid", it->getID() );
+
+            jsActions.add( jsSWAction );
+        }
+        
+        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+    }
+
+    jsRoot.set( "scheduleMatrix", jsDays );
+
+    try
+    {
+        // Write out the generated json
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+    }
+    catch( ... )
+    {
+        return HNIS_RESULT_FAILURE;
+    }
+
     return HNIS_RESULT_SUCCESS;
 }
 

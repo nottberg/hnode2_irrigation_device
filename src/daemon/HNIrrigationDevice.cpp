@@ -161,7 +161,135 @@ const std::string g_HNode2IrrigationRest = R"(
             }
           }
         }
+      },
+
+
+      "/hnode2/irrigation/schedule": {
+        "get": {
+          "summary": "Get information about the current zone schedule.",
+          "operationId": "getScheduleInfo",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+
+      "/hnode2/irrigation/schedule/static-events": {
+        "get": {
+          "summary": "Get list of schedule static-events.",
+          "operationId": "getStaticEventList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new schedule static event.",
+          "operationId": "createStaticEvent",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+
+      "/hnode2/irrigation/schedule/static-events/{eventid}": {
+        "get": {
+          "summary": "Get information about a specific static event.",
+          "operationId": "getStaticEvent",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "put": {
+          "summary": "Update an existing static event.",
+          "operationId": "updateStaticEvent",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing static event.",
+          "operationId": "deleteStaticEvent",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
       }
+
     }
 }
 )";
@@ -445,6 +573,88 @@ HNIrrigationDevice::getUniqueZoneID( std::string &id )
     return false;    
 }
 
+HNID_RESULT_T
+HNIrrigationDevice::updateEvent( std::string eventID, std::istream& bodyStream )
+{
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        HNScheduleStaticEvent *event = m_schedule.updateEvent( eventID );
+
+#if 0
+        void setType( HNIS_SETYPE_T value );
+        HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
+
+        if( jsRoot->has( "name" ) )
+        {
+            event->setName( jsRoot->getValue<std::string>( "name" ) );
+        }
+
+        if( jsRoot->has( "description" ) )
+        {
+            event->setDesc( jsRoot->getValue<std::string>( "description" ) );
+        }
+#endif
+        
+        if( event->validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateEvent validate failed" << std::endl;
+            // zoneid parameter is required
+            return HNID_RESULT_BAD_REQUEST;
+        }        
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "updateEvent exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        return HNID_RESULT_BAD_REQUEST;
+    }
+
+    // Write any update to the config file
+    updateConfig();
+
+    // Calculate the new schedule
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
+    if( result != HNIS_RESULT_SUCCESS )
+    {
+        return HNID_RESULT_SERVER_ERROR;        
+    }
+
+    return HNID_RESULT_SUCCESS;
+}
+
+bool
+HNIrrigationDevice::getUniqueEventID( std::string &id )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    id.clear();
+
+    do
+    {
+        sprintf( tmpID, "z%d", idNum );
+
+        if( m_schedule.hasEvent( tmpID ) == false )
+        {
+            id = tmpID;
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
 void 
 HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 {
@@ -542,14 +752,14 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 
         if( opData->getParam( "zoneid", zoneID ) == true )
         {
-            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
             return; 
         }
 
         if( m_schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
         {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
             opData->responseSend();
             return; 
         }
@@ -557,8 +767,6 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         // Set response content type
         opData->responseSetChunkedTransferEncoding(true);
         opData->responseSetContentType("application/json");
-
-        HNIS_RESULT_T updateZone( std::string zoneID, HNOperationData *opData );
 
         // Create a json root object
         pjs::Object jsRoot;
@@ -703,6 +911,231 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         // Send the response
         opData->responseSend();
     }
+    else if( "getScheduleInfo" == opID )
+    {
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Send the response
+        std::ostream& ostr = opData->responseSend();
+        if( m_schedule.getScheduleInfoJSON( ostr ) != HNIS_RESULT_SUCCESS )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return;
+        }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+    }
+    else if( "getStaticEventList" == opID )
+    {
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        std::vector< HNScheduleStaticEvent > eventList;
+        m_schedule.getEventList( eventList );
+
+        for( std::vector< HNScheduleStaticEvent >::iterator eit = eventList.begin(); eit != eventList.end(); eit++ )
+        { 
+           pjs::Object evObj;
+
+           evObj.set( "eventid", eit->getID() );
+#if 0
+           znObj.set( "name", zit->getName() );
+           znObj.set( "description", zit->getDesc() );
+           znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
+           znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
+           znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
+           znObj.set( "swidList", zit->getSWIDListStr() );
+#endif
+           jsRoot.add( evObj );
+        }
+ 
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+    }
+    else if( "createStaticEvent" == opID )
+    {
+        std::string eventID;
+ 
+        // Allocate a unique zone identifier
+        if( getUniqueEventID( eventID ) == false )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "CreateEvent 1" << std::endl;
+
+        std::istream& bodyStream = opData->requestBody();
+        HNID_RESULT_T result = updateEvent( eventID, bodyStream );
+
+        std::cout << "CreateEvent 2" << std::endl;
+
+        switch( result )
+        {
+            case HNID_RESULT_SUCCESS:
+                opData->responseSetCreated( eventID );
+                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
+            break;
+
+            case HNID_RESULT_BAD_REQUEST:
+                std::cout << "CreateEvent 2.1" << std::endl;
+                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            break;
+
+            default:
+            case HNID_RESULT_SERVER_ERROR:
+            case HNID_RESULT_FAILURE:
+                std::cout << "CreateEvent 2.2" << std::endl;
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            break;
+        }
+
+        std::cout << "CreateEvent 3" << std::endl;
+
+        // Send the response
+        opData->responseSend();
+    }
+    else if( "getStaticEvent" == opID )
+    {
+        std::string eventID;
+        HNScheduleStaticEvent event;
+
+        if( opData->getParam( "eventid", eventID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        if( m_schedule.getEvent( eventID, event ) != HNIS_RESULT_SUCCESS )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSend();
+            return; 
+        }
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding(true);
+        opData->responseSetContentType("application/json");
+
+        // Create a json root object
+        pjs::Object jsRoot;
+
+        jsRoot.set( "eventid", event.getID() );
+#if 0
+        jsRoot.set( "name", zone.getName() );
+        jsRoot.set( "description", zone.getDesc() );
+        jsRoot.set( "secondsPerWeek", zone.getWeeklySeconds() );
+        jsRoot.set( "cyclesPerDay", zone.getTargetCyclesPerDay() );
+        jsRoot.set( "secondsMinCycle", zone.getMinimumCycleTimeSeconds() );
+        jsRoot.set( "swidList", zone.getSWIDListStr() );
+#endif
+        // Render the response
+        std::ostream& ostr = opData->responseSend();
+        try
+        {
+            // Write out the generated json
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+        }
+        catch( ... )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            return;
+        }
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
+    }
+    else if( "updateStaticEvent" == opID )
+    {
+        std::string eventID;
+
+        // Make sure eventid was provided
+        if( opData->getParam( "eventid", eventID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        // Make sure event does exist
+        if( m_schedule.hasZone( eventID ) == false )
+        {
+            // Zone already exists, return error
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSend();
+            return; 
+        }
+
+        std::istream& bodyStream = opData->requestBody();
+        HNID_RESULT_T result = updateEvent( eventID, bodyStream );
+
+        switch( result )
+        {
+            case HNID_RESULT_SUCCESS:
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            break;
+
+            case HNID_RESULT_BAD_REQUEST:
+                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            break;
+
+            default:
+            case HNID_RESULT_SERVER_ERROR:
+            case HNID_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            break;
+
+        }
+
+        // Send the response
+        opData->responseSend();
+    }
+    else if( "deleteStaticEvent" == opID )
+    {
+        std::string eventID;
+
+        // Make sure eventid was provided
+        if( opData->getParam( "eventid", eventID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            return; 
+        }
+
+        // Remove the zone record
+        m_schedule.deleteZone( eventID );
+
+        // Write the delete to the config file
+        updateConfig();
+
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
+        // Send the response
+        opData->responseSend();
+
+    }
     else
     {
         // Send back not implemented
@@ -711,5 +1144,8 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     }
 
 }
+
+
+
 
 
