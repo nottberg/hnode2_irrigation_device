@@ -416,7 +416,7 @@ HNIrrigationDevice::initConfig()
 
     m_hnodeDev.initConfigSections( cfg );
 
-    m_schedule.initZoneListSection( cfg );
+    m_schedule.initConfigSections( cfg );
 
     cfg.debugPrint(2);
     
@@ -449,7 +449,7 @@ HNIrrigationDevice::readConfig()
   
     m_hnodeDev.readConfigSections( cfg );
 
-    m_schedule.readZoneListSection( cfg );
+    m_schedule.readConfigSections( cfg );
 
     return HNID_RESULT_SUCCESS;
 }
@@ -462,7 +462,7 @@ HNIrrigationDevice::updateConfig()
 
     m_hnodeDev.updateConfigSections( cfg );
 
-    m_schedule.updateZoneListSection( cfg );
+    m_schedule.updateConfigSections( cfg );
 
     cfg.debugPrint(2);
     

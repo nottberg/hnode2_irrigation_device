@@ -47,6 +47,13 @@ class HNIrrigationClient: public Application
         bool _zoneInfoRequested   = false;
         bool _updateZoneRequested = false;
         bool _deleteZoneRequested = false;
+
+        bool _staticEventListRequested   = false;
+        bool _createStaticEventRequested = false;
+        bool _staticEventInfoRequested   = false;
+        bool _updateStaticEventRequested = false;
+        bool _deleteStaticEventRequested = false;
+
         bool _hostPresent         = false;
         bool _namePresent         = false;
         bool _descPresent         = false;
@@ -454,6 +461,200 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
+        void getStaticEventList()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/schedule/static-events" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+
+        void createStaticEventRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/schedule/static-events" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add request data fields
+#if 0
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _spwPresent )
+                jsRoot.set( "secondsPerWeek", _spwInt );
+
+            if( _cpdPresent )
+                jsRoot.set( "cyclePerDay", _cpdInt );
+
+            if( _smcPresent )
+                jsRoot.set( "secondsMinCycle", _smcInt );
+
+            if( _swidPresent )
+                jsRoot.set( "swidList", _swidStr );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+#endif
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void getStaticEventInfo()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+        void updateStaticEventRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_PUT, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+#if 0
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add request data fields
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _spwPresent )
+                jsRoot.set( "secondsPerWeek", _spwInt );
+
+            if( _cpdPresent )
+                jsRoot.set( "cyclePerDay", _cpdInt );
+
+            if( _smcPresent )
+                jsRoot.set( "secondsMinCycle", _smcInt );
+
+            if( _swidPresent )
+                jsRoot.set( "swidList", _swidStr );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+#endif
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void deleteStaticEventRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_DELETE, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
         int main( const ArgVec& args )
         {
             uint sockfd = 0;
@@ -489,6 +690,26 @@ class HNIrrigationClient: public Application
             else if( _deleteZoneRequested == true )
             {
                 deleteZoneRequest();
+            }
+            else if( _staticEventListRequested == true )
+            {
+                getStaticEventList();
+            }
+            else if( _createStaticEventRequested == true )
+            {
+                createStaticEventRequest();
+            }
+            else if( _staticEventInfoRequested == true )
+            {
+                getStaticEventInfo();
+            }
+            else if( _updateStaticEventRequested == true )
+            {
+                updateStaticEventRequest();
+            }
+            else if( _deleteStaticEventRequested == true )
+            {
+                deleteStaticEventRequest();
             }
 
 #if 0
