@@ -576,6 +576,8 @@ HNIrrigationDevice::getUniqueZoneID( std::string &id )
 HNID_RESULT_T
 HNIrrigationDevice::updateEvent( std::string eventID, std::istream& bodyStream )
 {
+    std::string rstStr;
+
     // Parse the json body of the request
     try
     {
@@ -588,20 +590,25 @@ HNIrrigationDevice::updateEvent( std::string eventID, std::istream& bodyStream )
 
         HNScheduleStaticEvent *event = m_schedule.updateEvent( eventID );
 
-#if 0
-        void setType( HNIS_SETYPE_T value );
-        HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
-
-        if( jsRoot->has( "name" ) )
+        if( jsRoot->has( "type" ) )
         {
-            event->setName( jsRoot->getValue<std::string>( "name" ) );
+            event->setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
         }
 
-        if( jsRoot->has( "description" ) )
+        if( jsRoot->has( "startTime" ) )
         {
-            event->setDesc( jsRoot->getValue<std::string>( "description" ) );
+            event->setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
         }
-#endif
+
+        if( jsRoot->has( "endTime" ) )
+        {
+            event->setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
+        }
+
+        if( jsRoot->has( "dayIndex" ) )
+        {
+            event->setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayIndex" ) );
+        }
         
         if( event->validateSettings() != HNIS_RESULT_SUCCESS )
         {

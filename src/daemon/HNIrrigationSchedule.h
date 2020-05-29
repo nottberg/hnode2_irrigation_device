@@ -88,6 +88,9 @@ class HNScheduleStaticEvent
         HNIS_RESULT_T setStartTime( std::string startTime );
         HNIS_RESULT_T setEndTime( std::string endTime );
 
+        void setDayIndex( HNIS_DAY_INDX_T dayIndx );
+        void setDayIndexFromNameStr( std::string name );
+
         std::string getID();
 
         HNIS_SETYPE_T getType();

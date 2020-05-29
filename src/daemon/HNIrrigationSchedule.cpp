@@ -179,6 +179,40 @@ HNScheduleStaticEvent::setTimesFromStr( std::string startTime, std::string endTi
     m_endTime.parseTime( endTime );
 }
 
+HNIS_RESULT_T 
+HNScheduleStaticEvent::setStartTime( std::string startTime )
+{
+    m_startTime.parseTime( startTime );
+}
+
+HNIS_RESULT_T 
+HNScheduleStaticEvent::setEndTime( std::string endTime )
+{
+    m_endTime.parseTime( endTime );
+}
+
+void 
+HNScheduleStaticEvent::setDayIndex( HNIS_DAY_INDX_T dayIndx )
+{
+    m_dayIndex = dayIndx;
+}
+
+void 
+HNScheduleStaticEvent::setDayIndexFromNameStr( std::string name )
+{
+    // Looking for match
+    uint index;
+    for( index = 0; index <= HNIS_DINDX_NOTSET; index++ )
+    {
+        // If found break out
+        if( s_dayNames[ index ] == name )
+            break;
+    }
+
+    // Set the index, NOT_SET if not found.
+    m_dayIndex = (HNIS_DAY_INDX_T) index;
+}
+
 std::string 
 HNScheduleStaticEvent::getID()
 {
@@ -1109,37 +1143,25 @@ HNIrrigationSchedule::readStaticEventListSection( HNodeConfig &cfg )
         // Get the internal reference to the zone.
         HNScheduleStaticEvent *eventPtr = updateEvent( eventID );
 
-#if 0
-        if( objPtr->getValueByName( "name", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "type", rstStr ) != HNC_RESULT_SUCCESS )
         {
-            zonePtr->setName( rstStr );
+            eventPtr->setTypeFromStr( rstStr );
         }
 
-        if( objPtr->getValueByName( "description", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "startTime", rstStr ) != HNC_RESULT_SUCCESS )
         {
-            zonePtr->setDesc( rstStr );
+            eventPtr->setStartTime( rstStr );
         }
 
-        if( objPtr->getValueByName( "secondsPerWeek", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "endTime", rstStr ) != HNC_RESULT_SUCCESS )
         {
-            zonePtr->setWeeklySeconds( strtol( rstStr.c_str(), NULL, 0 ) );
+            eventPtr->setEndTime( rstStr );
         }
 
-        if( objPtr->getValueByName( "cyclesPerDay", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "dayIndex", rstStr ) != HNC_RESULT_SUCCESS )
         {
-            zonePtr->setTargetCyclesPerDay( strtol( rstStr.c_str(), NULL, 0 ) );
+            eventPtr->setDayIndexFromNameStr( rstStr );
         }
-
-        if( objPtr->getValueByName( "secondsMinCycle", rstStr ) != HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setMinimumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
-        }
-
-        if( objPtr->getValueByName( "swidList", rstStr ) != HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setSWIDList( rstStr );
-        }
-#endif
     }
           
     return HNIS_RESULT_SUCCESS;
