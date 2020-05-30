@@ -100,7 +100,7 @@ class HNScheduleStaticEvent
         HNI24HTime &getEndTime();
 
         HNIS_DAY_INDX_T getDayIndex();
-        std::string getDayIndexName();
+        std::string getDayName();
 
         HNIS_RESULT_T validateSettings();
 };

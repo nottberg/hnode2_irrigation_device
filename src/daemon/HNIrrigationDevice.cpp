@@ -605,9 +605,9 @@ HNIrrigationDevice::updateEvent( std::string eventID, std::istream& bodyStream )
             event->setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
         }
 
-        if( jsRoot->has( "dayIndex" ) )
+        if( jsRoot->has( "dayName" ) )
         {
-            event->setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayIndex" ) );
+            event->setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
         }
         
         if( event->validateSettings() != HNIS_RESULT_SUCCESS )
@@ -952,14 +952,11 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
            pjs::Object evObj;
 
            evObj.set( "eventid", eit->getID() );
-#if 0
-           znObj.set( "name", zit->getName() );
-           znObj.set( "description", zit->getDesc() );
-           znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
-           znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
-           znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
-           znObj.set( "swidList", zit->getSWIDListStr() );
-#endif
+           evObj.set( "type", eit->getType() );
+           evObj.set( "startTime", eit->getStartTime() );
+           evObj.set( "endTime", eit->getEndTime() );
+           evObj.set( "dayName", eit->getDayName() );
+
            jsRoot.add( evObj );
         }
  
@@ -1049,14 +1046,11 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         pjs::Object jsRoot;
 
         jsRoot.set( "eventid", event.getID() );
-#if 0
-        jsRoot.set( "name", zone.getName() );
-        jsRoot.set( "description", zone.getDesc() );
-        jsRoot.set( "secondsPerWeek", zone.getWeeklySeconds() );
-        jsRoot.set( "cyclesPerDay", zone.getTargetCyclesPerDay() );
-        jsRoot.set( "secondsMinCycle", zone.getMinimumCycleTimeSeconds() );
-        jsRoot.set( "swidList", zone.getSWIDListStr() );
-#endif
+        jsRoot.set( "type", event.getType() );
+        jsRoot.set( "startTime", event.getStartTime() );
+        jsRoot.set( "endTime", event.getEndTime() );
+        jsRoot.set( "dayName", event.getDayName() );
+
         // Render the response
         std::ostream& ostr = opData->responseSend();
         try

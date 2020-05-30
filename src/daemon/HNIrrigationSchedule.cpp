@@ -253,7 +253,7 @@ HNScheduleStaticEvent::getDayIndex()
 }
 
 std::string 
-HNScheduleStaticEvent::getDayIndexName()
+HNScheduleStaticEvent::getDayName()
 {
     if( m_dayIndex > HNIS_DINDX_NOTSET )
         return s_dayNames[ HNIS_DINDX_NOTSET ];
@@ -1245,7 +1245,7 @@ HNIrrigationSchedule::updateStaticEventListSection( HNodeConfig &cfg )
         objPtr->updateValue( "type", it->second.getTypeStr() );
         objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
         objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
-        objPtr->updateValue( "dayIndex", it->second.getDayIndexName() );
+        objPtr->updateValue( "dayName", it->second.getDayName() );
     }
 
     return HNIS_RESULT_SUCCESS;

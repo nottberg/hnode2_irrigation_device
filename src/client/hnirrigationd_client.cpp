@@ -63,14 +63,23 @@ class HNIrrigationClient: public Application
         bool _swidPresent         = false;
         bool _idPresent           = false;
 
+        bool _typePresent         = false;
+        bool _stPresent           = false;
+        bool _etPresent           = false;
+        bool _dayPresent          = false;
+
         std::string _hostStr;
         std::string _nameStr;
         std::string _descStr;
+        std::string _swidStr;
+        std::string _idStr;
+        std::string _typeStr;
+        std::string _startTimeStr;
+        std::string _endTimeStr;
+        std::string _dayStr;
         uint _spwInt;
         uint _cpdInt;
         uint _smcInt;
-        std::string _swidStr;
-        std::string _idStr;
 
         std::string m_host;
         uint16_t    m_port;
@@ -137,6 +146,13 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("id", "", "Specify an object identifier").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("type", "", "Specify a type parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("start-time", "", "Specify a start time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("end-time", "", "Specify an end time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("day", "", "Specify a day name parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
         }
 	
         void handleHelp(const std::string& name, const std::string& value)
@@ -199,6 +215,26 @@ class HNIrrigationClient: public Application
             {
                 _idPresent = true;
                 _idStr     = value;
+            }
+            else if( "type" == name )
+            {
+                _typePresent = true;
+                _typeStr     = value;
+            }
+            else if( "start-time" == name )
+            {
+                _stPresent    = true;
+                _startTimeStr = value;
+            }
+            else if( "end-time" == name )
+            {
+                _etPresent  = true;
+                _endTimeStr = value;
+            }
+            else if( "day" == name )
+            {
+                _dayPresent = true;
+                _dayStr     = value;
             }
 
         }
@@ -491,6 +527,7 @@ class HNIrrigationClient: public Application
         void createStaticEventRequest()
         {
             Poco::URI uri;
+
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
@@ -509,35 +546,18 @@ class HNIrrigationClient: public Application
             pjs::Object jsRoot;
 
             // Add request data fields
-#if 0
-            if( _namePresent )
-                jsRoot.set( "name", _nameStr );
+            if( _typePresent )
+                jsRoot.set( "type", _typeStr );
 
-            if( _descPresent )
-                jsRoot.set( "description", _descStr );
+            if( _stPresent )
+                jsRoot.set( "startTime", _startTimeStr );
 
-            if( _spwPresent )
-                jsRoot.set( "secondsPerWeek", _spwInt );
+            if( _etPresent )
+                jsRoot.set( "endTime", _endTimeStr );
 
-            if( _cpdPresent )
-                jsRoot.set( "cyclePerDay", _cpdInt );
+            if( _dayPresent )
+                jsRoot.set( "dayName", _dayStr );
 
-            if( _smcPresent )
-                jsRoot.set( "secondsMinCycle", _smcInt );
-
-            if( _swidPresent )
-                jsRoot.set( "swidList", _swidStr );
-
-            // Render into a json string.
-            try
-            {
-                pjs::Stringifier::stringify( jsRoot, os );
-            }
-            catch( ... )
-            {
-                return;
-            }
-#endif
             // Wait for the response
             std::istream& rs = session.receiveResponse( response );
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
@@ -576,6 +596,7 @@ class HNIrrigationClient: public Application
         void updateStaticEventRequest()
         {
             Poco::URI uri;
+
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
@@ -593,40 +614,23 @@ class HNIrrigationClient: public Application
 
             std::ostream& os = session.sendRequest( request );
 
-#if 0
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
 
             // Add request data fields
-            if( _namePresent )
-                jsRoot.set( "name", _nameStr );
+            if( _typePresent )
+                jsRoot.set( "type", _typeStr );
 
-            if( _descPresent )
-                jsRoot.set( "description", _descStr );
+            if( _stPresent )
+                jsRoot.set( "startTime", _startTimeStr );
 
-            if( _spwPresent )
-                jsRoot.set( "secondsPerWeek", _spwInt );
+            if( _etPresent )
+                jsRoot.set( "endTime", _endTimeStr );
 
-            if( _cpdPresent )
-                jsRoot.set( "cyclePerDay", _cpdInt );
+            if( _dayPresent )
+                jsRoot.set( "dayName", _dayStr );
 
-            if( _smcPresent )
-                jsRoot.set( "secondsMinCycle", _smcInt );
-
-            if( _swidPresent )
-                jsRoot.set( "swidList", _swidStr );
-
-            // Render into a json string.
-            try
-            {
-                pjs::Stringifier::stringify( jsRoot, os );
-            }
-            catch( ... )
-            {
-                return;
-            }
-#endif
             // Wait for the response
             std::istream& rs = session.receiveResponse( response );
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
