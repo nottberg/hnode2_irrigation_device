@@ -302,6 +302,7 @@ class HNIrrigationSchedule
         void deleteZone( std::string zoneID );
         void getZoneList( std::vector< HNIrrigationZone > &zoneList );
         HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
+        HNIS_RESULT_T getZoneName( std::string zoneID, std::string &name );
 
         HNIS_RESULT_T initConfigSections( HNodeConfig &cfg );
         HNIS_RESULT_T readConfigSections( HNodeConfig &cfg );

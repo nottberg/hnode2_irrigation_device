@@ -42,11 +42,14 @@ class HNIrrigationClient: public Application
     private:
         bool _helpRequested       = false;
         bool _devInfoRequested    = false;
-        bool _zoneListRequested   = false;
-        bool _createZoneRequested = false;
-        bool _zoneInfoRequested   = false;
-        bool _updateZoneRequested = false;
-        bool _deleteZoneRequested = false;
+
+        bool _getScheduleRequested = false;
+
+        bool _zoneListRequested    = false;
+        bool _createZoneRequested  = false;
+        bool _zoneInfoRequested    = false;
+        bool _updateZoneRequested  = false;
+        bool _deleteZoneRequested  = false;
 
         bool _staticEventListRequested   = false;
         bool _createStaticEventRequested = false;
@@ -120,6 +123,8 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("device-info", "i", "Request Hnode2 Device Info").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("schedule", "s", "Request the current schedule").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
             options.addOption( Option("zone-list", "", "Get a list of defined zones.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("create-zone", "", "Create a new zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
@@ -166,16 +171,28 @@ class HNIrrigationClient: public Application
         {
             if( "device-info" == name )
                 _devInfoRequested = true;
-            if( "zone-list" == name )
+            else if( "zone-list" == name )
                 _zoneListRequested = true;
             else if( "create-zone" == name )
                 _createZoneRequested = true;
-            if( "zone-info" == name )
+            else if( "zone-info" == name )
                 _zoneInfoRequested = true;
             else if( "update-zone" == name )
                 _updateZoneRequested = true;
             else if( "delete-zone" == name )
                 _deleteZoneRequested = true;
+            else if( "event-list" == name )
+                _staticEventListRequested = true;
+            else if( "create-event" == name )
+                _createStaticEventRequested = true;
+            else if( "event-info" == name )
+                _staticEventInfoRequested = true;
+            else if( "update-event" == name )
+                _updateStaticEventRequested = true;
+            else if( "delete-event" == name )
+                _deleteStaticEventRequested = true;
+            else if( "schedule" == name )
+                _getScheduleRequested = true;
             else if( "host" == name )
             {
                 _hostPresent = true;
@@ -303,6 +320,331 @@ class HNIrrigationClient: public Application
             std::string body;
             Poco::StreamCopier::copyToString( rs, body );
             std::cout << body << std::endl;
+        }
+
+        void getScheduleInfo()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/schedule" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            // Parse the response
+            try
+            {
+                std::string empty;
+                std::string body;
+                pjs::Parser parser;
+
+                Poco::StreamCopier::copyToString( rs, body );
+                std::cout << "== Body ==" << std::endl << body << std::endl;
+
+                // Attempt to parse the json
+                pdy::Var varRoot = parser.parse( body );
+
+                // Get a pointer to the root object
+                pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+                // Get the schedule matrix element
+                pjs::Object::Ptr jsSchedule = jsRoot->getObject( "scheduleMatrix" );
+
+                pjs::Array::Ptr jsSunday    = jsSchedule->getArray( "Sunday" );
+                pjs::Array::Ptr jsMonday    = jsSchedule->getArray( "Monday" );
+                pjs::Array::Ptr jsTuesday   = jsSchedule->getArray( "Tuesday" );
+                pjs::Array::Ptr jsWednesday = jsSchedule->getArray( "Wednesday" );
+                pjs::Array::Ptr jsThursday  = jsSchedule->getArray( "Thursday" );
+                pjs::Array::Ptr jsFriday    = jsSchedule->getArray( "Friday" );
+                pjs::Array::Ptr jsSaturday  = jsSchedule->getArray( "Saturday" );
+
+#define DAYCOL_WIDTH   30
+#define TIME_WIDTH     ((2*(8))+1)
+#define NAME_WIDTH     (DAYCOL_WIDTH - TIME_WIDTH - 2)
+
+                char tmpBuf[256];
+
+                printf( "%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s\n",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Sunday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Monday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Tuesday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Wednesday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Thursday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Friday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Saturday" );
+
+                memset( tmpBuf, '-', sizeof(tmpBuf) );
+                tmpBuf[ ((DAYCOL_WIDTH+1) * 7) ] = '\0';
+                printf( "%s\n", tmpBuf );
+
+                uint index = 0;
+                bool quit = false;
+                while( quit == false && index < 100 )
+                {
+                    quit = true;
+
+                    if( jsSunday && ( index < jsSunday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsSunday->getObject( index );
+                        sprintf( tmpBuf, "%*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+
+                    if( jsMonday && ( index < jsMonday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsMonday->getObject( index );
+                        sprintf( tmpBuf, "%*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+                    
+                    index += 1;
+
+                    printf( "\n" );
+                    //printf( "%d %d\n", quit, index );
+                }
+
+#if 0
+{
+ "scheduleMatrix" : {
+  "Friday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Monday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Saturday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Sunday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Thursday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Tuesday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ],
+  "Wednesday" : [
+   {
+    "action" : "on",
+    "endTime" : "00:05:00",
+    "startTime" : "00:00:00",
+    "zoneid" : "z1"
+   },
+   {
+    "action" : "on",
+    "endTime" : "00:10:00",
+    "startTime" : "00:05:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "23:55:00",
+    "startTime" : "23:50:00",
+    "zoneid" : "z2"
+   },
+   {
+    "action" : "on",
+    "endTime" : "24:00:00",
+    "startTime" : "23:55:00",
+    "zoneid" : "z1"
+   }
+  ]
+ },
+ "scheduleTimezone" : "Americas\/Denver"
+}
+
+#endif
+
+#if 0
+                std::string date = jsRoot->optValue( "date", empty );
+                std::string time = jsRoot->optValue( "time", empty );
+                std::string tz   = jsRoot->optValue( "timezone", empty );
+                std::string swON = jsRoot->optValue( "swOnList", empty );
+
+                std::string schState = jsRoot->optValue( "schedulerState", empty );
+                std::string inhUntil = jsRoot->optValue( "inhibitUntil", empty );
+
+                pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
+                            
+                std::string ohstat = jsOHealth->optValue( "status", empty );
+                std::string ohmsg = jsOHealth->optValue( "msg", empty ); 
+
+                printf( "       Date: %s\n", date.c_str() );
+                printf( "       Time: %s\n", time.c_str() );
+                printf( "   Timezone: %s\n\n", tz.c_str() );
+                printf( "   Schduler State: %s\n", schState.c_str() );
+                printf( "    Inhibit Until: %s\n\n", inhUntil.c_str() );
+                printf( "  Switch On: %s\n", swON.c_str() );
+                printf( "     Health: %s (%s)\n", ohstat.c_str(), ohmsg.c_str() );
+#endif
+            }
+            catch( Poco::Exception ex )
+            {
+                std::cout << "  ERROR: Response message not parsable: " << ex.displayText() << std::endl;
+            }
         }
 
         void getZoneList()
@@ -674,6 +1016,10 @@ class HNIrrigationClient: public Application
             if( _devInfoRequested == true )
             {
                 getHNodeDeviceInfo();
+            }
+            else if( _getScheduleRequested == true )
+            {
+                getScheduleInfo();
             }
             else if( _zoneListRequested == true )
             {

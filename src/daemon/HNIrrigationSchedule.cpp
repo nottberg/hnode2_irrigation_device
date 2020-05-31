@@ -1078,32 +1078,33 @@ HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
         // Get the internal reference to the zone.
         HNIrrigationZone *zonePtr = updateZone( zoneID );
 
-        if( objPtr->getValueByName( "name", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
         {
+            std::cout << "== READ ZONE NAME: " << rstStr << std::endl;
             zonePtr->setName( rstStr );
         }
 
-        if( objPtr->getValueByName( "description", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
         {
             zonePtr->setDesc( rstStr );
         }
 
-        if( objPtr->getValueByName( "secondsPerWeek", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "secondsPerWeek", rstStr ) == HNC_RESULT_SUCCESS )
         {
             zonePtr->setWeeklySeconds( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
-        if( objPtr->getValueByName( "cyclesPerDay", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "cyclesPerDay", rstStr ) == HNC_RESULT_SUCCESS )
         {
             zonePtr->setTargetCyclesPerDay( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
-        if( objPtr->getValueByName( "secondsMinCycle", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "secondsMinCycle", rstStr ) == HNC_RESULT_SUCCESS )
         {
             zonePtr->setMinimumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
-        if( objPtr->getValueByName( "swidList", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "swidList", rstStr ) == HNC_RESULT_SUCCESS )
         {
             zonePtr->setSWIDList( rstStr );
         }
@@ -1143,22 +1144,22 @@ HNIrrigationSchedule::readStaticEventListSection( HNodeConfig &cfg )
         // Get the internal reference to the zone.
         HNScheduleStaticEvent *eventPtr = updateEvent( eventID );
 
-        if( objPtr->getValueByName( "type", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
         {
             eventPtr->setTypeFromStr( rstStr );
         }
 
-        if( objPtr->getValueByName( "startTime", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "startTime", rstStr ) == HNC_RESULT_SUCCESS )
         {
             eventPtr->setStartTime( rstStr );
         }
 
-        if( objPtr->getValueByName( "endTime", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "endTime", rstStr ) == HNC_RESULT_SUCCESS )
         {
             eventPtr->setEndTime( rstStr );
         }
 
-        if( objPtr->getValueByName( "dayIndex", rstStr ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "dayIndex", rstStr ) == HNC_RESULT_SUCCESS )
         {
             eventPtr->setDayIndexFromNameStr( rstStr );
         }
@@ -1399,6 +1400,20 @@ HNIrrigationSchedule::getZone( std::string zoneID, HNIrrigationZone &zone )
 }
 
 HNIS_RESULT_T 
+HNIrrigationSchedule::getZoneName( std::string zoneID, std::string &name )
+{
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
+
+    name.clear();
+
+    if( it == m_zoneMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    name = it->second.getName();
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
 HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
 {
     // Create a json root object
@@ -1431,6 +1446,10 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
             jsSWAction.set( "zoneid", it->getID() );
+
+            std::string zName;
+            getZoneName( it->getID(), zName );
+            jsSWAction.set( "name", zName );
 
             jsActions.add( jsSWAction );
         }
