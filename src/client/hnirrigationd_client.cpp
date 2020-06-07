@@ -135,6 +135,16 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("delete-zone", "", "Delete an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("event-list", "", "Get a list of defined Static Schedule Events.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("create-event", "", "Create a new Static Schedule Event. Types: everyday-keepout, single-keepout, everyday-zone, single-zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("event-info", "", "Get info for a single Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("update-event", "", "Update an existing Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("delete-event", "", "Delete an existing Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
             options.addOption( Option("host", "u", "Host URL").required(false).repeatable(false).argument("<host>:<port>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("name", "", "The name parameter.").required(false).repeatable(false).argument("<name>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
@@ -376,17 +386,14 @@ class HNIrrigationClient: public Application
 
                 char tmpBuf[256];
 
-                printf( "%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s|%-*.*s\n",
+                printf( "%-*.*s|%-*.*s|%-*.*s|%-*.*s\n",
                         DAYCOL_WIDTH, DAYCOL_WIDTH, "Sunday",
                         DAYCOL_WIDTH, DAYCOL_WIDTH, "Monday",
                         DAYCOL_WIDTH, DAYCOL_WIDTH, "Tuesday",
-                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Wednesday",
-                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Thursday",
-                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Friday",
-                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Saturday" );
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Wednesday");
 
                 memset( tmpBuf, '-', sizeof(tmpBuf) );
-                tmpBuf[ ((DAYCOL_WIDTH+1) * 7) ] = '\0';
+                tmpBuf[ ((DAYCOL_WIDTH+1) * 4) ] = '\0';
                 printf( "%s\n", tmpBuf );
 
                 uint index = 0;
@@ -398,7 +405,7 @@ class HNIrrigationClient: public Application
                     if( jsSunday && ( index < jsSunday->size() ) )
                     {
                         pjs::Object::Ptr jsCol = jsSunday->getObject( index );
-                        sprintf( tmpBuf, "%*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
                                  jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
                         printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
                         quit = false;
@@ -411,7 +418,33 @@ class HNIrrigationClient: public Application
                     if( jsMonday && ( index < jsMonday->size() ) )
                     {
                         pjs::Object::Ptr jsCol = jsMonday->getObject( index );
-                        sprintf( tmpBuf, "%*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+
+                    if( jsTuesday && ( index < jsTuesday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsTuesday->getObject( index );
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+
+                    if( jsWednesday && ( index < jsWednesday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsWednesday->getObject( index );
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
                                  jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
                         printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
                         quit = false;
@@ -427,6 +460,66 @@ class HNIrrigationClient: public Application
                     //printf( "%d %d\n", quit, index );
                 }
 
+
+                printf( "\n%-*.*s|%-*.*s|%-*.*s\n",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Thursday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Friday",
+                        DAYCOL_WIDTH, DAYCOL_WIDTH, "Saturday" );
+
+                memset( tmpBuf, '-', sizeof(tmpBuf) );
+                tmpBuf[ ((DAYCOL_WIDTH+1) * 3) ] = '\0';
+                printf( "%s\n", tmpBuf );
+
+                index = 0;
+                quit = false;
+                while( quit == false && index < 100 )
+                {
+                    quit = true;
+
+                    if( jsThursday && ( index < jsThursday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsThursday->getObject( index );
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+
+                    if( jsFriday && ( index < jsFriday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsFriday->getObject( index );
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+     
+                    if( jsSaturday && ( index < jsSaturday->size() ) )
+                    {
+                        pjs::Object::Ptr jsCol = jsSaturday->getObject( index );
+                        sprintf( tmpBuf, "%-*.*s %s-%s ", NAME_WIDTH, NAME_WIDTH, jsCol->optValue( "name", empty ).c_str(), 
+                                 jsCol->optValue( "startTime", empty ).c_str(), jsCol->optValue( "endTime", empty ).c_str() );
+                        printf( "%-*.*s ", DAYCOL_WIDTH, DAYCOL_WIDTH, tmpBuf );
+                        quit = false;
+                    }
+                    else
+                    {
+                        printf( "%-*.*s", DAYCOL_WIDTH, DAYCOL_WIDTH, " " );
+                    } 
+               
+                    index += 1;
+
+                    printf( "\n" );
+                    //printf( "%d %d\n", quit, index );
+                }
 #if 0
 {
  "scheduleMatrix" : {
@@ -900,6 +993,16 @@ class HNIrrigationClient: public Application
             if( _dayPresent )
                 jsRoot.set( "dayName", _dayStr );
 
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+
             // Wait for the response
             std::istream& rs = session.receiveResponse( response );
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
@@ -912,7 +1015,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            std::string path( "/hnode2/irrigation/schedule/static-events/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -943,7 +1046,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            std::string path( "/hnode2/irrigation/schedule/static-events/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -985,7 +1088,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events" );
+            std::string path( "/hnode2/irrigation/schedule/static-events/" );
             path += _idStr;
 
             uri.setPath( path );

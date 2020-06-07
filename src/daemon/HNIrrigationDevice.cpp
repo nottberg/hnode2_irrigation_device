@@ -620,7 +620,7 @@ HNIrrigationDevice::getUniqueEventID( std::string &id )
 
     do
     {
-        sprintf( tmpID, "z%d", idNum );
+        sprintf( tmpID, "e%d", idNum );
 
         if( m_schedule.hasEvent( tmpID ) == false )
         {
@@ -925,9 +925,9 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
            pjs::Object evObj;
 
            evObj.set( "eventid", eit->getID() );
-           evObj.set( "type", eit->getType() );
-           evObj.set( "startTime", eit->getStartTime() );
-           evObj.set( "endTime", eit->getEndTime() );
+           evObj.set( "type", eit->getTypeStr() );
+           evObj.set( "startTime", eit->getStartTime().getHMSStr() );
+           evObj.set( "endTime", eit->getEndTime().getHMSStr() );
            evObj.set( "dayName", eit->getDayName() );
 
            jsRoot.add( evObj );
@@ -1019,9 +1019,9 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         pjs::Object jsRoot;
 
         jsRoot.set( "eventid", event.getID() );
-        jsRoot.set( "type", event.getType() );
-        jsRoot.set( "startTime", event.getStartTime() );
-        jsRoot.set( "endTime", event.getEndTime() );
+        jsRoot.set( "type", event.getTypeStr() );
+        jsRoot.set( "startTime", event.getStartTime().getHMSStr() );
+        jsRoot.set( "endTime", event.getEndTime().getHMSStr() );
         jsRoot.set( "dayName", event.getDayName() );
 
         // Render the response
