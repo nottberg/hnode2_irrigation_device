@@ -481,7 +481,7 @@ HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
 
         if( jsRoot->has( "cyclesPerDay" ) )
         {
-            zone->setTargetCyclesPerDay( jsRoot->getValue<uint>( "cyclePerDay" ) );
+            zone->setTargetCyclesPerDay( jsRoot->getValue<uint>( "cyclesPerDay" ) );
         }
 
         if( jsRoot->has( "secondsMinCycle" ) )

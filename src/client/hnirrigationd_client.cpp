@@ -798,7 +798,7 @@ class HNIrrigationClient: public Application
                 jsRoot.set( "secondsPerWeek", _spwInt );
 
             if( _cpdPresent )
-                jsRoot.set( "cyclePerDay", _cpdInt );
+                jsRoot.set( "cyclesPerDay", _cpdInt );
 
             if( _smcPresent )
                 jsRoot.set( "secondsMinCycle", _smcInt );
@@ -886,7 +886,7 @@ class HNIrrigationClient: public Application
                 jsRoot.set( "secondsPerWeek", _spwInt );
 
             if( _cpdPresent )
-                jsRoot.set( "cyclePerDay", _cpdInt );
+                jsRoot.set( "cyclesPerDay", _cpdInt );
 
             if( _smcPresent )
                 jsRoot.set( "secondsMinCycle", _smcInt );
