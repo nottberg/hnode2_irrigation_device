@@ -21,8 +21,8 @@
 #include <Poco/JSON/Parser.h>
 
 #include <hnode2/HNodeDevice.h>
+#include <hnode2/HNSwitchDaemon.h>
 
-//#include "HNSWDPacketDaemon.h"
 #include "HNIrrigationDevicePrivate.h"
 
 using namespace Poco::Util;
@@ -335,11 +335,27 @@ HNIrrigationDevice::displayHelp()
     helpFormatter.format(std::cout);
 }
 
+void 
+HNIrrigationDevice::setState( HNID_STATE_T value )
+{
+    m_state = value;
+}
+
+HNID_STATE_T 
+HNIrrigationDevice::getState()
+{
+    return m_state;
+}
+
 //m_hnodeDev.setName("sp1");
 
 int 
 HNIrrigationDevice::main( const std::vector<std::string>& args )
 {
+    setState( HNID_STATE_NOINIT );
+
+    m_sendSchedule = false;
+
     m_instanceName = "default";
     if( _instancePresent == true )
         m_instanceName = _instance;
@@ -363,14 +379,258 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     readConfig();
 
-    // Calculate an initial schedule
-    m_schedule.buildSchedule();
+    if( m_evLoop.setup( this ) != HNEP_RESULT_SUCCESS )
+    {
+        std::cerr << "ERROR: Failed to start event loop." << std::endl;
+        return Application::EXIT_SOFTWARE;
+    }
 
+    setState( HNID_STATE_INITIALIZED );
+
+    // Start up the hnode device
     m_hnodeDev.start();
+
+    // Start the event loop
+    m_evLoop.run();  
 
     waitForTerminationRequest();
 
     return Application::EXIT_OK;
+}
+
+bool 
+HNIrrigationDevice::openSWDSocket()
+{
+    struct sockaddr_un addr;
+    char str[512];
+
+    // Clear address structure - UNIX domain addressing
+    // addr.sun_path[0] cleared to 0 by memset() 
+    memset( &addr, 0, sizeof(struct sockaddr_un) );  
+    addr.sun_family = AF_UNIX;                     
+
+    // Abstract socket with name @<deviceName>-<instanceName>
+    sprintf( str, "hnode2-%s-%s", HN_SWDAEMON_DEVICE_NAME, m_instanceName.c_str() );
+    strncpy( &addr.sun_path[1], str, strlen(str) );
+
+    // Register the socket
+    m_swdFD = socket( AF_UNIX, SOCK_SEQPACKET, 0 );
+
+    // Establish the connection.
+    if( connect( m_swdFD, (struct sockaddr *) &addr, ( sizeof( sa_family_t ) + strlen( str ) + 1 ) ) == 0 )
+    {
+        // Success
+        printf( "Successfully opened client socket on file descriptor: %d\n", m_swdFD );
+        return false;
+    }
+
+    // Failure
+    return true;
+}
+
+void
+HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
+{
+    uint schCRC32 = 0;
+    std::string msg;
+
+    packet.getMsg( msg );
+    std::cout << "=== Daemon Status Recieved - result code: " << packet.getResult() << " ===" << std::endl;
+
+    // Parse the response
+    try
+    {
+        std::string empty;
+        pjs::Parser parser;
+
+        // Attempt to parse the json
+        pdy::Var varRoot = parser.parse( msg );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        std::string date = jsRoot->optValue( "date", empty );
+        std::string time = jsRoot->optValue( "time", empty );
+        std::string tz   = jsRoot->optValue( "timezone", empty );
+        std::string swON = jsRoot->optValue( "swOnList", empty );
+
+        std::string schState = jsRoot->optValue( "schedulerState", empty );
+        std::string inhUntil = jsRoot->optValue( "inhibitUntil", empty );
+
+        std::string schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
+
+        std::string schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
+        schCRC32 = strtol( schCRC32Str.c_str(), NULL, 0 );
+
+        pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
+                            
+        std::string ohstat = jsOHealth->optValue( "status", empty );
+        std::string ohmsg = jsOHealth->optValue( "msg", empty ); 
+
+        printf( "       Date: %s\n", date.c_str() );
+        printf( "       Time: %s\n", time.c_str() );
+        printf( "   Timezone: %s\n\n", tz.c_str() );
+        printf( "   Schduler State: %s\n", schState.c_str() );
+        printf( "    Inhibit Until: %s\n", inhUntil.c_str() );
+        printf( "Schedule Up Index: %s\n", schUIStr.c_str() );
+        printf( "   Schedule CRC32: 0x%x\n\n", schCRC32 );
+
+        printf( "  Switch On: %s\n", swON.c_str() );
+        printf( "     Health: %s (%s)\n", ohstat.c_str(), ohmsg.c_str() );
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "  ERROR: Response message not parsable: " << msg << std::endl;
+    }
+
+    // Check if the schedule on the switch daemon
+    // needs to be updated to match our current
+    // schedule.
+    if( schCRC32 != m_schedule.getSMCRC32() )
+    {
+        m_sendSchedule = true;
+    }
+}
+
+void
+HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
+{
+    if( m_state != HNID_STATE_WAIT_SET_SCHEDULE )
+    {
+        return;
+    }
+
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+bool
+HNIrrigationDevice::handleSWDPacket()
+{
+    HNSWDPacketClient packet;
+    HNSWDP_RESULT_T   result;
+
+    printf( "Waiting for packet reception...\n" );
+
+    // Read the header portion of the packet
+    result = packet.rcvHeader( m_swdFD );
+    if( result != HNSWDP_RESULT_SUCCESS )
+    {
+        printf( "ERROR: Failed while receiving packet header." );
+        return true;
+    } 
+
+    // Read any payload portion of the packet
+    result = packet.rcvPayload( m_swdFD );
+    if( result != HNSWDP_RESULT_SUCCESS )
+    {
+        printf( "ERROR: Failed while receiving packet payload." );
+        return true;
+    } 
+
+    switch( packet.getType() )
+    {
+        case HNSWD_PTYPE_DAEMON_STATUS:
+        {
+            handleSWDStatus( packet );
+        }
+        break;
+
+        case HNSWD_PTYPE_SCHEDULE_UPDATE_RSP:
+        {
+            handleSWDScheduleUpdateRsp( packet );
+        }
+    }
+
+    return false;
+}
+
+void
+HNIrrigationDevice::fdEvent( int sfd )
+{
+    std::cout << "FD Event Handler: " << sfd << std::endl;
+
+    if( sfd == m_swdFD )
+    {
+        handleSWDPacket();
+    }
+
+
+}
+
+void
+HNIrrigationDevice::fdError( int sfd )
+{
+    std::cout << "FD Error Handler: " << sfd << std::endl;
+
+}
+
+void 
+HNIrrigationDevice::loopIteration()
+{
+//    std::cout << "EV Loop Iteration Handler" << std::endl;
+    switch( getState() )
+    {
+        // Finish with the startup
+        case HNID_STATE_INITIALIZED:
+            // Calculate an initial schedule
+            m_schedule.buildSchedule();
+
+            // Temporary output of switch manager schedule
+            std::cout << "===Switch Manager JSON===" << std::endl;
+            std::cout << m_schedule.getSwitchDaemonJSON() << std::endl;
+
+            if( openSWDSocket() ) //"", m_instanceName, swdFD ) )
+            {
+                // Failed to open client socket, set health status
+                std::cerr << "ERROR: Failed to open switch daemon socket." << std::endl;
+                setState( HNID_STATE_CONNECT_RECOVER );
+                return;
+            }
+            else if( m_evLoop.addFDToEPoll( m_swdFD ) != HNEP_RESULT_SUCCESS )
+            {
+                // Failed to add client socket, set health status
+                std::cerr << "ERROR: Failed to add switch daemon socket to event loop." << std::endl;
+                setState( HNID_STATE_CONNECT_RECOVER );
+                return;
+            }
+                 
+            setState( HNID_STATE_READY );
+        break;
+
+        case HNID_STATE_READY:
+            // Check if/what actions are needed
+
+            // Schedule Update?
+            if( m_sendSchedule == true )
+            {
+                // Send schedule update request
+
+                // Clear the action
+                m_sendSchedule = false;
+
+                // Wait for reply before further action
+                setState( HNID_STATE_WAIT_SET_SCHEDULE );
+            }
+        break;
+
+        case HNID_STATE_CONNECT_RECOVER:
+
+        break;
+
+        case HNID_STATE_WAIT_SET_SCHEDULE:
+
+        break;
+
+    }
+}
+
+void 
+HNIrrigationDevice::timeoutEvent()
+{
+//    std::cout << "EV Timeout Handler" << std::endl;
+
 }
 
 bool 

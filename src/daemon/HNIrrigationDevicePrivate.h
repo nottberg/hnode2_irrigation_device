@@ -1,5 +1,5 @@
-#ifndef __HN_SWITCH_DAEMON_H__
-#define __HN_SWITCH_DAEMON_H__
+#ifndef __HN_IRRIGATION_DEVICE_PRIVATE_H__
+#define __HN_IRRIGATION_DEVICE_PRIVATE_H__
 
 #include <string>
 #include <vector>
@@ -9,11 +9,24 @@
 
 #include <hnode2/HNodeDevice.h>
 #include <hnode2/HNodeConfig.h>
+#include <hnode2/HNEPLoop.h>
+
+#include "HNSWDPacketClient.h"
 
 //#include "HNIrrigationZone.h"
 #include "HNIrrigationSchedule.h"
 
 #define HNODE_IRRIGATION_DEVTYPE   "hnode2-irrigation-device"
+
+typedef enum HNIrrigationDeviceProcessStateEnum
+{
+  HNID_STATE_NOINIT,
+  HNID_STATE_INITIALIZED,
+  HNID_STATE_READY,
+  HNID_STATE_CONNECT_RECOVER,
+  HNID_STATE_SEND_SET_SCHEDULE,
+  HNID_STATE_WAIT_SET_SCHEDULE
+}HNID_STATE_T;
 
 typedef enum HNIrrigationDeviceResultEnum
 {
@@ -23,7 +36,7 @@ typedef enum HNIrrigationDeviceResultEnum
   HNID_RESULT_SERVER_ERROR
 }HNID_RESULT_T;
 
-class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf
+class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNEPLoopCallbacks
 {
     private:
         bool _helpRequested   = false;
@@ -32,14 +45,23 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         std::string _instance; 
 
+        HNID_STATE_T m_state;
+
         std::string m_instanceName;
+
+        uint        m_swdFD;
+        HNEPLoop    m_evLoop;
 
         HNodeDevice m_hnodeDev;
 
         HNIrrigationSchedule m_schedule;
 
+        bool m_sendSchedule;
 
         void displayHelp();
+
+        void setState( HNID_STATE_T value );
+        HNID_STATE_T getState();
 
         bool configExists();
         HNID_RESULT_T initConfig();
@@ -54,9 +76,22 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         HNID_RESULT_T updateEvent( std::string eventID, std::istream& bodyStream );
 
+        bool openSWDSocket();
+
+        bool handleSWDPacket();
+
+        void handleSWDStatus( HNSWDPacketClient &packet );
+        void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
+
     protected:
         // HNDevice REST callback
         virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );
+
+        // Event loop callbacks
+        virtual void loopIteration();
+        virtual void timeoutEvent();
+        virtual void fdEvent( int sfd );
+        virtual void fdError( int sfd );
 
         // Poco funcions
         void defineOptions( Poco::Util::OptionSet& options );
@@ -65,4 +100,4 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
 };
 
-#endif // __HN_SWITCH_DAEMON_H__
+#endif // __HN_IRRIGATION_DEVICE_PRIVATE_H__

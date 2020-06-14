@@ -271,6 +271,7 @@ class HNIrrigationSchedule
     private:
 
         std::string m_timezone;
+        uint32_t    m_schCRC32;
 
         HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
 
@@ -285,9 +286,16 @@ class HNIrrigationSchedule
         HNIS_RESULT_T readStaticEventListSection( HNodeConfig &cfg );
         HNIS_RESULT_T updateStaticEventListSection( HNodeConfig &cfg );
 
+        void calculateSMCRC32();
+
     public:
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
+
+        std::string getTimezoneStr();
+
+        uint getSMCRC32();
+        std::string getSMCRC32Str();
 
         void clear();
 

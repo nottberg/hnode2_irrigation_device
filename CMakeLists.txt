@@ -24,6 +24,7 @@ SET( HNIRRIGATIOND_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/hnirrigationd.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationDevice.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationSchedule.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNSWDPacketClient.cpp
 )
 
 SET( HNIRRIGATIOND_CLIENT_SRC

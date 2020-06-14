@@ -3,6 +3,7 @@
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
+#include <Poco/Checksum.h>
 
 #include "HNIrrigationSchedule.h"
 
@@ -892,6 +893,9 @@ HNIrrigationSchedule::HNIrrigationSchedule()
 {
     std::cout << "HNIrrigationSchedule -- create" << std::endl;
 
+    m_timezone = "Americas/Denver";
+    m_schCRC32 = 0;
+
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].setIndex( (HNIS_DAY_INDX_T) indx );
 
@@ -912,6 +916,27 @@ HNIrrigationSchedule::clear()
 
     m_eventMap.clear();
     m_zoneMap.clear();
+    m_schCRC32 = 0;
+}
+
+std::string
+HNIrrigationSchedule::getTimezoneStr()
+{
+    return m_timezone;
+}
+
+uint 
+HNIrrigationSchedule::getSMCRC32()
+{
+    return m_schCRC32;
+}
+
+std::string
+HNIrrigationSchedule::getSMCRC32Str()
+{
+    char tmpStr[64];
+    sprintf( tmpStr, "0x%x", m_schCRC32 );
+    return tmpStr;
 }
 
 bool 
@@ -1363,6 +1388,10 @@ HNIrrigationSchedule::buildSchedule()
         stateMap.clear();
     }
 
+    // Calculate a hash value for this schedule
+    // which will be used to determine update flow.
+    calculateSMCRC32();
+
     return HNIS_RESULT_SUCCESS;
 
 }
@@ -1472,6 +1501,41 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     return HNIS_RESULT_SUCCESS;
 }
 
+void
+HNIrrigationSchedule::calculateSMCRC32()
+{
+    // Get a string to build the data into
+    Poco::Checksum digest;
+
+    digest.update( getTimezoneStr() );
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+    {
+        std::vector< HNISPeriod > periodList;
+        m_dayArr[ indx ].getPeriodList( periodList );
+
+        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
+        {
+            pjs::Object jsSWAction;
+          
+            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
+            {
+                continue;
+            }
+
+            digest.update( "swon" );
+            digest.update( it->getStartTimeStr() );
+            digest.update( it->getEndTimeStr() );
+            digest.update( m_zoneMap[ it->getID() ].getSWIDListStr() );
+        }
+        
+    }
+
+    std::cout << "Calculate SMCRC32: " << digest.checksum() << std::endl;
+
+    m_schCRC32 = digest.checksum();
+}
+
 std::string 
 HNIrrigationSchedule::getSwitchDaemonJSON()
 {
@@ -1482,7 +1546,10 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
     pjs::Object jsRoot;
 
     // Add the timezone name field
-    jsRoot.set( "scheduleTimezone", "Americas/Denver" );
+    jsRoot.set( "scheduleTimezone", getTimezoneStr() ); // "Americas/Denver" );
+
+    // Add the scheduleMatrix hash value
+    jsRoot.set( "scheduleCRC32", getSMCRC32Str() );
 
     // Add data for each day
     pjs::Object jsDays;
