@@ -10,8 +10,10 @@
 #include <hnode2/HNodeDevice.h>
 #include <hnode2/HNodeConfig.h>
 #include <hnode2/HNEPLoop.h>
+#include <hnode2/HNReqWaitQueue.h>
 
 #include "HNSWDPacketClient.h"
+#include "HNSWDStatus.h"
 
 //#include "HNIrrigationZone.h"
 #include "HNIrrigationSchedule.h"
@@ -50,7 +52,11 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         std::string m_instanceName;
 
         uint        m_swdFD;
-        HNEPLoop    m_evLoop;
+        HNSWDStatus m_swdStatus;
+        bool        m_getSWDHealthDetail;
+
+        HNReqWaitQueue m_actionQueue;
+        HNEPLoop       m_evLoop;
 
         HNodeDevice m_hnodeDev;
 

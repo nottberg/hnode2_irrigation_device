@@ -23,6 +23,7 @@
 #include <hnode2/HNodeDevice.h>
 #include <hnode2/HNSwitchDaemon.h>
 
+#include "HNIDActionRequest.h"
 #include "HNIrrigationDevicePrivate.h"
 
 using namespace Poco::Util;
@@ -354,11 +355,14 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 {
     setState( HNID_STATE_NOINIT );
 
+    m_getSWDHealthDetail = false;
     m_sendSchedule = false;
 
     m_instanceName = "default";
     if( _instancePresent == true )
         m_instanceName = _instance;
+
+    m_actionQueue.init();
 
     m_hnodeDev.setDeviceType( HNODE_IRRIGATION_DEVTYPE );
     m_hnodeDev.setInstance( m_instanceName );
@@ -382,6 +386,14 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     if( m_evLoop.setup( this ) != HNEP_RESULT_SUCCESS )
     {
         std::cerr << "ERROR: Failed to start event loop." << std::endl;
+        return Application::EXIT_SOFTWARE;
+    }
+
+    // Hook the local action queue into the event loop
+    if( m_evLoop.addFDToEPoll( m_actionQueue.getEventFD() ) != HNEP_RESULT_SUCCESS )
+    {
+        // Failed to add client socket.
+        std::cerr << "ERROR: Failed to add local action queue to event loop." << std::endl;
         return Application::EXIT_SOFTWARE;
     }
 
@@ -431,64 +443,26 @@ HNIrrigationDevice::openSWDSocket()
 void
 HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
 {
-    uint schCRC32 = 0;
     std::string msg;
 
     packet.getMsg( msg );
     std::cout << "=== Daemon Status Recieved - result code: " << packet.getResult() << " ===" << std::endl;
 
-    // Parse the response
-    try
-    {
-        std::string empty;
-        pjs::Parser parser;
-
-        // Attempt to parse the json
-        pdy::Var varRoot = parser.parse( msg );
-
-        // Get a pointer to the root object
-        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-        std::string date = jsRoot->optValue( "date", empty );
-        std::string time = jsRoot->optValue( "time", empty );
-        std::string tz   = jsRoot->optValue( "timezone", empty );
-        std::string swON = jsRoot->optValue( "swOnList", empty );
-
-        std::string schState = jsRoot->optValue( "schedulerState", empty );
-        std::string inhUntil = jsRoot->optValue( "inhibitUntil", empty );
-
-        std::string schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
-
-        std::string schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
-        schCRC32 = strtol( schCRC32Str.c_str(), NULL, 0 );
-
-        pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
-                            
-        std::string ohstat = jsOHealth->optValue( "status", empty );
-        std::string ohmsg = jsOHealth->optValue( "msg", empty ); 
-
-        printf( "       Date: %s\n", date.c_str() );
-        printf( "       Time: %s\n", time.c_str() );
-        printf( "   Timezone: %s\n\n", tz.c_str() );
-        printf( "   Schduler State: %s\n", schState.c_str() );
-        printf( "    Inhibit Until: %s\n", inhUntil.c_str() );
-        printf( "Schedule Up Index: %s\n", schUIStr.c_str() );
-        printf( "   Schedule CRC32: 0x%x\n\n", schCRC32 );
-
-        printf( "  Switch On: %s\n", swON.c_str() );
-        printf( "     Health: %s (%s)\n", ohstat.c_str(), ohmsg.c_str() );
-    }
-    catch( Poco::Exception ex )
-    {
-        std::cout << "  ERROR: Response message not parsable: " << msg << std::endl;
-    }
+    m_swdStatus.setFromJSON( msg );
 
     // Check if the schedule on the switch daemon
     // needs to be updated to match our current
     // schedule.
-    if( schCRC32 != m_schedule.getSMCRC32() )
+    if( m_swdStatus.getSMCRC32() != m_schedule.getSMCRC32() )
     {
         m_sendSchedule = true;
+    }
+
+    // Check if the switch daemon is unhealthy,
+    // if so collect additional health information
+    if( m_swdStatus.healthDegraded() )
+    {
+        m_getSWDHealthDetail = true;
     }
 }
 
@@ -555,7 +529,27 @@ HNIrrigationDevice::fdEvent( int sfd )
     {
         handleSWDPacket();
     }
+    else if( sfd == m_actionQueue.getEventFD() )
+    {
+        // Pop the action from the queue
+        HNIDActionRequest *action = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
 
+        std::cout << "Aquired action - sleeping..." << std::endl;
+
+        // Wait for 30 sec
+        sleep(30);
+
+        std::cout << "Sleep finished - completing..." << std::endl;
+
+        // Complete the action
+        action->complete();
+
+        // if( getState() != HNID_STATE_READY )
+        //    return;
+
+        // Handle next request
+      
+    }
 
 }
 
@@ -569,6 +563,9 @@ HNIrrigationDevice::fdError( int sfd )
 void 
 HNIrrigationDevice::loopIteration()
 {
+    // Get current timestamp
+
+
 //    std::cout << "EV Loop Iteration Handler" << std::endl;
     switch( getState() )
     {
@@ -599,8 +596,11 @@ HNIrrigationDevice::loopIteration()
             setState( HNID_STATE_READY );
         break;
 
+        case HNID_STATE_CONNECT_RECOVER:
+
+        break;
+
         case HNID_STATE_READY:
-            // Check if/what actions are needed
 
             // Schedule Update?
             if( m_sendSchedule == true )
@@ -612,10 +612,11 @@ HNIrrigationDevice::loopIteration()
 
                 // Wait for reply before further action
                 setState( HNID_STATE_WAIT_SET_SCHEDULE );
-            }
-        break;
 
-        case HNID_STATE_CONNECT_RECOVER:
+                return;
+            }
+
+            // Check if health state should be aquired
 
         break;
 
@@ -907,6 +908,20 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     // GET "/hnode2/irrigation/switches"
     if( "getSwitchList" == opID )
     {
+        // Allocate an action
+        HNIDActionRequest *action = new HNIDActionRequest();
+
+        // Fill out action parameters
+
+        std::cout << "Start action - client" << std::endl;
+
+        // Submit the action and block for response
+        m_actionQueue.postAndWait( action );
+
+        std::cout << "Post action - client" << std::endl;
+
+        // Return the response data to caller
+
         // Set response content type
         opData->responseSetChunkedTransferEncoding(true);
         opData->responseSetContentType("application/json");
@@ -944,6 +959,19 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     // GET "/hnode2/irrigation/zones"
     else if( "getZoneList" == opID )
     {
+
+        // Allocate an action
+        HNIDActionRequest *action = new HNIDActionRequest();
+
+        // Fill out action parameters
+
+        std::cout << "Start action - client" << std::endl;
+
+        // Submit the action and block for response
+        m_actionQueue.postAndWait( action );
+
+        std::cout << "Post action - client" << std::endl;
+
         // Set response content type
         opData->responseSetChunkedTransferEncoding(true);
         opData->responseSetContentType("application/json");
