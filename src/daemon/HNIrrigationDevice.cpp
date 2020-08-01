@@ -531,24 +531,60 @@ HNIrrigationDevice::fdEvent( int sfd )
     }
     else if( sfd == m_actionQueue.getEventFD() )
     {
-        // Pop the action from the queue
-        HNIDActionRequest *action = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
-
-        std::cout << "Aquired action - sleeping..." << std::endl;
-
-        // Wait for 30 sec
-        sleep(30);
-
-        std::cout << "Sleep finished - completing..." << std::endl;
-
-        // Complete the action
-        action->complete();
-
         // if( getState() != HNID_STATE_READY )
         //    return;
 
         // Handle next request
-      
+
+        // Pop the action from the queue
+        m_curAction = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
+
+        std::cout << "Aquired action - type: " << m_curAction->getType() << std::endl;
+
+        switch( m_curAction->getType() )
+        {
+            case HNID_AR_TYPE_SWLIST:
+                // Done with this request
+                m_curAction->complete( true );
+                m_curAction = NULL;
+            break;
+
+            case HNID_AR_TYPE_ZONELIST:
+                // Populate the zone list in the action
+                m_schedule.getZoneList( m_curAction->refZoneList() );
+
+                // Done with this request
+                m_curAction->complete( true );
+                m_curAction = NULL;
+            break;
+
+            case HNID_AR_TYPE_ZONEINFO:
+            {
+                HNIrrigationZone zone;
+
+                if( m_schedule.getZone( m_curAction->getZoneID(), zone ) != HNIS_RESULT_SUCCESS )
+                {
+                    //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                    m_curAction->complete(false);
+                    m_curAction = NULL;
+                    return; 
+                }
+
+                // Populate the zone list in the action
+                m_curAction->refZoneList().push_back( zone );
+
+                // Done with this request
+                m_curAction->complete( true );
+                m_curAction = NULL;
+            }
+            break;
+
+            default:
+                // Signal failure
+                m_curAction->complete( false );
+                m_curAction = NULL;
+            break;
+        }
     }
 
 }
@@ -899,6 +935,8 @@ HNIrrigationDevice::getUniqueEventID( std::string &id )
 void 
 HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 {
+    HNIDActionRequest action;
+
     std::cout << "HNIrrigationDevice::dispatchEP() - entry" << std::endl;
     std::cout << "  dispatchID: " << opData->getDispatchID() << std::endl;
     std::cout << "  opID: " << opData->getOpID() << std::endl;
@@ -908,61 +946,141 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     // GET "/hnode2/irrigation/switches"
     if( "getSwitchList" == opID )
     {
-        // Allocate an action
-        HNIDActionRequest *action = new HNIDActionRequest();
-
         // Fill out action parameters
+        action.setType( HNID_AR_TYPE_SWLIST );
 
         std::cout << "Start action - client" << std::endl;
 
         // Submit the action and block for response
-        m_actionQueue.postAndWait( action );
+        m_actionQueue.postAndWait( &action );
 
         std::cout << "Post action - client" << std::endl;
 
-        // Return the response data to caller
-
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        // Create a json root object
-        pjs::Array jsRoot;
-
-        pjs::Object swObj;
-
-        swObj.set( "swid", "s1" );
-        swObj.set( "description", "Garden Drip" );
- 
-        jsRoot.add( swObj );
-
-        swObj.set( "swid", "s2" );
-        swObj.set( "description", "West Front" );
- 
-        jsRoot.add( swObj );
-
-        // Render the response
-        std::ostream& ostr = opData->responseSend();
-        try
+        // Determine what happened
+        switch( action.getStatus() )
         {
-            // Write out the generated json
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-        }
-        catch( ... )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            return;
+            case HNRW_RESULT_SUCCESS:
+            {
+                // Set response content type
+                opData->responseSetChunkedTransferEncoding(true);
+                opData->responseSetContentType("application/json");
+
+                // Create a json root object
+                pjs::Array jsRoot;
+
+                pjs::Object swObj;
+
+                swObj.set( "swid", "s1" );
+                swObj.set( "description", "Garden Drip" );
+ 
+                jsRoot.add( swObj );
+
+                swObj.set( "swid", "s2" );
+                swObj.set( "description", "West Front" );
+ 
+                jsRoot.add( swObj );
+
+                // Render the response
+                std::ostream& ostr = opData->responseSend();
+                try 
+                {
+                    // Write out the generated json
+                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+                }
+                catch( ... )
+                {
+                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                    return;
+                }
+
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            }
+            break;
+
+            case HNRW_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+
+            case HNRW_RESULT_TIMEOUT:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
         }
 
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
     // GET "/hnode2/irrigation/zones"
     else if( "getZoneList" == opID )
     {
+        // Fill out action parameters
+        action.setType( HNID_AR_TYPE_ZONELIST );
 
-        // Allocate an action
-        HNIDActionRequest *action = new HNIDActionRequest();
+        std::cout << "Start action - client" << std::endl;
 
+        // Submit the action and block for response
+        m_actionQueue.postAndWait( &action );
+
+        std::cout << "Post action - client" << std::endl;
+
+        // Determine what happened
+        switch( action.getStatus() )
+        {
+            case HNRW_RESULT_SUCCESS:
+            {
+                // Set response content type
+                opData->responseSetChunkedTransferEncoding(true);
+                opData->responseSetContentType("application/json");
+
+                // Create a json root object
+                pjs::Array jsRoot;
+
+                //std::vector< HNIrrigationZone > zoneList;
+                //m_schedule.getZoneList( zoneList );
+
+                for( std::vector< HNIrrigationZone >::iterator zit = action.refZoneList().begin(); zit != action.refZoneList().end(); zit++ )
+                { 
+                    pjs::Object znObj;
+
+                    znObj.set( "zoneid", zit->getID() );
+                    znObj.set( "name", zit->getName() );
+                    znObj.set( "description", zit->getDesc() );
+                    znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
+                    znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
+                    znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
+                    znObj.set( "swidList", zit->getSWIDListStr() );
+
+                    jsRoot.add( znObj );
+                }
+ 
+                // Render the response
+                std::ostream& ostr = opData->responseSend();
+                try
+                {
+                    // Write out the generated json
+                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+                }
+                catch( ... )
+                {
+                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                    return;
+                }
+
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            }
+            break;
+
+            case HNRW_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+
+            case HNRW_RESULT_TIMEOUT:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+        }
+
+#if 0
         // Fill out action parameters
 
         std::cout << "Start action - client" << std::endl;
@@ -1011,12 +1129,12 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+#endif
     }
     // GET "/hnode2/irrigation/zones/{zoneid}"
     else if( "getZoneInfo" == opID )
     {
         std::string zoneID;
-        HNIrrigationZone zone;
 
         if( opData->getParam( "zoneid", zoneID ) == true )
         {
@@ -1025,6 +1143,69 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
+        // Fill out action parameters
+        action.setType( HNID_AR_TYPE_ZONEINFO );
+        action.setZoneID( zoneID );
+
+        std::cout << "Start action - client" << std::endl;
+
+        // Submit the action and block for response
+        m_actionQueue.postAndWait( &action );
+
+        std::cout << "Post action - client" << std::endl;
+
+        // Determine what happened
+        switch( action.getStatus() )
+        {
+            case HNRW_RESULT_SUCCESS:
+            {
+                // Set response content type
+                opData->responseSetChunkedTransferEncoding(true);
+                opData->responseSetContentType("application/json");
+
+                // Create a json root object
+                pjs::Object      jsRoot;
+
+                std::vector< HNIrrigationZone >::iterator zone = action.refZoneList().begin();
+
+                jsRoot.set( "zoneid", zone->getID() );
+                jsRoot.set( "name", zone->getName() );
+                jsRoot.set( "description", zone->getDesc() );
+                jsRoot.set( "secondsPerWeek", zone->getWeeklySeconds() );
+                jsRoot.set( "cyclesPerDay", zone->getTargetCyclesPerDay() );
+                jsRoot.set( "secondsMinCycle", zone->getMinimumCycleTimeSeconds() );
+                jsRoot.set( "swidList", zone->getSWIDListStr() );
+
+                // Render the response
+                std::ostream& ostr = opData->responseSend();
+                try
+                {
+                    // Write out the generated json
+                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+                }
+                catch( ... )
+                {
+                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                    return;
+                }
+
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            }
+            break;
+
+            case HNRW_RESULT_FAILURE:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+
+            case HNRW_RESULT_TIMEOUT:
+                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                return;
+            break;
+        }
+
+
+#if 0
         if( m_schedule.getZone( zoneID, zone ) != HNIS_RESULT_SUCCESS )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
@@ -1061,7 +1242,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
+#endif
     }
     // POST "/hnode2/irrigation/zones"
     else if( "createZone" == opID )

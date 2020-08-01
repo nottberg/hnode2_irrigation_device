@@ -16,6 +16,7 @@
 #include "HNSWDStatus.h"
 
 //#include "HNIrrigationZone.h"
+#include "HNIDActionRequest.h"
 #include "HNIrrigationSchedule.h"
 
 #define HNODE_IRRIGATION_DEVTYPE   "hnode2-irrigation-device"
@@ -55,7 +56,9 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNSWDStatus m_swdStatus;
         bool        m_getSWDHealthDetail;
 
-        HNReqWaitQueue m_actionQueue;
+        HNReqWaitQueue    m_actionQueue;
+        HNIDActionRequest *m_curAction;
+
         HNEPLoop       m_evLoop;
 
         HNodeDevice m_hnodeDev;
