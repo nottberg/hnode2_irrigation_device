@@ -19,6 +19,7 @@
 #include "Poco/Checksum.h"
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
+#include <Poco/StreamCopier.h>
 
 #include <hnode2/HNodeDevice.h>
 #include <hnode2/HNSwitchDaemon.h>
@@ -348,8 +349,6 @@ HNIrrigationDevice::getState()
     return m_state;
 }
 
-//m_hnodeDev.setName("sp1");
-
 int 
 HNIrrigationDevice::main( const std::vector<std::string>& args )
 {
@@ -479,6 +478,76 @@ HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
     return;
 }
 
+void
+HNIrrigationDevice::handleSWDSwitchInfoRsp( HNSWDPacketClient &packet )
+{
+    std::string msg;
+
+    // If response was spurious then ignore it
+    if( m_state != HNID_STATE_WAIT_SWINFO )
+    {
+        return;
+    }
+
+    // Decode the response and complete the action
+
+    // Get the json response string.
+    packet.getMsg( msg );
+    std::cout << "=== Switch Info Response Recieved - result code: " << packet.getResult() << " ===" << std::endl;
+
+    // Parse and format the response
+    try
+    {
+        std::string empty;
+        pjs::Parser parser;
+
+        // Attempt to parse the json
+        pdy::Var varRoot = parser.parse( msg );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        pjs::Array::Ptr jsSWList = jsRoot->getArray( "swList" );
+
+        // Clear rsp data
+        m_curAction->refSwitchList().clear();
+
+        // Walk through each switch list item
+        for( uint index = 0; index < jsSWList->size(); index++ )
+        {
+            if( jsSWList->isObject( index ) == false )
+                continue;
+                                
+            pjs::Object::Ptr jsSWInfo = jsSWList->getObject( index );
+
+            // Add the switch info to the response data
+            HNSWDSwitchInfo swInfo;
+            swInfo.setID( jsSWInfo->optValue( "swid", empty ) );
+            swInfo.setDesc( jsSWInfo->optValue( "description", empty ) );
+
+            m_curAction->refSwitchList().push_back( swInfo );
+        }
+
+        // Finish the request
+        m_curAction->complete( true );
+
+    }
+    catch( Poco::Exception ex )
+    {
+        // Error during response processing
+        std::cout << "  ERROR: Response message not parsable: " << msg << std::endl;
+        m_curAction->complete( false );
+    }
+
+    // Retire the request
+    m_curAction = NULL;
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+
+
 bool
 HNIrrigationDevice::handleSWDPacket()
 {
@@ -515,32 +584,16 @@ HNIrrigationDevice::handleSWDPacket()
         {
             handleSWDScheduleUpdateRsp( packet );
         }
+        break;
+
+        case HNSWD_PTYPE_SWINFO_RSP:
+        {
+            handleSWDSwitchInfoRsp( packet );
+        }
+        break;
     }
 
     return false;
-}
-
-bool
-HNIrrigationDevice::getUniqueZoneID( HNIDActionRequest *action )
-{
-    char tmpID[ 64 ];
-    uint idNum = 1;
-
-    do
-    {
-        sprintf( tmpID, "z%d", idNum );
-
-        if( m_schedule.hasZone( tmpID ) == false )
-        {
-            action->setZoneID( tmpID );
-            return true;
-        }
-
-        idNum += 1;
-
-    }while( idNum < 2000 );
-
-    return false;    
 }
 
 void
@@ -554,171 +607,8 @@ HNIrrigationDevice::fdEvent( int sfd )
     }
     else if( sfd == m_actionQueue.getEventFD() )
     {
-        // if( getState() != HNID_STATE_READY )
-        //    return;
-
-        // Handle next request
-
-        // Pop the action from the queue
-        m_curAction = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
-
-        std::cout << "Aquired action - type: " << m_curAction->getType() << std::endl;
-
-        switch( m_curAction->getType() )
-        {
-            case HNID_AR_TYPE_SWLIST:
-                // Done with this request
-                m_curAction->complete( true );
-                m_curAction = NULL;
-            break;
-
-            case HNID_AR_TYPE_ZONELIST:
-                // Populate the zone list in the action
-                m_schedule.getZoneList( m_curAction->refZoneList() );
-
-                // Done with this request
-                m_curAction->complete( true );
-                m_curAction = NULL;
-            break;
-
-            case HNID_AR_TYPE_ZONEINFO:
-            {
-                HNIrrigationZone zone;
-
-                if( m_schedule.getZone( m_curAction->getZoneID(), zone ) != HNIS_RESULT_SUCCESS )
-                {
-                    //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-                    m_curAction->complete(false);
-                    m_curAction = NULL;
-                    return; 
-                }
-
-                // Populate the zone list in the action
-                m_curAction->refZoneList().push_back( zone );
-
-                // Done with this request
-                m_curAction->complete( true );
-                m_curAction = NULL;
-            }
-            break;
-
-            case HNID_AR_TYPE_ZONECREATE:
-            {
-                // Allocate a unique zone identifier
-                if( getUniqueZoneID( m_curAction ) == false )
-                {
-                    // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                    m_curAction->complete(false);
-                    m_curAction = NULL;
-                    return; 
-                }
-
-                // Create the zone record
-                HNIrrigationZone *zone = m_schedule.updateZone( m_curAction->getZoneID() );
-
-                // Update the fields of the zone record.
-                m_curAction->applyZoneUpdate( zone );
-
-                // Write any update to the config file
-                updateConfig();
-
-                // Calculate the new schedule
-                HNIS_RESULT_T result = m_schedule.buildSchedule();
-                if( result != HNIS_RESULT_SUCCESS )
-                {
-                    //return HNID_RESULT_SERVER_ERROR; 
-                    m_curAction->complete(false);
-                    m_curAction = NULL;
-                    return;
-                }
-
-                // Done with this request
-                m_curAction->complete( true );
-                m_curAction = NULL;
-            }
-            break;
-
-            case HNID_AR_TYPE_ZONEUPDATE:
-            {
-                if( m_schedule.hasZone( m_curAction->getZoneID() ) == false )
-                {
-                    // Zone doesn't exist, return error
-                    // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-                    m_curAction->complete(false);
-                    m_curAction = NULL;
-                    return; 
-                }
-
-                // Get a point to zone record
-                HNIrrigationZone *zone = m_schedule.updateZone( m_curAction->getZoneID() );
-
-                // Update the fields of the zone record.
-                m_curAction->applyZoneUpdate( zone );
-
-                // Write any update to the config file
-                updateConfig();
-
-                // Calculate the new schedule
-                HNIS_RESULT_T result = m_schedule.buildSchedule();
-                if( result != HNIS_RESULT_SUCCESS )
-                {
-                    //return HNID_RESULT_SERVER_ERROR; 
-                    m_curAction->complete(false);
-                    m_curAction = NULL;
-                    return;
-                }
-
-                // Done with this request
-                m_curAction->complete( true );
-                m_curAction = NULL;
-
-#if 0
-        // Make sure zone does exist
-        if( m_schedule.hasZone( zoneID ) == false )
-        {
-            // Zone already exists, return error
-            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-            opData->responseSend();
-            return; 
-        }
-
-        std::istream& bodyStream = opData->requestBody();
-        HNID_RESULT_T result = updateZone( zoneID, bodyStream );
-
-        switch( result )
-        {
-            case HNID_RESULT_SUCCESS:
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            break;
-
-            case HNID_RESULT_BAD_REQUEST:
-                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-            break;
-
-            default:
-            case HNID_RESULT_SERVER_ERROR:
-            case HNID_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-
-        }
-
-        // Send the response
-        opData->responseSend();
-#endif
-
-
-            }
-            break;
-
-            default:
-                // Signal failure
-                m_curAction->complete( false );
-                m_curAction = NULL;
-            break;
-        }
+        startAction();
     }
-
 }
 
 void
@@ -878,161 +768,19 @@ HNIrrigationDevice::updateConfig()
     return HNID_RESULT_SUCCESS;
 }
 
-#if 0
-HNID_RESULT_T
-HNIrrigationDevice::updateZone( std::string zoneID, std::istream& bodyStream )
-{
-    // Parse the json body of the request
-    try
-    {
-        // Attempt to parse the json    
-        pjs::Parser parser;
-        pdy::Var varRoot = parser.parse( bodyStream );
-
-        // Get a pointer to the root object
-        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-        HNIrrigationZone *zone = m_schedule.updateZone( zoneID );
-
-        if( jsRoot->has( "name" ) )
-        {
-            zone->setName( jsRoot->getValue<std::string>( "name" ) );
-        }
-
-        if( jsRoot->has( "description" ) )
-        {
-            zone->setDesc( jsRoot->getValue<std::string>( "description" ) );
-        }
-
-        if( jsRoot->has( "secondsPerWeek" ) )
-        {
-            zone->setWeeklySeconds( jsRoot->getValue<uint>( "secondsPerWeek" ) );
-        }
-
-        if( jsRoot->has( "cyclesPerDay" ) )
-        {
-            zone->setTargetCyclesPerDay( jsRoot->getValue<uint>( "cyclesPerDay" ) );
-        }
-
-        if( jsRoot->has( "secondsMinCycle" ) )
-        {
-            zone->setMinimumCycleTimeSeconds( jsRoot->getValue<uint>( "secondsMinCycle" ) );
-        }
-
-        if( jsRoot->has( "swidList" ) )
-        {
-            zone->setSWIDList( jsRoot->getValue<std::string>( "swidList" ) );
-        }
-        
-        if( zone->validateSettings() != HNIS_RESULT_SUCCESS )
-        {
-            std::cout << "updateZone validate failed" << std::endl;
-            // zoneid parameter is required
-            return HNID_RESULT_BAD_REQUEST;
-        }        
-    }
-    catch( Poco::Exception ex )
-    {
-        std::cout << "updateZone exception: " << ex.displayText() << std::endl;
-        // Request body was not understood
-        return HNID_RESULT_BAD_REQUEST;
-    }
-
-    // Write any update to the config file
-    updateConfig();
-
-    // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule();
-    if( result != HNIS_RESULT_SUCCESS )
-    {
-        return HNID_RESULT_SERVER_ERROR;        
-    }
-
-    return HNID_RESULT_SUCCESS;
-}
-#endif
-
-
-
-HNID_RESULT_T
-HNIrrigationDevice::updateEvent( std::string eventID, std::istream& bodyStream )
-{
-    std::string rstStr;
-
-    // Parse the json body of the request
-    try
-    {
-        // Attempt to parse the json    
-        pjs::Parser parser;
-        pdy::Var varRoot = parser.parse( bodyStream );
-
-        // Get a pointer to the root object
-        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-        HNScheduleStaticEvent *event = m_schedule.updateEvent( eventID );
-
-        if( jsRoot->has( "type" ) )
-        {
-            event->setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-        }
-
-        if( jsRoot->has( "startTime" ) )
-        {
-            event->setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
-        }
-
-        if( jsRoot->has( "endTime" ) )
-        {
-            event->setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
-        }
-
-        if( jsRoot->has( "dayName" ) )
-        {
-            event->setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
-        }
-        
-        if( event->validateSettings() != HNIS_RESULT_SUCCESS )
-        {
-            std::cout << "updateEvent validate failed" << std::endl;
-            // zoneid parameter is required
-            return HNID_RESULT_BAD_REQUEST;
-        }        
-    }
-    catch( Poco::Exception ex )
-    {
-        std::cout << "updateEvent exception: " << ex.displayText() << std::endl;
-        // Request body was not understood
-        return HNID_RESULT_BAD_REQUEST;
-    }
-
-    // Write any update to the config file
-    updateConfig();
-
-    // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule();
-    if( result != HNIS_RESULT_SUCCESS )
-    {
-        return HNID_RESULT_SERVER_ERROR;        
-    }
-
-    return HNID_RESULT_SUCCESS;
-}
-
 bool
-HNIrrigationDevice::getUniqueEventID( std::string &id )
+HNIrrigationDevice::getUniqueZoneID( HNIDActionRequest *action )
 {
     char tmpID[ 64 ];
     uint idNum = 1;
 
-    id.clear();
-
     do
     {
-        sprintf( tmpID, "e%d", idNum );
+        sprintf( tmpID, "z%d", idNum );
 
-        if( m_schedule.hasEvent( tmpID ) == false )
+        if( m_schedule.hasZone( tmpID ) == false )
         {
-            id = tmpID;
+            action->setZoneID( tmpID );
             return true;
         }
 
@@ -1041,6 +789,288 @@ HNIrrigationDevice::getUniqueEventID( std::string &id )
     }while( idNum < 2000 );
 
     return false;    
+}
+
+bool
+HNIrrigationDevice::getUniqueEventID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    do
+    {
+        sprintf( tmpID, "e%d", idNum );
+
+        if( m_schedule.hasEvent( tmpID ) == false )
+        {
+            action->setEventID( tmpID );
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
+typedef enum HNIDStartActionBitsEnum
+{
+    HNID_ACTBIT_CLEAR     = 0x0000,
+    HNID_ACTBIT_COMPLETE  = 0x0001,
+    HNID_ACTBIT_UPDATE    = 0x0002,
+    HNID_ACTBIT_RECALCSCH = 0x0004,
+    HNID_ACTBIT_ERROR     = 0x0008,
+    HNID_ACTBIT_SENDREQ   = 0x0010
+} HNID_ACTBIT_T;
+
+void
+HNIrrigationDevice::startAction()
+{
+    HNSWDPacketClient packet;
+    HNID_ACTBIT_T  actBits = HNID_ACTBIT_CLEAR;
+
+    // Verify that we are in a state that will allow actions to start
+//    if( getState() != HNID_STATE_READY )
+//    {
+//        return;
+//    }
+
+    // Pop the action from the queue
+    m_curAction = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
+
+    std::cout << "Action aquired - type: " << m_curAction->getType() << std::endl;
+
+    switch( m_curAction->getType() )
+    {
+        case HNID_AR_TYPE_SWLIST:
+        {
+            // Request the switch list information 
+            // from the switch list deamon.
+            setState( HNID_STATE_WAIT_SWINFO );
+            packet.setType( HNSWD_PTYPE_SWINFO_REQ );
+            actBits = HNID_ACTBIT_SENDREQ;
+        }
+        break;
+
+        case HNID_AR_TYPE_ZONELIST:
+            // Populate the zone list in the action
+            m_schedule.getZoneList( m_curAction->refZoneList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_ZONEINFO:
+        {
+            HNIrrigationZone zone;
+
+            if( m_schedule.getZone( m_curAction->getZoneID(), zone ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refZoneList().push_back( zone );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_ZONECREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueZoneID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNIrrigationZone *zone = m_schedule.updateZone( m_curAction->getZoneID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyZoneUpdate( zone );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_ZONEUPDATE:
+        {
+            if( m_schedule.hasZone( m_curAction->getZoneID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNIrrigationZone *zone = m_schedule.updateZone( m_curAction->getZoneID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyZoneUpdate( zone );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_ZONEDELETE:
+        {
+            // Remove the zone record
+            m_schedule.deleteZone( m_curAction->getZoneID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+
+        case HNID_AR_TYPE_SCHINFO:
+        {
+            // Get a copy of the schedule as JSON
+            // std::ostream& ostr = opData->responseSend();
+            if( m_schedule.getScheduleInfoJSON( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_SEVTLIST:
+            // Populate the event list in the action
+            m_schedule.getEventList( m_curAction->refEventList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_SEVTINFO:
+        {
+            HNScheduleStaticEvent event;
+
+            if( m_schedule.getEvent( m_curAction->getEventID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refEventList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_SEVTCREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueEventID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNScheduleStaticEvent *event = m_schedule.updateEvent( m_curAction->getEventID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyEventUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEVTUPDATE:
+        {
+            if( m_schedule.hasEvent( m_curAction->getEventID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNScheduleStaticEvent *event = m_schedule.updateEvent( m_curAction->getEventID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyEventUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEVTDELETE:
+        {
+            // Remove the zone record
+            m_schedule.deleteEvent( m_curAction->getEventID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        default:
+            actBits = HNID_ACTBIT_ERROR;
+        break;
+    }
+
+    // The configuration was changed so commit
+    // it to persistent copy
+    if( actBits & HNID_ACTBIT_UPDATE )
+    {
+        // Commit config update
+        updateConfig();
+    }
+
+    // Configuration changed so recalculate the
+    // schedule layout
+    if( actBits & HNID_ACTBIT_RECALCSCH )
+    {
+        // Calculate the new schedule
+        HNIS_RESULT_T result = m_schedule.buildSchedule();
+        if( result != HNIS_RESULT_SUCCESS )
+        {
+            actBits = HNID_ACTBIT_ERROR;
+        }
+    }
+
+    // Send a request down to the switch daemon
+    if( actBits & HNID_ACTBIT_SENDREQ )
+    {
+        std::cout << "Sending a switch deamon request..." << std::endl;
+        packet.sendAll( m_swdFD );
+    }
+
+    // There was an error, complete with error
+    if( actBits & HNID_ACTBIT_ERROR )
+    {
+        // Signal failure
+        m_curAction->complete( false );
+        m_curAction = NULL;
+        return;
+    }
+
+    // Request has been completed successfully
+    if( actBits & HNID_ACTBIT_COMPLETE )
+    {
+        // Done with this request
+        m_curAction->complete( true );
+        m_curAction = NULL;
+    }
+
 }
 
 void 
@@ -1057,139 +1087,12 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     // GET "/hnode2/irrigation/switches"
     if( "getSwitchList" == opID )
     {
-        // Fill out action parameters
         action.setType( HNID_AR_TYPE_SWLIST );
-
-        std::cout << "Start action - client" << std::endl;
-
-        // Submit the action and block for response
-        m_actionQueue.postAndWait( &action );
-
-        std::cout << "Post action - client" << std::endl;
-
-        // Determine what happened
-        switch( action.getStatus() )
-        {
-            case HNRW_RESULT_SUCCESS:
-            {
-                // Set response content type
-                opData->responseSetChunkedTransferEncoding(true);
-                opData->responseSetContentType("application/json");
-
-                // Create a json root object
-                pjs::Array jsRoot;
-
-                pjs::Object swObj;
-
-                swObj.set( "swid", "s1" );
-                swObj.set( "description", "Garden Drip" );
- 
-                jsRoot.add( swObj );
-
-                swObj.set( "swid", "s2" );
-                swObj.set( "description", "West Front" );
- 
-                jsRoot.add( swObj );
-
-                // Render the response
-                std::ostream& ostr = opData->responseSend();
-                try 
-                {
-                    // Write out the generated json
-                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-                }
-                catch( ... )
-                {
-                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                    return;
-                }
-
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            }
-            break;
-
-            case HNRW_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-
-            case HNRW_RESULT_TIMEOUT:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-        }
-
     }
     // GET "/hnode2/irrigation/zones"
     else if( "getZoneList" == opID )
     {
-        // Fill out action parameters
         action.setType( HNID_AR_TYPE_ZONELIST );
-
-        std::cout << "Start action - client" << std::endl;
-
-        // Submit the action and block for response
-        m_actionQueue.postAndWait( &action );
-
-        std::cout << "Post action - client" << std::endl;
-
-        // Determine what happened
-        switch( action.getStatus() )
-        {
-            case HNRW_RESULT_SUCCESS:
-            {
-                // Set response content type
-                opData->responseSetChunkedTransferEncoding(true);
-                opData->responseSetContentType("application/json");
-
-                // Create a json root object
-                pjs::Array jsRoot;
-
-                //std::vector< HNIrrigationZone > zoneList;
-                //m_schedule.getZoneList( zoneList );
-
-                for( std::vector< HNIrrigationZone >::iterator zit = action.refZoneList().begin(); zit != action.refZoneList().end(); zit++ )
-                { 
-                    pjs::Object znObj;
-
-                    znObj.set( "zoneid", zit->getID() );
-                    znObj.set( "name", zit->getName() );
-                    znObj.set( "description", zit->getDesc() );
-                    znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
-                    znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
-                    znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
-                    znObj.set( "swidList", zit->getSWIDListStr() );
-
-                    jsRoot.add( znObj );
-                }
- 
-                // Render the response
-                std::ostream& ostr = opData->responseSend();
-                try
-                {
-                    // Write out the generated json
-                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-                }
-                catch( ... )
-                {
-                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                    return;
-                }
-
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            }
-            break;
-
-            case HNRW_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-
-            case HNRW_RESULT_TIMEOUT:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-        }
     }
     // GET "/hnode2/irrigation/zones/{zoneid}"
     else if( "getZoneInfo" == opID )
@@ -1203,121 +1106,16 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        // Fill out action parameters
         action.setType( HNID_AR_TYPE_ZONEINFO );
         action.setZoneID( zoneID );
-
-        std::cout << "Start action - client" << std::endl;
-
-        // Submit the action and block for response
-        m_actionQueue.postAndWait( &action );
-
-        std::cout << "Post action - client" << std::endl;
-
-        // Determine what happened
-        switch( action.getStatus() )
-        {
-            case HNRW_RESULT_SUCCESS:
-            {
-                // Set response content type
-                opData->responseSetChunkedTransferEncoding(true);
-                opData->responseSetContentType("application/json");
-
-                // Create a json root object
-                pjs::Object      jsRoot;
-
-                std::vector< HNIrrigationZone >::iterator zone = action.refZoneList().begin();
-
-                jsRoot.set( "zoneid", zone->getID() );
-                jsRoot.set( "name", zone->getName() );
-                jsRoot.set( "description", zone->getDesc() );
-                jsRoot.set( "secondsPerWeek", zone->getWeeklySeconds() );
-                jsRoot.set( "cyclesPerDay", zone->getTargetCyclesPerDay() );
-                jsRoot.set( "secondsMinCycle", zone->getMinimumCycleTimeSeconds() );
-                jsRoot.set( "swidList", zone->getSWIDListStr() );
-
-                // Render the response
-                std::ostream& ostr = opData->responseSend();
-                try
-                {
-                    // Write out the generated json
-                    pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-                }
-                catch( ... )
-                {
-                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                    return;
-                }
-
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            }
-            break;
-
-            case HNRW_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-
-            case HNRW_RESULT_TIMEOUT:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                return;
-            break;
-        }
     }
     // POST "/hnode2/irrigation/zones"
     else if( "createZone" == opID )
     {
-        std::cout << "CreateZone 1" << std::endl;
-
-        // Fill out action parameters
         action.setType( HNID_AR_TYPE_ZONECREATE );
 
         std::istream& bodyStream = opData->requestBody();
         action.setZoneUpdate( bodyStream );
-
-        std::cout << "Start action - client" << std::endl;
-
-        // Submit the action and block for response
-        m_actionQueue.postAndWait( &action );
-
-        std::cout << "Post action - client" << std::endl;
-
-        // Determine what happened
-        switch( action.getStatus() )
-        {
-            case HNRW_RESULT_SUCCESS:
-                opData->responseSetCreated( action.getZoneID() );
-                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
-            break;
-
-            case HNRW_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-
-#if 0
-                case HNID_RESULT_BAD_REQUEST:
-                    std::cout << "CreateZone 2.1" << std::endl;
-                    opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-                break;
-
-                default:
-                case HNID_RESULT_SERVER_ERROR:
-                case HNID_RESULT_FAILURE:
-                    std::cout << "CreateZone 2.2" << std::endl;
-                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                break;
-#endif
-
-            break;
-
-            case HNRW_RESULT_TIMEOUT:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-        }
-
-        std::cout << "CreateZone 3" << std::endl;
-
-        // Send the response
-        opData->responseSend();
     }
     // PUT "/hnode2/irrigation/zones/{zoneid}"
     else if( "updateZone" == opID )
@@ -1332,94 +1130,11 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             opData->responseSend();
             return; 
         }
-
-        std::cout << "UpdateZone 1" << std::endl;
-
-        // Fill out action parameters
         action.setType( HNID_AR_TYPE_ZONEUPDATE );
         action.setZoneID( zoneID );
 
         std::istream& bodyStream = opData->requestBody();
         action.setZoneUpdate( bodyStream );
-
-        std::cout << "Start action - client" << std::endl;
-
-        // Submit the action and block for response
-        m_actionQueue.postAndWait( &action );
-
-        std::cout << "Post action - client" << std::endl;
-
-        // Determine what happened
-        switch( action.getStatus() )
-        {
-            case HNRW_RESULT_SUCCESS:
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            break;
-
-            case HNRW_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-
-#if 0
-                case HNID_RESULT_BAD_REQUEST:
-                    std::cout << "UpdateZone 2.1" << std::endl;
-                    opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-                break;
-
-                default:
-                case HNID_RESULT_SERVER_ERROR:
-                case HNID_RESULT_FAILURE:
-                    std::cout << "UpdateZone 2.2" << std::endl;
-                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-                break;
-#endif
-
-            break;
-
-            case HNRW_RESULT_TIMEOUT:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-        }
-
-        std::cout << "UpdateZone 3" << std::endl;
-
-        // Send the response
-        opData->responseSend();
-
-#if 0
-
-        // Make sure zone does exist
-        if( m_schedule.hasZone( zoneID ) == false )
-        {
-            // Zone already exists, return error
-            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-            opData->responseSend();
-            return; 
-        }
-
-        std::istream& bodyStream = opData->requestBody();
-        HNID_RESULT_T result = updateZone( zoneID, bodyStream );
-
-        switch( result )
-        {
-            case HNID_RESULT_SUCCESS:
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            break;
-
-            case HNID_RESULT_BAD_REQUEST:
-                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-            break;
-
-            default:
-            case HNID_RESULT_SERVER_ERROR:
-            case HNID_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-
-        }
-
-        // Send the response
-        opData->responseSend();
-#endif
     }
     // DELETE "/hnode2/irrigation/zones/{zoneid}"
     else if( "deleteZone" == opID )
@@ -1431,125 +1146,27 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         {
             // zoneid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
             return; 
         }
 
-        // Remove the zone record
-        m_schedule.deleteZone( zoneID );
-
-        // Write the delete to the config file
-        updateConfig();
-
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
-        // Send the response
-        opData->responseSend();
-    }
-    else if( "getScheduleInfo" == opID )
-    {
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        // Send the response
-        std::ostream& ostr = opData->responseSend();
-        if( m_schedule.getScheduleInfoJSON( ostr ) != HNIS_RESULT_SUCCESS )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return;
-        }
-
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        action.setType( HNID_AR_TYPE_ZONEDELETE );
+        action.setZoneID( zoneID );
     }
     else if( "getStaticEventList" == opID )
     {
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        // Create a json root object
-        pjs::Array jsRoot;
-
-        std::vector< HNScheduleStaticEvent > eventList;
-        m_schedule.getEventList( eventList );
-
-        for( std::vector< HNScheduleStaticEvent >::iterator eit = eventList.begin(); eit != eventList.end(); eit++ )
-        { 
-           pjs::Object evObj;
-
-           evObj.set( "eventid", eit->getID() );
-           evObj.set( "type", eit->getTypeStr() );
-           evObj.set( "startTime", eit->getStartTime().getHMSStr() );
-           evObj.set( "endTime", eit->getEndTime().getHMSStr() );
-           evObj.set( "dayName", eit->getDayName() );
-
-           jsRoot.add( evObj );
-        }
- 
-        // Render the response
-        std::ostream& ostr = opData->responseSend();
-        try
-        {
-            // Write out the generated json
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-        }
-        catch( ... )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            return;
-        }
-
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        action.setType( HNID_AR_TYPE_SEVTLIST );
     }
     else if( "createStaticEvent" == opID )
     {
-        std::string eventID;
- 
-        // Allocate a unique zone identifier
-        if( getUniqueEventID( eventID ) == false )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return; 
-        }
-
-        std::cout << "CreateEvent 1" << std::endl;
+        action.setType( HNID_AR_TYPE_SEVTCREATE );
 
         std::istream& bodyStream = opData->requestBody();
-        HNID_RESULT_T result = updateEvent( eventID, bodyStream );
-
-        std::cout << "CreateEvent 2" << std::endl;
-
-        switch( result )
-        {
-            case HNID_RESULT_SUCCESS:
-                opData->responseSetCreated( eventID );
-                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
-            break;
-
-            case HNID_RESULT_BAD_REQUEST:
-                std::cout << "CreateEvent 2.1" << std::endl;
-                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-            break;
-
-            default:
-            case HNID_RESULT_SERVER_ERROR:
-            case HNID_RESULT_FAILURE:
-                std::cout << "CreateEvent 2.2" << std::endl;
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-        }
-
-        std::cout << "CreateEvent 3" << std::endl;
-
-        // Send the response
-        opData->responseSend();
+        action.setZoneUpdate( bodyStream );
     }
     else if( "getStaticEvent" == opID )
     {
         std::string eventID;
-        HNScheduleStaticEvent event;
 
         if( opData->getParam( "eventid", eventID ) == true )
         {
@@ -1558,47 +1175,14 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        if( m_schedule.getEvent( eventID, event ) != HNIS_RESULT_SUCCESS )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-            opData->responseSend();
-            return; 
-        }
-
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding(true);
-        opData->responseSetContentType("application/json");
-
-        // Create a json root object
-        pjs::Object jsRoot;
-
-        jsRoot.set( "eventid", event.getID() );
-        jsRoot.set( "type", event.getTypeStr() );
-        jsRoot.set( "startTime", event.getStartTime().getHMSStr() );
-        jsRoot.set( "endTime", event.getEndTime().getHMSStr() );
-        jsRoot.set( "dayName", event.getDayName() );
-
-        // Render the response
-        std::ostream& ostr = opData->responseSend();
-        try
-        {
-            // Write out the generated json
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 );
-        }
-        catch( ... )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            return;
-        }
-
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
+        action.setType( HNID_AR_TYPE_SEVTINFO );
+        action.setZoneID( eventID );
     }
     else if( "updateStaticEvent" == opID )
     {
         std::string eventID;
 
-        // Make sure eventid was provided
+        // Make sure zoneid was provided
         if( opData->getParam( "eventid", eventID ) == true )
         {
             // zoneid parameter is required
@@ -1607,73 +1191,100 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        // Make sure event does exist
-        if( m_schedule.hasZone( eventID ) == false )
-        {
-            // Zone already exists, return error
-            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
-            opData->responseSend();
-            return; 
-        }
+        action.setType( HNID_AR_TYPE_SEVTUPDATE );
+        action.setZoneID( eventID );
 
         std::istream& bodyStream = opData->requestBody();
-        HNID_RESULT_T result = updateEvent( eventID, bodyStream );
-
-        switch( result )
-        {
-            case HNID_RESULT_SUCCESS:
-                opData->responseSetStatusAndReason( HNR_HTTP_OK );
-            break;
-
-            case HNID_RESULT_BAD_REQUEST:
-                opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-            break;
-
-            default:
-            case HNID_RESULT_SERVER_ERROR:
-            case HNID_RESULT_FAILURE:
-                opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            break;
-
-        }
-
-        // Send the response
-        opData->responseSend();
+        action.setEventUpdate( bodyStream );
     }
     else if( "deleteStaticEvent" == opID )
     {
         std::string eventID;
 
-        // Make sure eventid was provided
+        // Make sure zoneid was provided
         if( opData->getParam( "eventid", eventID ) == true )
         {
             // eventid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
             return; 
         }
 
-        // Remove the zone record
-        m_schedule.deleteZone( eventID );
-
-        // Write the delete to the config file
-        updateConfig();
-
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
-        // Send the response
-        opData->responseSend();
-
+        action.setType( HNID_AR_TYPE_SEVTDELETE );
+        action.setZoneID( eventID );
+    }
+    else if( "getScheduleInfo" == opID )
+    {
+        action.setType( HNID_AR_TYPE_SCHINFO );
     }
     else
     {
         // Send back not implemented
         opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
         opData->responseSend();
+        return;
     }
 
+    std::cout << "Start Action - client: " << action.getType() << std::endl;
+
+    // Submit the action and block for response
+    m_actionQueue.postAndWait( &action );
+
+    std::cout << "Finish Action - client" << std::endl;
+
+    // Determine what happened
+    switch( action.getStatus() )
+    {
+        case HNRW_RESULT_SUCCESS:
+        {
+            std::string cType;
+            std::string objID;
+
+
+            // See if response content should be generated
+            if( action.hasRspContent( cType ) )
+            {
+                // Set response content type
+                opData->responseSetChunkedTransferEncoding( true );
+                opData->responseSetContentType( cType );
+
+                // Render any response content
+                std::ostream& ostr = opData->responseSend();
+            
+                if( action.generateRspContent( ostr ) == true )
+                {
+                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                    opData->responseSend();
+                    return;
+                }
+            }
+
+            // Check if a new object was created.
+            if( action.hasNewObject( objID ) )
+            {
+                // Object was created return info
+                opData->responseSetCreated( objID );
+                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
+            }
+            else
+            {
+                // Request was successful
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            }
+        }
+        break;
+
+        case HNRW_RESULT_FAILURE:
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+        break;
+
+        case HNRW_RESULT_TIMEOUT:
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+        break;
+    }
+
+    // Return to caller
+    opData->responseSend();
 }
-
-
-
 
 

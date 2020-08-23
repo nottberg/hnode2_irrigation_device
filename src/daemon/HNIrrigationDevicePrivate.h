@@ -28,7 +28,8 @@ typedef enum HNIrrigationDeviceProcessStateEnum
   HNID_STATE_READY,
   HNID_STATE_CONNECT_RECOVER,
   HNID_STATE_SEND_SET_SCHEDULE,
-  HNID_STATE_WAIT_SET_SCHEDULE
+  HNID_STATE_WAIT_SET_SCHEDULE,
+  HNID_STATE_WAIT_SWINFO,
 }HNID_STATE_T;
 
 typedef enum HNIrrigationDeviceResultEnum
@@ -78,19 +79,17 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNID_RESULT_T updateConfig();
 
         bool getUniqueZoneID( HNIDActionRequest *action );
-
-        //HNID_RESULT_T updateZone( std::string zoneID, std::istream& bodyStream );
-
-        bool getUniqueEventID( std::string &id );
-
-        HNID_RESULT_T updateEvent( std::string eventID, std::istream& bodyStream );
+        bool getUniqueEventID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 
         bool handleSWDPacket();
 
+        void startAction();
+
         void handleSWDStatus( HNSWDPacketClient &packet );
         void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
+        void handleSWDSwitchInfoRsp( HNSWDPacketClient &packet );
 
     protected:
         // HNDevice REST callback

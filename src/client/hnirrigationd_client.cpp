@@ -57,6 +57,8 @@ class HNIrrigationClient: public Application
         bool _updateStaticEventRequested = false;
         bool _deleteStaticEventRequested = false;
 
+        bool _switchListRequested = false;
+
         bool _hostPresent         = false;
         bool _namePresent         = false;
         bool _descPresent         = false;
@@ -122,6 +124,8 @@ class HNIrrigationClient: public Application
 		    options.addOption( Option("help", "h", "display help information on command line arguments").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleHelp)));
 
             options.addOption( Option("device-info", "i", "Request Hnode2 Device Info").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("switch-list", "", "Request the switch list").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("schedule", "s", "Request the current schedule").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -201,6 +205,8 @@ class HNIrrigationClient: public Application
                 _updateStaticEventRequested = true;
             else if( "delete-event" == name )
                 _deleteStaticEventRequested = true;
+            else if( "switch-list" == name )
+                _switchListRequested = true;
             else if( "schedule" == name )
                 _getScheduleRequested = true;
             else if( "host" == name )
@@ -1104,6 +1110,32 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
+        void getSwitchList()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/switches" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
         int main( const ArgVec& args )
         {
             uint sockfd = 0;
@@ -1163,6 +1195,10 @@ class HNIrrigationClient: public Application
             else if( _deleteStaticEventRequested == true )
             {
                 deleteStaticEventRequest();
+            }
+            else if( _switchListRequested == true )
+            {
+                getSwitchList();
             }
 
 #if 0

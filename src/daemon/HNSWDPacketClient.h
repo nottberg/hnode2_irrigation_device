@@ -13,6 +13,23 @@ typedef enum HNSWDPacketClientResultEnum
     HNSWDP_RESULT_FAILURE
 }HNSWDP_RESULT_T;
 
+class HNSWDSwitchInfo
+{
+    private:
+        std::string m_id;
+        std::string m_desc;
+
+    public:
+        HNSWDSwitchInfo();
+       ~HNSWDSwitchInfo();
+
+        void setID( std::string value );
+        void setDesc( std::string value );
+
+        std::string getID();
+        std::string getDesc();
+};
+
 class HNSWDMsgBuffer
 {
     private:

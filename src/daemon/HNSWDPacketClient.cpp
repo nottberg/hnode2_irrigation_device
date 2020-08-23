@@ -3,6 +3,40 @@
 
 #include "HNSWDPacketClient.h"
 
+HNSWDSwitchInfo::HNSWDSwitchInfo()
+{
+
+}
+
+HNSWDSwitchInfo::~HNSWDSwitchInfo()
+{
+
+}
+
+void 
+HNSWDSwitchInfo::setID( std::string value )
+{
+    m_id =  value;
+}
+
+void 
+HNSWDSwitchInfo::setDesc( std::string value )
+{
+    m_desc = value;
+}
+
+std::string 
+HNSWDSwitchInfo::getID()
+{
+    return m_id;
+}
+
+std::string 
+HNSWDSwitchInfo::getDesc()
+{
+    return m_desc;
+}
+
 HNSWDMsgBuffer::HNSWDMsgBuffer()
 {
     bufPtr = NULL;
