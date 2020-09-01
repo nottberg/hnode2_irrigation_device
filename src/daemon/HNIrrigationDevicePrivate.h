@@ -79,7 +79,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNID_RESULT_T updateConfig();
 
         bool getUniqueZoneID( HNIDActionRequest *action );
-        bool getUniqueEventID( HNIDActionRequest *action );
+        bool getUniqueCriteriaID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 

@@ -31,7 +31,7 @@ HNIDActionRequest::setZoneID( std::string value )
 }
 
 void 
-HNIDActionRequest::setEventID( std::string value )
+HNIDActionRequest::setCriteriaID( std::string value )
 {
     m_eventID = value;
 }
@@ -49,7 +49,7 @@ HNIDActionRequest::getZoneID()
 }
 
 std::string 
-HNIDActionRequest::getEventID()
+HNIDActionRequest::getCriteriaID()
 {
     return m_eventID;
 }
@@ -159,13 +159,13 @@ HNIDActionRequest::applyZoneUpdate( HNIrrigationZone *tgtZone )
 
 
 bool
-HNIDActionRequest::setEventUpdate( std::istream& bodyStream )
+HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 {
     std::string rstStr;
-    HNScheduleStaticEvent event;
+    HNScheduleCriteria event;
 
     // Clear the update mask
-    m_eventUpdateMask = HNID_EU_FLDMASK_CLEAR;
+    m_eventUpdateMask = HNID_CU_FLDMASK_CLEAR;
 
     // Parse the json body of the request
     try
@@ -177,35 +177,35 @@ HNIDActionRequest::setEventUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNScheduleStaticEvent *event = m_schedule.updateEvent( eventID );
+        //HNScheduleCriteria *event = m_schedule.updateCriteria( eventID );
 
         if( jsRoot->has( "type" ) )
         {
             event.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-            m_eventUpdateMask |= HNID_EU_FLDMASK_TYPE;
+            m_eventUpdateMask |= HNID_CU_FLDMASK_TYPE;
         }
 
         if( jsRoot->has( "startTime" ) )
         {
             event.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
-            m_eventUpdateMask |= HNID_EU_FLDMASK_START;
+            m_eventUpdateMask |= HNID_CU_FLDMASK_START;
         }
 
         if( jsRoot->has( "endTime" ) )
         {
             event.setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
-            m_eventUpdateMask |= HNID_EU_FLDMASK_END;
+            m_eventUpdateMask |= HNID_CU_FLDMASK_END;
         }
 
         if( jsRoot->has( "dayName" ) )
         {
             event.setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
-            m_eventUpdateMask |= HNID_EU_FLDMASK_DAYNAME;
+            m_eventUpdateMask |= HNID_CU_FLDMASK_DAYNAME;
         }
         
         if( event.validateSettings() != HNIS_RESULT_SUCCESS )
         {
-            std::cout << "updateEvent validate failed" << std::endl;
+            std::cout << "updateCriteria validate failed" << std::endl;
             // zoneid parameter is required
             //return HNID_RESULT_BAD_REQUEST;
             return true;
@@ -213,7 +213,7 @@ HNIDActionRequest::setEventUpdate( std::istream& bodyStream )
     }
     catch( Poco::Exception ex )
     {
-        std::cout << "updateEvent exception: " << ex.displayText() << std::endl;
+        std::cout << "updateCriteria exception: " << ex.displayText() << std::endl;
         // Request body was not understood
         //return HNID_RESULT_BAD_REQUEST;
         return true;
@@ -226,21 +226,21 @@ HNIDActionRequest::setEventUpdate( std::istream& bodyStream )
 }
 
 void 
-HNIDActionRequest::applyEventUpdate( HNScheduleStaticEvent *tgtEvent )
+HNIDActionRequest::applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria )
 {
-    HNScheduleStaticEvent *srcEvent = &m_eventList[0];
+    HNScheduleCriteria *srcCriteria = &m_eventList[0];
 
-    if( m_eventUpdateMask & HNID_EU_FLDMASK_TYPE )
-        tgtEvent->setType( srcEvent->getType() );
+    if( m_eventUpdateMask & HNID_CU_FLDMASK_TYPE )
+        tgtCriteria->setType( srcCriteria->getType() );
 
-    if( m_eventUpdateMask & HNID_EU_FLDMASK_START )
-        tgtEvent->setStartTime( srcEvent->getStartTime().getHMSStr() );
+    if( m_eventUpdateMask & HNID_CU_FLDMASK_START )
+        tgtCriteria->setStartTime( srcCriteria->getStartTime().getHMSStr() );
 
-    if( m_eventUpdateMask & HNID_EU_FLDMASK_END )
-        tgtEvent->setEndTime( srcEvent->getEndTime().getHMSStr() );
+    if( m_eventUpdateMask & HNID_CU_FLDMASK_END )
+        tgtCriteria->setEndTime( srcCriteria->getEndTime().getHMSStr() );
 
-    if( m_eventUpdateMask & HNID_EU_FLDMASK_DAYNAME )
-        tgtEvent->setDayIndexFromNameStr( srcEvent->getDayName() );
+    if( m_eventUpdateMask & HNID_CU_FLDMASK_DAYNAME )
+        tgtCriteria->setDayIndexFromNameStr( srcCriteria->getDayName() );
 }
 
 bool 
@@ -254,8 +254,8 @@ HNIDActionRequest::hasRspContent( std::string &contentType )
         case HNID_AR_TYPE_ZONELIST:
         case HNID_AR_TYPE_ZONEINFO:
         case HNID_AR_TYPE_SCHINFO: 
-        case HNID_AR_TYPE_SEVTLIST:
-        case HNID_AR_TYPE_SEVTINFO:
+        case HNID_AR_TYPE_CRITLIST:
+        case HNID_AR_TYPE_CRITINFO:
             contentType = "application/json";
             return true;
 
@@ -277,8 +277,8 @@ HNIDActionRequest::hasNewObject( std::string &newID )
             newID = getZoneID();
             return true;
 
-        case HNID_AR_TYPE_SEVTCREATE:
-            newID = getEventID();
+        case HNID_AR_TYPE_CRITCREATE:
+            newID = getCriteriaID();
             return true;
 
         default:
@@ -355,12 +355,12 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
-        case HNID_AR_TYPE_SEVTLIST:
+        case HNID_AR_TYPE_CRITLIST:
         {
             // Create a json root object
             pjs::Array jsRoot;
 
-            for( std::vector< HNScheduleStaticEvent >::iterator eit = refEventList().begin(); eit != refEventList().end(); eit++ )
+            for( std::vector< HNScheduleCriteria >::iterator eit = refCriteriaList().begin(); eit != refCriteriaList().end(); eit++ )
             { 
                 pjs::Object evObj;
 
@@ -377,12 +377,12 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
-        case HNID_AR_TYPE_SEVTINFO:
+        case HNID_AR_TYPE_CRITINFO:
         {
             // Create a json root object
             pjs::Object      jsRoot;
 
-            std::vector< HNScheduleStaticEvent >::iterator event = refEventList().begin();
+            std::vector< HNScheduleCriteria >::iterator event = refCriteriaList().begin();
 
             jsRoot.set( "eventid", event->getID() );
             jsRoot.set( "type", event->getTypeStr() );
@@ -409,8 +409,8 @@ HNIDActionRequest::refZoneList()
     return m_zoneList;
 }
 
-std::vector< HNScheduleStaticEvent >&
-HNIDActionRequest::refEventList()
+std::vector< HNScheduleCriteria >&
+HNIDActionRequest::refCriteriaList()
 {
     return m_eventList;
 }

@@ -54,21 +54,21 @@ class HNI24HTime
         std::string getHMSStr();
 };
 
-typedef enum HNScheduleStaticEventEnum
+typedef enum HNScheduleCriteriaEnum
 {
-    HNIS_SETYPE_NOTSET,
-    HNIS_SETYPE_EVERYDAY_KEEPOUT,
-    HNIS_SETYPE_SINGLE_KEEPOUT,
-    HNIS_SETYPE_EVERYDAY_ZONE,
-    HNIS_SETYPE_SINGLE_ZONE,
-    HNIS_SETYPE_LASTENTRY
-}HNIS_SETYPE_T;
+    HNIS_CTYPE_NOTSET,
+    HNIS_CTYPE_EVERYDAY_KEEPOUT,
+    HNIS_CTYPE_SINGLE_KEEPOUT,
+    HNIS_CTYPE_EVERYDAY_ZONE,
+    HNIS_CTYPE_SINGLE_ZONE,
+    HNIS_CTYPE_LASTENTRY
+}HNIS_CTYPE_T;
 
-class HNScheduleStaticEvent
+class HNScheduleCriteria
 {
     private:
-        std::string m_id;
-        HNIS_SETYPE_T m_type;
+        std::string  m_id;
+        HNIS_CTYPE_T m_type;
 
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
@@ -76,12 +76,12 @@ class HNScheduleStaticEvent
         HNIS_DAY_INDX_T m_dayIndex;
 
     public:
-        HNScheduleStaticEvent();
-       ~HNScheduleStaticEvent();
+        HNScheduleCriteria();
+       ~HNScheduleCriteria();
 
         void setID( std::string id );
 
-        void setType( HNIS_SETYPE_T value );
+        void setType( HNIS_CTYPE_T value );
         void setTypeFromStr( std::string type );
 
         HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
@@ -93,7 +93,7 @@ class HNScheduleStaticEvent
 
         std::string getID();
 
-        HNIS_SETYPE_T getType();
+        HNIS_CTYPE_T getType();
         std::string getTypeStr();
 
         HNI24HTime &getStartTime();
@@ -275,16 +275,16 @@ class HNIrrigationSchedule
 
         HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
 
-        std::map< std::string, HNScheduleStaticEvent >   m_eventMap;
+        std::map< std::string, HNScheduleCriteria >   m_eventMap;
         std::map< std::string, HNIrrigationZone >  m_zoneMap;
 
         HNIS_RESULT_T initZoneListSection( HNodeConfig &cfg );
         HNIS_RESULT_T readZoneListSection( HNodeConfig &cfg );
         HNIS_RESULT_T updateZoneListSection( HNodeConfig &cfg );
 
-        HNIS_RESULT_T initStaticEventListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T readStaticEventListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T updateStaticEventListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T initCriteriaListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T readCriteriaListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T updateCriteriaListSection( HNodeConfig &cfg );
 
         void calculateSMCRC32();
 
@@ -299,11 +299,11 @@ class HNIrrigationSchedule
 
         void clear();
 
-        bool hasEvent( std::string eventID );
-        HNScheduleStaticEvent *updateEvent( std::string id );
-        void deleteEvent( std::string eventID );
-        void getEventList( std::vector< HNScheduleStaticEvent > &eventList );
-        HNIS_RESULT_T getEvent( std::string eventID, HNScheduleStaticEvent &event );
+        bool hasCriteria( std::string eventID );
+        HNScheduleCriteria *updateCriteria( std::string id );
+        void deleteCriteria( std::string eventID );
+        void getCriteriaList( std::vector< HNScheduleCriteria > &eventList );
+        HNIS_RESULT_T getCriteria( std::string eventID, HNScheduleCriteria &event );
 
         bool hasZone( std::string zoneID );
         HNIrrigationZone *updateZone( std::string zoneID );

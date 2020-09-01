@@ -189,10 +189,10 @@ const std::string g_HNode2IrrigationRest = R"(
       },
 
 
-      "/hnode2/irrigation/schedule/static-events": {
+      "/hnode2/irrigation/schedule/criteria": {
         "get": {
-          "summary": "Get list of schedule static-events.",
-          "operationId": "getStaticEventList",
+          "summary": "Get list of schedule criteria.",
+          "operationId": "getCriteriaList",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -211,8 +211,8 @@ const std::string g_HNode2IrrigationRest = R"(
         },
 
         "post": {
-          "summary": "Create a new schedule static event.",
-          "operationId": "createStaticEvent",
+          "summary": "Create a new schedule criteria.",
+          "operationId": "createCriteria",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -232,10 +232,10 @@ const std::string g_HNode2IrrigationRest = R"(
       },
 
 
-      "/hnode2/irrigation/schedule/static-events/{eventid}": {
+      "/hnode2/irrigation/schedule/criteria/{criteriaid}": {
         "get": {
-          "summary": "Get information about a specific static event.",
-          "operationId": "getStaticEvent",
+          "summary": "Get information about a specific schedule criteria.",
+          "operationId": "getCriteria",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -253,8 +253,8 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         },
         "put": {
-          "summary": "Update an existing static event.",
-          "operationId": "updateStaticEvent",
+          "summary": "Update an existing criteria.",
+          "operationId": "updateCriteria",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -272,8 +272,8 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         },
         "delete": {
-          "summary": "Delete an existing static event.",
-          "operationId": "deleteStaticEvent",
+          "summary": "Delete an existing criteria.",
+          "operationId": "deleteCriteria",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -792,7 +792,7 @@ HNIrrigationDevice::getUniqueZoneID( HNIDActionRequest *action )
 }
 
 bool
-HNIrrigationDevice::getUniqueEventID( HNIDActionRequest *action )
+HNIrrigationDevice::getUniqueCriteriaID( HNIDActionRequest *action )
 {
     char tmpID[ 64 ];
     uint idNum = 1;
@@ -801,9 +801,9 @@ HNIrrigationDevice::getUniqueEventID( HNIDActionRequest *action )
     {
         sprintf( tmpID, "e%d", idNum );
 
-        if( m_schedule.hasEvent( tmpID ) == false )
+        if( m_schedule.hasCriteria( tmpID ) == false )
         {
-            action->setEventID( tmpID );
+            action->setCriteriaID( tmpID );
             return true;
         }
 
@@ -946,19 +946,19 @@ HNIrrigationDevice::startAction()
         }
         break;
 
-        case HNID_AR_TYPE_SEVTLIST:
+        case HNID_AR_TYPE_CRITLIST:
             // Populate the event list in the action
-            m_schedule.getEventList( m_curAction->refEventList() );
+            m_schedule.getCriteriaList( m_curAction->refCriteriaList() );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         break;
 
-        case HNID_AR_TYPE_SEVTINFO:
+        case HNID_AR_TYPE_CRITINFO:
         {
-            HNScheduleStaticEvent event;
+            HNScheduleCriteria event;
 
-            if( m_schedule.getEvent( m_curAction->getEventID(), event ) != HNIS_RESULT_SUCCESS )
+            if( m_schedule.getCriteria( m_curAction->getCriteriaID(), event ) != HNIS_RESULT_SUCCESS )
             {
                 //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
                 actBits = HNID_ACTBIT_ERROR;
@@ -966,17 +966,17 @@ HNIrrigationDevice::startAction()
             }
 
             // Populate the zone list in the action
-            m_curAction->refEventList().push_back( event );
+            m_curAction->refCriteriaList().push_back( event );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         }
         break;
 
-        case HNID_AR_TYPE_SEVTCREATE:
+        case HNID_AR_TYPE_CRITCREATE:
         {
             // Allocate a unique zone identifier
-            if( getUniqueEventID( m_curAction ) == false )
+            if( getUniqueCriteriaID( m_curAction ) == false )
             {
                 // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
                 actBits = HNID_ACTBIT_ERROR;
@@ -984,18 +984,18 @@ HNIrrigationDevice::startAction()
             }
 
             // Create the zone record
-            HNScheduleStaticEvent *event = m_schedule.updateEvent( m_curAction->getEventID() );
+            HNScheduleCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
 
             // Update the fields of the zone record.
-            m_curAction->applyEventUpdate( event );
+            m_curAction->applyCriteriaUpdate( event );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
         break;
 
-        case HNID_AR_TYPE_SEVTUPDATE:
+        case HNID_AR_TYPE_CRITUPDATE:
         {
-            if( m_schedule.hasEvent( m_curAction->getEventID() ) == false )
+            if( m_schedule.hasCriteria( m_curAction->getCriteriaID() ) == false )
             {
                 // Zone doesn't exist, return error
                 // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
@@ -1004,19 +1004,19 @@ HNIrrigationDevice::startAction()
             }
 
             // Get a point to zone record
-            HNScheduleStaticEvent *event = m_schedule.updateEvent( m_curAction->getEventID() );
+            HNScheduleCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
 
             // Update the fields of the zone record.
-            m_curAction->applyEventUpdate( event );
+            m_curAction->applyCriteriaUpdate( event );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
         break;
 
-        case HNID_AR_TYPE_SEVTDELETE:
+        case HNID_AR_TYPE_CRITDELETE:
         {
             // Remove the zone record
-            m_schedule.deleteEvent( m_curAction->getEventID() );
+            m_schedule.deleteCriteria( m_curAction->getCriteriaID() );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
@@ -1153,18 +1153,18 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         action.setType( HNID_AR_TYPE_ZONEDELETE );
         action.setZoneID( zoneID );
     }
-    else if( "getStaticEventList" == opID )
+    else if( "getCriteriaList" == opID )
     {
-        action.setType( HNID_AR_TYPE_SEVTLIST );
+        action.setType( HNID_AR_TYPE_CRITLIST );
     }
-    else if( "createStaticEvent" == opID )
+    else if( "createCriteria" == opID )
     {
-        action.setType( HNID_AR_TYPE_SEVTCREATE );
+        action.setType( HNID_AR_TYPE_CRITCREATE );
 
         std::istream& bodyStream = opData->requestBody();
         action.setZoneUpdate( bodyStream );
     }
-    else if( "getStaticEvent" == opID )
+    else if( "getCriteria" == opID )
     {
         std::string eventID;
 
@@ -1175,10 +1175,10 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_SEVTINFO );
+        action.setType( HNID_AR_TYPE_CRITINFO );
         action.setZoneID( eventID );
     }
-    else if( "updateStaticEvent" == opID )
+    else if( "updateCriteria" == opID )
     {
         std::string eventID;
 
@@ -1191,13 +1191,13 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_SEVTUPDATE );
+        action.setType( HNID_AR_TYPE_CRITUPDATE );
         action.setZoneID( eventID );
 
         std::istream& bodyStream = opData->requestBody();
-        action.setEventUpdate( bodyStream );
+        action.setCriteriaUpdate( bodyStream );
     }
-    else if( "deleteStaticEvent" == opID )
+    else if( "deleteCriteria" == opID )
     {
         std::string eventID;
 
@@ -1210,7 +1210,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_SEVTDELETE );
+        action.setType( HNID_AR_TYPE_CRITDELETE );
         action.setZoneID( eventID );
     }
     else if( "getScheduleInfo" == opID )

@@ -25,14 +25,14 @@ static const char *s_dayNames[] =
 };
 
 // Must match the static event type enum from the header file.
-static const char *s_staticEventTypeStrs[] =
+static const char *s_criteriaTypeStrs[] =
 {
-    "notset",            // HNIS_SETYPE_NOTSET
-    "everyday-keepout",  // HNIS_SETYPE_EVERYDAY_KEEPOUT,
-    "single-keepout",    // HNIS_SETYPE_SINGLE_KEEPOUT,
-    "everyday-zone",     // HNIS_SETYPE_EVERYDAY_ZONE,
-    "single-zone",       // HNIS_SETYPE_SINGLE_ZONE,
-    "unknown"            // HNIS_SETYPE_LASTENTRY
+    "notset",            // HNIS_CTYPE_NOTSET
+    "everyday-keepout",  // HNIS_CTYPE_EVERYDAY_KEEPOUT,
+    "single-keepout",    // HNIS_CTYPE_SINGLE_KEEPOUT,
+    "everyday-zone",     // HNIS_CTYPE_EVERYDAY_ZONE,
+    "single-zone",       // HNIS_CTYPE_SINGLE_ZONE,
+    "unknown"            // HNIS_CTYPE_LASTENTRY
 };
 
 HNI24HTime::HNI24HTime()
@@ -132,46 +132,46 @@ HNI24HTime::subtractSeconds( uint seconds )
     secOfDay = (secOfDay - seconds); 
 }
 
-HNScheduleStaticEvent::HNScheduleStaticEvent()
+HNScheduleCriteria::HNScheduleCriteria()
 {
-    m_type = HNIS_SETYPE_NOTSET;
+    m_type = HNIS_CTYPE_NOTSET;
     m_dayIndex = HNIS_DINDX_NOTSET;
 }
 
-HNScheduleStaticEvent::~HNScheduleStaticEvent()
+HNScheduleCriteria::~HNScheduleCriteria()
 {
 
 }
 
 void 
-HNScheduleStaticEvent::setID( std::string id )
+HNScheduleCriteria::setID( std::string id )
 {
     m_id = id;
 }
 
 void 
-HNScheduleStaticEvent::setType( HNIS_SETYPE_T value )
+HNScheduleCriteria::setType( HNIS_CTYPE_T value )
 {
     m_type = value;
 }
 
 void 
-HNScheduleStaticEvent::setTypeFromStr( std::string type )
+HNScheduleCriteria::setTypeFromStr( std::string type )
 {
-    for( uint indx = 0; indx < HNIS_SETYPE_LASTENTRY; indx++ )
+    for( uint indx = 0; indx < HNIS_CTYPE_LASTENTRY; indx++ )
     {
-        if( s_staticEventTypeStrs[ indx ] == type )
+        if( s_criteriaTypeStrs[ indx ] == type )
         {
-            m_type = (HNIS_SETYPE_T) indx;
+            m_type = (HNIS_CTYPE_T) indx;
             return;
         }
     }
 
-    m_type = HNIS_SETYPE_NOTSET;
+    m_type = HNIS_CTYPE_NOTSET;
 }
 
 HNIS_RESULT_T 
-HNScheduleStaticEvent::setTimesFromStr( std::string startTime, std::string endTime )
+HNScheduleCriteria::setTimesFromStr( std::string startTime, std::string endTime )
 {
     m_startTime.parseTime( startTime );
  
@@ -181,25 +181,25 @@ HNScheduleStaticEvent::setTimesFromStr( std::string startTime, std::string endTi
 }
 
 HNIS_RESULT_T 
-HNScheduleStaticEvent::setStartTime( std::string startTime )
+HNScheduleCriteria::setStartTime( std::string startTime )
 {
     m_startTime.parseTime( startTime );
 }
 
 HNIS_RESULT_T 
-HNScheduleStaticEvent::setEndTime( std::string endTime )
+HNScheduleCriteria::setEndTime( std::string endTime )
 {
     m_endTime.parseTime( endTime );
 }
 
 void 
-HNScheduleStaticEvent::setDayIndex( HNIS_DAY_INDX_T dayIndx )
+HNScheduleCriteria::setDayIndex( HNIS_DAY_INDX_T dayIndx )
 {
     m_dayIndex = dayIndx;
 }
 
 void 
-HNScheduleStaticEvent::setDayIndexFromNameStr( std::string name )
+HNScheduleCriteria::setDayIndexFromNameStr( std::string name )
 {
     // Looking for match
     uint index;
@@ -215,46 +215,46 @@ HNScheduleStaticEvent::setDayIndexFromNameStr( std::string name )
 }
 
 std::string 
-HNScheduleStaticEvent::getID()
+HNScheduleCriteria::getID()
 {
     return m_id;
 }
 
-HNIS_SETYPE_T 
-HNScheduleStaticEvent::getType()
+HNIS_CTYPE_T 
+HNScheduleCriteria::getType()
 {
      return m_type;
 }
 
 std::string 
-HNScheduleStaticEvent::getTypeStr()
+HNScheduleCriteria::getTypeStr()
 {
-    if( m_type > HNIS_SETYPE_LASTENTRY )
-        return s_staticEventTypeStrs[ HNIS_SETYPE_LASTENTRY ];
+    if( m_type > HNIS_CTYPE_LASTENTRY )
+        return s_criteriaTypeStrs[ HNIS_CTYPE_LASTENTRY ];
 
-    return s_staticEventTypeStrs[ m_type ];
+    return s_criteriaTypeStrs[ m_type ];
 }
 
 HNI24HTime&
-HNScheduleStaticEvent::getStartTime()
+HNScheduleCriteria::getStartTime()
 {
     return m_startTime;
 }
 
 HNI24HTime&
-HNScheduleStaticEvent::getEndTime()
+HNScheduleCriteria::getEndTime()
 {
     return m_endTime;
 }
 
 HNIS_DAY_INDX_T 
-HNScheduleStaticEvent::getDayIndex()
+HNScheduleCriteria::getDayIndex()
 {
     return m_dayIndex;
 }
 
 std::string 
-HNScheduleStaticEvent::getDayName()
+HNScheduleCriteria::getDayName()
 {
     if( m_dayIndex > HNIS_DINDX_NOTSET )
         return s_dayNames[ HNIS_DINDX_NOTSET ];
@@ -263,7 +263,7 @@ HNScheduleStaticEvent::getDayName()
 }
 
 HNIS_RESULT_T 
-HNScheduleStaticEvent::validateSettings()
+HNScheduleCriteria::validateSettings()
 {
     // Add validation checking here
     return HNIS_RESULT_SUCCESS;
@@ -940,9 +940,9 @@ HNIrrigationSchedule::getSMCRC32Str()
 }
 
 bool 
-HNIrrigationSchedule::hasEvent( std::string eventID )
+HNIrrigationSchedule::hasCriteria( std::string eventID )
 {
-    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
 
     if( it == m_eventMap.end() )
         return false;
@@ -950,16 +950,16 @@ HNIrrigationSchedule::hasEvent( std::string eventID )
     return true;
 }
 
-HNScheduleStaticEvent*
-HNIrrigationSchedule::updateEvent( std::string id )
+HNScheduleCriteria*
+HNIrrigationSchedule::updateCriteria( std::string id )
 {
-    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( id );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( id );
 
     if( it == m_eventMap.end() )
     {
-        HNScheduleStaticEvent nSpec;
+        HNScheduleCriteria nSpec;
         nSpec.setID( id );
-        m_eventMap.insert( std::pair< std::string, HNScheduleStaticEvent >( id, nSpec ) );\
+        m_eventMap.insert( std::pair< std::string, HNScheduleCriteria >( id, nSpec ) );\
         return &( m_eventMap[ id ] );
     }
 
@@ -967,10 +967,10 @@ HNIrrigationSchedule::updateEvent( std::string id )
 }
 
 void 
-HNIrrigationSchedule::deleteEvent( std::string eventID )
+HNIrrigationSchedule::deleteCriteria( std::string eventID )
 {
     // Find the referenced zone
-    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
 
     // If already no existant than nothing to do.
     if( it == m_eventMap.end() )
@@ -981,18 +981,18 @@ HNIrrigationSchedule::deleteEvent( std::string eventID )
 }
 
 void 
-HNIrrigationSchedule::getEventList( std::vector< HNScheduleStaticEvent > &eventList )
+HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &eventList )
 {
-    for( std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
+    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
     {
         eventList.push_back( it->second );
     }
 }
 
 HNIS_RESULT_T 
-HNIrrigationSchedule::getEvent( std::string eventID, HNScheduleStaticEvent &event )
+HNIrrigationSchedule::getCriteria( std::string eventID, HNScheduleCriteria &event )
 {
-    std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
 
     if( it == m_eventMap.end() )
         return HNIS_RESULT_FAILURE;
@@ -1045,11 +1045,11 @@ HNIrrigationSchedule::initZoneListSection( HNodeConfig &cfg )
 }
 
 HNIS_RESULT_T 
-HNIrrigationSchedule::initStaticEventListSection( HNodeConfig &cfg )
+HNIrrigationSchedule::initCriteriaListSection( HNodeConfig &cfg )
 {
     HNCSection *secPtr;
 
-    cfg.updateSection( "irrStaticEventInfo", &secPtr );
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
     
     HNCObjList *listPtr;
     secPtr->updateList( "eventList", &listPtr );
@@ -1066,7 +1066,7 @@ HNIrrigationSchedule::initConfigSections( HNodeConfig &cfg )
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
-    result = initStaticEventListSection( cfg );
+    result = initCriteriaListSection( cfg );
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
@@ -1140,12 +1140,12 @@ HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
 }
 
 HNIS_RESULT_T 
-HNIrrigationSchedule::readStaticEventListSection( HNodeConfig &cfg )
+HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
 {
     HNCSection  *secPtr;
 
     // Aquire a pointer to the "device" section
-    cfg.updateSection( "irrStaticEventInfo", &secPtr );
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
 
     // Get a list pointer
     HNCObjList *listPtr;
@@ -1167,7 +1167,7 @@ HNIrrigationSchedule::readStaticEventListSection( HNodeConfig &cfg )
         }
 
         // Get the internal reference to the zone.
-        HNScheduleStaticEvent *eventPtr = updateEvent( eventID );
+        HNScheduleCriteria *eventPtr = updateCriteria( eventID );
 
         if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
         {
@@ -1202,7 +1202,7 @@ HNIrrigationSchedule::readConfigSections( HNodeConfig &cfg )
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
-    result = readStaticEventListSection( cfg );
+    result = readCriteriaListSection( cfg );
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
@@ -1248,17 +1248,17 @@ HNIrrigationSchedule::updateZoneListSection( HNodeConfig &cfg )
 }
 
 HNIS_RESULT_T 
-HNIrrigationSchedule::updateStaticEventListSection( HNodeConfig &cfg )
+HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
 {
     char tmpStr[256];
     HNCSection *secPtr;
-    cfg.updateSection( "irrStaticEventInfo", &secPtr );
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
     //secPtr->updateValue( "test1", "value1" );
 
     HNCObjList *listPtr;
     secPtr->updateList( "eventList", &listPtr );
 
-    for( std::map< std::string, HNScheduleStaticEvent >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
+    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
     { 
         HNCObj *objPtr;
 
@@ -1286,7 +1286,7 @@ HNIrrigationSchedule::updateConfigSections( HNodeConfig &cfg )
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
-    result = updateStaticEventListSection( cfg );
+    result = updateCriteriaListSection( cfg );
     if( result != HNIS_RESULT_SUCCESS )
         return result;
 
@@ -1301,11 +1301,11 @@ HNIrrigationSchedule::buildSchedule()
         m_dayArr[ indx ].clear();
 
     // Create Periods for the exclusion specs.
-    for( std::map< std::string, HNScheduleStaticEvent >::iterator eit = m_eventMap.begin(); eit != m_eventMap.end(); eit++ )
+    for( std::map< std::string, HNScheduleCriteria >::iterator eit = m_eventMap.begin(); eit != m_eventMap.end(); eit++ )
     {
         HNISPeriod period;
 
-        HNScheduleStaticEvent *curSpec = &(eit->second);
+        HNScheduleCriteria *curSpec = &(eit->second);
 
         period.setID( curSpec->getID() );
         period.setStartTime( curSpec->getStartTime() );
@@ -1313,7 +1313,7 @@ HNIrrigationSchedule::buildSchedule()
 
         switch( curSpec->getType() )
         {
-            case HNIS_SETYPE_EVERYDAY_KEEPOUT:
+            case HNIS_CTYPE_EVERYDAY_KEEPOUT:
             {
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
 
@@ -1322,7 +1322,7 @@ HNIrrigationSchedule::buildSchedule()
             }
             break;
 
-            case HNIS_SETYPE_SINGLE_KEEPOUT:
+            case HNIS_CTYPE_SINGLE_KEEPOUT:
                 period.setType( HNIS_PERIOD_TYPE_EXCLUSION );
 
                 m_dayArr[ curSpec->getDayIndex() ].addPeriod( period );
