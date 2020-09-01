@@ -302,7 +302,7 @@ class HNIrrigationSchedule
         bool hasCriteria( std::string eventID );
         HNScheduleCriteria *updateCriteria( std::string id );
         void deleteCriteria( std::string eventID );
-        void getCriteriaList( std::vector< HNScheduleCriteria > &eventList );
+        void getCriteriaList( std::vector< HNScheduleCriteria > &criteriaList );
         HNIS_RESULT_T getCriteria( std::string eventID, HNScheduleCriteria &event );
 
         bool hasZone( std::string zoneID );

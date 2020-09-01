@@ -981,11 +981,11 @@ HNIrrigationSchedule::deleteCriteria( std::string eventID )
 }
 
 void 
-HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &eventList )
+HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &criteriaList )
 {
     for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
     {
-        eventList.push_back( it->second );
+        criteriaList.push_back( it->second );
     }
 }
 
@@ -1052,7 +1052,7 @@ HNIrrigationSchedule::initCriteriaListSection( HNodeConfig &cfg )
     cfg.updateSection( "irrCriteriaInfo", &secPtr );
     
     HNCObjList *listPtr;
-    secPtr->updateList( "eventList", &listPtr );
+    secPtr->updateList( "criteriaList", &listPtr );
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -1149,7 +1149,7 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
 
     // Get a list pointer
     HNCObjList *listPtr;
-    secPtr->updateList( "eventList", &listPtr );
+    secPtr->updateList( "criteriaList", &listPtr );
 
     for( uint indx = 0; indx < listPtr->size(); indx++ )
     {
@@ -1256,7 +1256,7 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
     //secPtr->updateValue( "test1", "value1" );
 
     HNCObjList *listPtr;
-    secPtr->updateList( "eventList", &listPtr );
+    secPtr->updateList( "criteriaList", &listPtr );
 
     for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
     { 
