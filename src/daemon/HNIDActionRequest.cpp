@@ -33,7 +33,7 @@ HNIDActionRequest::setZoneID( std::string value )
 void 
 HNIDActionRequest::setCriteriaID( std::string value )
 {
-    m_eventID = value;
+    m_criteriaID = value;
 }
 
 HNID_AR_TYPE_T
@@ -51,7 +51,7 @@ HNIDActionRequest::getZoneID()
 std::string 
 HNIDActionRequest::getCriteriaID()
 {
-    return m_eventID;
+    return m_criteriaID;
 }
 
 bool
@@ -177,7 +177,7 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNScheduleCriteria *event = m_schedule.updateCriteria( eventID );
+        //HNScheduleCriteria *event = m_schedule.updateCriteria( criteriaID );
 
         if( jsRoot->has( "type" ) )
         {
@@ -364,7 +364,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             { 
                 pjs::Object evObj;
 
-                evObj.set( "eventid", eit->getID() );
+                evObj.set( "criteriaid", eit->getID() );
                 evObj.set( "type", eit->getTypeStr() );
                 evObj.set( "startTime", eit->getStartTime().getHMSStr() );
                 evObj.set( "endTime", eit->getEndTime().getHMSStr() );
@@ -384,7 +384,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
 
             std::vector< HNScheduleCriteria >::iterator event = refCriteriaList().begin();
 
-            jsRoot.set( "eventid", event->getID() );
+            jsRoot.set( "criteriaid", event->getID() );
             jsRoot.set( "type", event->getTypeStr() );
             jsRoot.set( "startTime", event->getStartTime().getHMSStr() );
             jsRoot.set( "endTime", event->getEndTime().getHMSStr() );

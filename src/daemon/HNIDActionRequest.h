@@ -63,7 +63,7 @@ class HNIDActionRequest : public HNReqWaitAction
 
         std::string m_zoneID;
 
-        std::string m_eventID;
+        std::string m_criteriaID;
 
         std::vector< HNIrrigationZone > m_zoneList;
         std::vector< HNScheduleCriteria > m_eventList;
