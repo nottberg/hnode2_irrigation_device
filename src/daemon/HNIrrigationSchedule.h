@@ -68,6 +68,9 @@ class HNScheduleCriteria
 {
     private:
         std::string  m_id;
+        std::string  m_name;
+        std::string  m_desc;
+
         HNIS_CTYPE_T m_type;
 
         HNI24HTime m_startTime;
@@ -80,7 +83,9 @@ class HNScheduleCriteria
        ~HNScheduleCriteria();
 
         void setID( std::string id );
-
+        void setName( std::string value );
+        void setDesc( std::string value );
+ 
         void setType( HNIS_CTYPE_T value );
         void setTypeFromStr( std::string type );
 
@@ -92,6 +97,8 @@ class HNScheduleCriteria
         void setDayIndexFromNameStr( std::string name );
 
         std::string getID();
+        std::string getName();
+        std::string getDesc();
 
         HNIS_CTYPE_T getType();
         std::string getTypeStr();

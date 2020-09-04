@@ -150,6 +150,18 @@ HNScheduleCriteria::setID( std::string id )
 }
 
 void 
+HNScheduleCriteria::setName( std::string value )
+{
+    m_name = value;
+}
+
+void 
+HNScheduleCriteria::setDesc( std::string value )
+{
+    m_desc = value;
+}
+
+void 
 HNScheduleCriteria::setType( HNIS_CTYPE_T value )
 {
     m_type = value;
@@ -218,6 +230,18 @@ std::string
 HNScheduleCriteria::getID()
 {
     return m_id;
+}
+
+std::string 
+HNScheduleCriteria::getName()
+{
+    return m_name;
+}
+
+std::string 
+HNScheduleCriteria::getDesc()
+{
+    return m_desc;
 }
 
 HNIS_CTYPE_T 

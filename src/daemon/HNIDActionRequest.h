@@ -44,11 +44,13 @@ typedef enum HNIDActionZoneUpdateMaskEnum
 typedef enum HNIDActionCriteriaUpdateMaskEnum
 {
     HNID_CU_FLDMASK_CLEAR   = 0x00000000,
-    HNID_CU_FLDMASK_TYPE    = 0x00000001,
-    HNID_CU_FLDMASK_START   = 0x00000002,
-    HNID_CU_FLDMASK_END     = 0x00000004,
-    HNID_CU_FLDMASK_DAYNAME = 0x00000008
-}HNID_EU_FLDMASK_T;
+    HNID_CU_FLDMASK_NAME    = 0x00000001,
+    HNID_CU_FLDMASK_DESC    = 0x00000002,
+    HNID_CU_FLDMASK_TYPE    = 0x00000004,
+    HNID_CU_FLDMASK_START   = 0x00000008,
+    HNID_CU_FLDMASK_END     = 0x00000010,
+    HNID_CU_FLDMASK_DAYNAME = 0x00000020
+}HNID_CU_FLDMASK_T;
 
 typedef enum HNIDActionRequestResult
 {
@@ -66,11 +68,11 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string m_criteriaID;
 
         std::vector< HNIrrigationZone > m_zoneList;
-        std::vector< HNScheduleCriteria > m_eventList;
+        std::vector< HNScheduleCriteria > m_criteriaList;
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
-        uint m_eventUpdateMask;
+        uint m_criteriaUpdateMask;
 
         std::stringstream m_rspStream;
 

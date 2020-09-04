@@ -162,10 +162,10 @@ bool
 HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 {
     std::string rstStr;
-    HNScheduleCriteria event;
+    HNScheduleCriteria criteria;
 
     // Clear the update mask
-    m_eventUpdateMask = HNID_CU_FLDMASK_CLEAR;
+    m_criteriaUpdateMask = HNID_CU_FLDMASK_CLEAR;
 
     // Parse the json body of the request
     try
@@ -179,31 +179,43 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 
         //HNScheduleCriteria *event = m_schedule.updateCriteria( criteriaID );
 
+        if( jsRoot->has( "name" ) )
+        {
+            criteria.setName( jsRoot->getValue<std::string>( "name" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_NAME;
+        }
+
+        if( jsRoot->has( "description" ) )
+        {
+            criteria.setDesc( jsRoot->getValue<std::string>( "description" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DESC;
+        }
+
         if( jsRoot->has( "type" ) )
         {
-            event.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-            m_eventUpdateMask |= HNID_CU_FLDMASK_TYPE;
+            criteria.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_TYPE;
         }
 
         if( jsRoot->has( "startTime" ) )
         {
-            event.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
-            m_eventUpdateMask |= HNID_CU_FLDMASK_START;
+            criteria.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_START;
         }
 
         if( jsRoot->has( "endTime" ) )
         {
-            event.setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
-            m_eventUpdateMask |= HNID_CU_FLDMASK_END;
+            criteria.setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_END;
         }
 
         if( jsRoot->has( "dayName" ) )
         {
-            event.setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
-            m_eventUpdateMask |= HNID_CU_FLDMASK_DAYNAME;
+            criteria.setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DAYNAME;
         }
         
-        if( event.validateSettings() != HNIS_RESULT_SUCCESS )
+        if( criteria.validateSettings() != HNIS_RESULT_SUCCESS )
         {
             std::cout << "updateCriteria validate failed" << std::endl;
             // zoneid parameter is required
@@ -220,7 +232,7 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
     }
 
     // Add the zone info to the list
-    m_eventList.push_back( event );
+    m_criteriaList.push_back( criteria );
 
     return false;
 }
@@ -228,18 +240,24 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 void 
 HNIDActionRequest::applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria )
 {
-    HNScheduleCriteria *srcCriteria = &m_eventList[0];
+    HNScheduleCriteria *srcCriteria = &m_criteriaList[0];
 
-    if( m_eventUpdateMask & HNID_CU_FLDMASK_TYPE )
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_NAME )
+        tgtCriteria->setName( srcCriteria->getName() );
+
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DESC )
+        tgtCriteria->setDesc( srcCriteria->getDesc() );
+
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_TYPE )
         tgtCriteria->setType( srcCriteria->getType() );
 
-    if( m_eventUpdateMask & HNID_CU_FLDMASK_START )
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_START )
         tgtCriteria->setStartTime( srcCriteria->getStartTime().getHMSStr() );
 
-    if( m_eventUpdateMask & HNID_CU_FLDMASK_END )
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_END )
         tgtCriteria->setEndTime( srcCriteria->getEndTime().getHMSStr() );
 
-    if( m_eventUpdateMask & HNID_CU_FLDMASK_DAYNAME )
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYNAME )
         tgtCriteria->setDayIndexFromNameStr( srcCriteria->getDayName() );
 }
 
@@ -360,17 +378,19 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             // Create a json root object
             pjs::Array jsRoot;
 
-            for( std::vector< HNScheduleCriteria >::iterator eit = refCriteriaList().begin(); eit != refCriteriaList().end(); eit++ )
+            for( std::vector< HNScheduleCriteria >::iterator cit = refCriteriaList().begin(); cit != refCriteriaList().end(); cit++ )
             { 
-                pjs::Object evObj;
+                pjs::Object cObj;
 
-                evObj.set( "criteriaid", eit->getID() );
-                evObj.set( "type", eit->getTypeStr() );
-                evObj.set( "startTime", eit->getStartTime().getHMSStr() );
-                evObj.set( "endTime", eit->getEndTime().getHMSStr() );
-                evObj.set( "dayName", eit->getDayName() );
+                cObj.set( "criteriaid", cit->getID() );
+                cObj.set( "name", cit->getName() );
+                cObj.set( "description", cit->getDesc() );
+                cObj.set( "type", cit->getTypeStr() );
+                cObj.set( "startTime", cit->getStartTime().getHMSStr() );
+                cObj.set( "endTime", cit->getEndTime().getHMSStr() );
+                cObj.set( "dayName", cit->getDayName() );
 
-                jsRoot.add( evObj );
+                jsRoot.add( cObj );
             }
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
@@ -382,13 +402,15 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             // Create a json root object
             pjs::Object      jsRoot;
 
-            std::vector< HNScheduleCriteria >::iterator event = refCriteriaList().begin();
+            std::vector< HNScheduleCriteria >::iterator criteria = refCriteriaList().begin();
 
-            jsRoot.set( "criteriaid", event->getID() );
-            jsRoot.set( "type", event->getTypeStr() );
-            jsRoot.set( "startTime", event->getStartTime().getHMSStr() );
-            jsRoot.set( "endTime", event->getEndTime().getHMSStr() );
-            jsRoot.set( "dayName", event->getDayName() );
+            jsRoot.set( "criteriaid", criteria->getID() );
+            jsRoot.set( "name", criteria->getName() );
+            jsRoot.set( "description", criteria->getDesc() );
+            jsRoot.set( "type", criteria->getTypeStr() );
+            jsRoot.set( "startTime", criteria->getStartTime().getHMSStr() );
+            jsRoot.set( "endTime", criteria->getEndTime().getHMSStr() );
+            jsRoot.set( "dayName", criteria->getDayName() );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }
@@ -412,7 +434,7 @@ HNIDActionRequest::refZoneList()
 std::vector< HNScheduleCriteria >&
 HNIDActionRequest::refCriteriaList()
 {
-    return m_eventList;
+    return m_criteriaList;
 }
 
 std::vector< HNSWDSwitchInfo >&
