@@ -134,8 +134,7 @@ HNI24HTime::subtractSeconds( uint seconds )
 
 HNScheduleCriteria::HNScheduleCriteria()
 {
-    m_type = HNIS_CTYPE_NOTSET;
-    m_dayIndex = HNIS_DINDX_NOTSET;
+    m_dayBits   = HNSC_DBITS_DAILY;
 }
 
 HNScheduleCriteria::~HNScheduleCriteria()
@@ -161,27 +160,6 @@ HNScheduleCriteria::setDesc( std::string value )
     m_desc = value;
 }
 
-void 
-HNScheduleCriteria::setType( HNIS_CTYPE_T value )
-{
-    m_type = value;
-}
-
-void 
-HNScheduleCriteria::setTypeFromStr( std::string type )
-{
-    for( uint indx = 0; indx < HNIS_CTYPE_LASTENTRY; indx++ )
-    {
-        if( s_criteriaTypeStrs[ indx ] == type )
-        {
-            m_type = (HNIS_CTYPE_T) indx;
-            return;
-        }
-    }
-
-    m_type = HNIS_CTYPE_NOTSET;
-}
-
 HNIS_RESULT_T 
 HNScheduleCriteria::setTimesFromStr( std::string startTime, std::string endTime )
 {
@@ -205,13 +183,13 @@ HNScheduleCriteria::setEndTime( std::string endTime )
 }
 
 void 
-HNScheduleCriteria::setDayIndex( HNIS_DAY_INDX_T dayIndx )
+HNScheduleCriteria::clearDayBits()
 {
-    m_dayIndex = dayIndx;
+    m_dayBits = HNSC_DBITS_DAILY;
 }
 
 void 
-HNScheduleCriteria::setDayIndexFromNameStr( std::string name )
+HNScheduleCriteria::addDayByName( std::string name )
 {
     // Looking for match
     uint index;
@@ -222,8 +200,10 @@ HNScheduleCriteria::setDayIndexFromNameStr( std::string name )
             break;
     }
 
+/* FIXME
     // Set the index, NOT_SET if not found.
     m_dayIndex = (HNIS_DAY_INDX_T) index;
+*/
 }
 
 std::string 
@@ -244,21 +224,6 @@ HNScheduleCriteria::getDesc()
     return m_desc;
 }
 
-HNIS_CTYPE_T 
-HNScheduleCriteria::getType()
-{
-     return m_type;
-}
-
-std::string 
-HNScheduleCriteria::getTypeStr()
-{
-    if( m_type > HNIS_CTYPE_LASTENTRY )
-        return s_criteriaTypeStrs[ HNIS_CTYPE_LASTENTRY ];
-
-    return s_criteriaTypeStrs[ m_type ];
-}
-
 HNI24HTime&
 HNScheduleCriteria::getStartTime()
 {
@@ -271,19 +236,10 @@ HNScheduleCriteria::getEndTime()
     return m_endTime;
 }
 
-HNIS_DAY_INDX_T 
-HNScheduleCriteria::getDayIndex()
+bool 
+HNScheduleCriteria::isForDay( HNIS_DAY_INDX_T dindx )
 {
-    return m_dayIndex;
-}
-
-std::string 
-HNScheduleCriteria::getDayName()
-{
-    if( m_dayIndex > HNIS_DINDX_NOTSET )
-        return s_dayNames[ HNIS_DINDX_NOTSET ];
-
-    return s_dayNames[ m_dayIndex ];
+    return true;
 }
 
 HNIS_RESULT_T 
@@ -306,7 +262,7 @@ HNISPeriod::~HNISPeriod()
 }
 
 void 
-HNISPeriod::setID( std::string id )
+HNISPeriod::setSegmentID( std::string id )
 {
     m_id = id;
 }
@@ -349,7 +305,7 @@ HNISPeriod::setTimesFromStr( std::string startTime, std::string endTime )
 }
 
 std::string
-HNISPeriod::getID()
+HNISPeriod::getSegmentID()
 {
     return m_id;
 }
@@ -364,6 +320,18 @@ void
 HNISPeriod::setSlideLater( bool value )
 {
     m_slideLater = value;
+}
+
+void 
+HNISPeriod::setDayIndex( HNIS_DAY_INDX_T dindx )
+{
+    m_dayIndx = dindx;
+}
+
+HNIS_DAY_INDX_T 
+HNISPeriod::getDayIndex()
+{
+    return m_dayIndx;
 }
 
 HNI24HTime& 
@@ -682,7 +650,7 @@ HNIrrigationZone::getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZS
 
     uint cycleOffset = cycleWidth * ( cycleIndex / 2 );
 
-    tgtPeriod.setID( getID() );
+    tgtPeriod.setSegmentID( getID() );
     tgtPeriod.setType( HNIS_PERIOD_TYPE_ZONE_ON );
 
     if( schState.isTopNext() )
@@ -771,10 +739,208 @@ HNISDay::coalesce()
 
 }
 
+OVLP_TYPE_T 
+HNISDay::compareOverlap( HNScheduleCriteria &criteria, HNISPeriod &period )
+{       
+    // Day matches so check times
+    uint overlapType = 0;
+
+    uint cs = criteria.getStartTime().getSeconds();
+    uint ce = criteria.getEndTime().getSeconds();
+    uint ps = period.getStartTime().getSeconds();
+    uint pe = period.getEndTime().getSeconds();
+
+    std::cout << "ovcmp - cs: " << cs << "  ce: " << ce << "  ps:" << ps << "  pe:" << pe << std::endl;
+
+    if( cs <= ps )
+        overlapType |= 1;
+    if( ce <= ps )
+        overlapType |= 2;
+    if( cs <= pe )
+        overlapType |= 4;
+    if( ce <= pe )
+        overlapType |= 8;
+             
+    return (OVLP_TYPE_T) overlapType;
+}
+
+HNIS_RESULT_T
+HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria )
+{
+    HNISPeriod period;
+
+    // The beginning of the overlap has been found,
+    // but the trailing portion of the overlap still
+    // needs to be determined.
+
+    // Keep info about the last period that matters
+    OVLP_TYPE_T eolap = OVLP_TYPE_CRIT_NOTSET;
+    std::list< HNISPeriod >::iterator epit = m_periodList.end();
+
+    // Check for next entry
+    std::list< HNISPeriod >::iterator cpit = spit;
+    cpit++;
+
+    bool endFound = false;
+    while( (endFound == false) && (cpit != m_periodList.end()) )
+    {       
+        // Check the overlap situation with the new period
+        eolap = compareOverlap( criteria, *epit );
+        
+        std::cout << "resolveTail - eov: " << eolap << "  segment: " << segmentID << std::endl;
+
+        // Take action based on the type of overlap
+        switch( eolap )
+        {
+            // No criteria overlap with this block,
+            // so solap and iterators should indicate the
+            // appropriate resolution now.
+            case OVLP_TYPE_CRIT_BEFORE:
+                endFound = true;
+            break;
+
+            // This block is fully encapsulated by the 
+            // criteria block continue to search for the end. 
+            case OVLP_TYPE_CRIT_AROUND:
+            break;
+
+            // Found the end overlap
+            case OVLP_TYPE_CRIT_FRONT:
+                endFound = true;
+            break;
+
+            // Should not occur, internal error
+            case OVLP_TYPE_CRIT_BACK:
+            case OVLP_TYPE_CRIT_AFTER:
+            case OVLP_TYPE_CRIT_WITHIN:
+                // Discard new criteria
+                return HNIS_RESULT_FAILURE;
+            break;
+        }
+
+        // Check the next segment
+        epit = cpit;
+        cpit++;
+    }
+
+
+    // If no entry followed the previous one
+    // then we are clear to insert the new period
+    if( epit == m_periodList.end() )
+    {
+        period.setSegmentID( segmentID );
+        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
+        period.setDayIndex( m_dayIndex );
+        period.setStartTime( criteria.getStartTime() );
+        period.setEndTime( criteria.getEndTime() );
+
+        m_periodList.insert( epit, period );
+
+        return HNIS_RESULT_SUCCESS;
+    }
+         
+        
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
+{
+    HNISPeriod period;
+
+    std::cout << "applyCriteria: " << segmentID << "  dayIndex: " << m_dayIndex << std::endl;
+
+    // Find the insertion point
+    // The list should be in order, so scan until we are overlapping an entry or beyond possible entries. 
+    uint index = 0;
+    for( std::list< HNISPeriod >::iterator pit = m_periodList.begin(); pit != m_periodList.end(); pit++ )
+    {
+        // Determine the overlap type between the regions
+        OVLP_TYPE_T overlapType = compareOverlap( criteria, *pit );
+             
+        std::cout << "applyCriteria - iter: " << index << "  sov: " << overlapType << "  segment: " << segmentID << std::endl;
+
+        // Take action based on the type of overlap
+        switch( overlapType )
+        {
+            // The criteria is completely after the current period,
+            // so keep scanning to check for overlap with later periods.
+            // If we reach the end then this criteria can be inserted there.
+            case OVLP_TYPE_CRIT_AFTER:
+                continue;
+
+            // The criteria is completely before the current period,
+            // since the list should be in order, we can insert an entry
+            // and exit.
+            case OVLP_TYPE_CRIT_BEFORE:
+            {
+                std::cout << "applyCriteria - before add" << std::endl;
+
+                period.setSegmentID( segmentID );
+                period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
+                period.setDayIndex( m_dayIndex );
+                period.setStartTime( criteria.getStartTime() );
+                period.setEndTime( criteria.getEndTime() );
+
+                m_periodList.insert( pit, period );
+
+                return HNIS_RESULT_SUCCESS;
+            }
+            break;
+
+            // The criteria overlap the start of the period
+            // Determine whether to enlarge the existing period,
+            // or create a new period and trim the exiting period.
+            case OVLP_TYPE_CRIT_FRONT:
+            {
+                // Enlarge the existing period
+                pit->setStartTime( criteria.getStartTime() );
+                
+                return HNIS_RESULT_SUCCESS;
+            }
+            break;
+
+            // The criteria is encapsulated by the period
+            // Check whether to split the exiting period, or to discard this
+            // criteria.
+            case OVLP_TYPE_CRIT_WITHIN:
+                // Discard new criteria
+                return HNIS_RESULT_SUCCESS;
+            break;
+
+            // For the following the criteria is trailing the current entry.
+            // So the start has been found, but now the end must be found to 
+            // determine the correct action.
+            case OVLP_TYPE_CRIT_AROUND:
+            case OVLP_TYPE_CRIT_BACK:
+            {
+                return resolveTail( pit, overlapType, segmentID, criteria );
+            }
+            break;
+        }
+
+        index++;
+    }
+
+    std::cout << "applyCriteria - no overlap add" << std::endl;
+
+    // No appropriate insertion point was identified so
+    // just insert the new period whole cloth at the end.
+    period.setSegmentID( segmentID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTime( criteria.getStartTime() );
+    period.setEndTime( criteria.getEndTime() );
+
+    m_periodList.push_back( period );
+
+    return HNIS_RESULT_SUCCESS;
+}
+
 HNIS_RESULT_T 
 HNISDay::addPeriod( HNISPeriod value )
 {
-    std::cout << "addPeriod: " << value.getID() << std::endl;
+    std::cout << "addPeriod: " << value.getSegmentID() << std::endl;
 
     m_periodList.push_back( value );
 
@@ -912,6 +1078,15 @@ HNISDay::getDayName()
     return s_dayNames[ m_dayIndex ];
 }
 
+void
+HNISDay::debugPrint()
+{
+    std::cout << "==== Day: " << getDayName() << " ====" << std::endl;
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getSegmentID() << std::endl;
+    }    
+}
 
 HNIrrigationSchedule::HNIrrigationSchedule()
 {
@@ -938,7 +1113,7 @@ HNIrrigationSchedule::clear()
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].clear();
 
-    m_eventMap.clear();
+    m_criteriaMap.clear();
     m_zoneMap.clear();
     m_schCRC32 = 0;
 }
@@ -966,9 +1141,9 @@ HNIrrigationSchedule::getSMCRC32Str()
 bool 
 HNIrrigationSchedule::hasCriteria( std::string eventID )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
 
-    if( it == m_eventMap.end() )
+    if( it == m_criteriaMap.end() )
         return false;
 
     return true;
@@ -977,14 +1152,14 @@ HNIrrigationSchedule::hasCriteria( std::string eventID )
 HNScheduleCriteria*
 HNIrrigationSchedule::updateCriteria( std::string id )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( id );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( id );
 
-    if( it == m_eventMap.end() )
+    if( it == m_criteriaMap.end() )
     {
         HNScheduleCriteria nSpec;
         nSpec.setID( id );
-        m_eventMap.insert( std::pair< std::string, HNScheduleCriteria >( id, nSpec ) );\
-        return &( m_eventMap[ id ] );
+        m_criteriaMap.insert( std::pair< std::string, HNScheduleCriteria >( id, nSpec ) );\
+        return &( m_criteriaMap[ id ] );
     }
 
     return &(it->second);
@@ -994,20 +1169,20 @@ void
 HNIrrigationSchedule::deleteCriteria( std::string eventID )
 {
     // Find the referenced zone
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
 
     // If already no existant than nothing to do.
-    if( it == m_eventMap.end() )
+    if( it == m_criteriaMap.end() )
         return;
 
     // Get rid of the zone record
-    m_eventMap.erase( it );
+    m_criteriaMap.erase( it );
 }
 
 void 
 HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &criteriaList )
 {
-    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
+    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
     {
         criteriaList.push_back( it->second );
     }
@@ -1016,9 +1191,9 @@ HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &criter
 HNIS_RESULT_T 
 HNIrrigationSchedule::getCriteria( std::string eventID, HNScheduleCriteria &event )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.find( eventID );
+    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
 
-    if( it == m_eventMap.end() )
+    if( it == m_criteriaMap.end() )
         return HNIS_RESULT_FAILURE;
 
     event = it->second;
@@ -1177,7 +1352,7 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
 
     for( uint indx = 0; indx < listPtr->size(); indx++ )
     {
-        std::string eventID;
+        std::string criteriaID;
         std::string rstStr;
         HNCObj *objPtr;
 
@@ -1185,33 +1360,38 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
             continue;
 
         // Get the zoneID first, if missing skip the record
-        if( objPtr->getValueByName( "eventid", eventID ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "criteriaid", criteriaID ) != HNC_RESULT_SUCCESS )
         {
             continue;
         }
 
         // Get the internal reference to the zone.
-        HNScheduleCriteria *eventPtr = updateCriteria( eventID );
+        HNScheduleCriteria *criteriaPtr = updateCriteria( criteriaID );
 
-        if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            eventPtr->setTypeFromStr( rstStr );
+            criteriaPtr->setName( rstStr );
+        }
+
+        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->setDesc( rstStr );
         }
 
         if( objPtr->getValueByName( "startTime", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            eventPtr->setStartTime( rstStr );
+            criteriaPtr->setStartTime( rstStr );
         }
 
         if( objPtr->getValueByName( "endTime", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            eventPtr->setEndTime( rstStr );
+            criteriaPtr->setEndTime( rstStr );
         }
 
-        if( objPtr->getValueByName( "dayIndex", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            eventPtr->setDayIndexFromNameStr( rstStr );
-        }
+        //if( objPtr->getValueByName( "dayIndex", rstStr ) == HNC_RESULT_SUCCESS )
+        //{
+        //    criteriaPtr->setDayIndexFromNameStr( rstStr );
+        //}
     }
           
     return HNIS_RESULT_SUCCESS;
@@ -1282,7 +1462,7 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
     HNCObjList *listPtr;
     secPtr->updateList( "criteriaList", &listPtr );
 
-    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_eventMap.begin(); it != m_eventMap.end(); it++ )
+    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
     { 
         HNCObj *objPtr;
 
@@ -1290,12 +1470,13 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
         listPtr->appendObj( &objPtr );
 
         // Fill the entry with the static event info
-        objPtr->updateValue( "eventid", it->second.getID() );
+        objPtr->updateValue( "criteriaid", it->second.getID() );
 
-        objPtr->updateValue( "type", it->second.getTypeStr() );
+        objPtr->updateValue( "name", it->second.getName() );
+        objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
         objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
-        objPtr->updateValue( "dayName", it->second.getDayName() );
+//        objPtr->updateValue( "dayName", it->second.getDayName() );
     }
 
     return HNIS_RESULT_SUCCESS;
@@ -1320,13 +1501,34 @@ HNIrrigationSchedule::updateConfigSections( HNodeConfig &cfg )
 HNIS_RESULT_T 
 HNIrrigationSchedule::buildSchedule()
 {
+    std::cout << "BuildSchedule - start" << std::endl;
+
     // Clear any schedule data
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].clear();
 
-    // Create Periods for the exclusion specs.
-    for( std::map< std::string, HNScheduleCriteria >::iterator eit = m_eventMap.begin(); eit != m_eventMap.end(); eit++ )
+    // Create an array covering a week of non-overlapping available scheduling slots
+    for( std::map< std::string, HNScheduleCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
     {
+        // Check each possible day.
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        {
+            bool inserted = false;
+
+            // Check whether this day applies to the criteria
+            if( cit->second.isForDay( (HNIS_DAY_INDX_T) dayIndx ) == false )
+                continue;
+
+            // Insert the new criteria
+            m_dayArr[ dayIndx ].applyCriteria( cit->second.getID(), cit->second );
+        }
+    }    
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        m_dayArr[ indx ].debugPrint();
+    
+#if 0
+/*
         HNISPeriod period;
 
         HNScheduleCriteria *curSpec = &(eit->second);
@@ -1352,7 +1554,7 @@ HNIrrigationSchedule::buildSchedule()
                 m_dayArr[ curSpec->getDayIndex() ].addPeriod( period );
             break;
         }
-    }
+*/
 
     // Schedule zone time slots.
     for( int dayIndex = 0; dayIndex < HNIS_DINDX_NOTSET; dayIndex++ )
@@ -1415,6 +1617,7 @@ HNIrrigationSchedule::buildSchedule()
     // Calculate a hash value for this schedule
     // which will be used to determine update flow.
     calculateSMCRC32();
+#endif
 
     return HNIS_RESULT_SUCCESS;
 
@@ -1498,10 +1701,10 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             jsSWAction.set( "action", "on" );
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
-            jsSWAction.set( "zoneid", it->getID() );
+            jsSWAction.set( "zoneid", it->getSegmentID() );
 
             std::string zName;
-            getZoneName( it->getID(), zName );
+            getZoneName( it->getSegmentID(), zName );
             jsSWAction.set( "name", zName );
 
             jsActions.add( jsSWAction );
@@ -1550,7 +1753,7 @@ HNIrrigationSchedule::calculateSMCRC32()
             digest.update( "swon" );
             digest.update( it->getStartTimeStr() );
             digest.update( it->getEndTimeStr() );
-            digest.update( m_zoneMap[ it->getID() ].getSWIDListStr() );
+            digest.update( m_zoneMap[ it->getSegmentID() ].getSWIDListStr() );
         }
         
     }
@@ -1608,9 +1811,9 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
 
-            std::cout << "zone id: " << it->getID() << std::endl;
+            std::cout << "zone id: " << it->getSegmentID() << std::endl;
 
-            jsSWAction.set( "swid", m_zoneMap[ it->getID() ].getSWIDListStr() );
+            jsSWAction.set( "swid", m_zoneMap[ it->getSegmentID() ].getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }

@@ -191,12 +191,6 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
             m_criteriaUpdateMask |= HNID_CU_FLDMASK_DESC;
         }
 
-        if( jsRoot->has( "type" ) )
-        {
-            criteria.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_TYPE;
-        }
-
         if( jsRoot->has( "startTime" ) )
         {
             criteria.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
@@ -209,11 +203,13 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
             m_criteriaUpdateMask |= HNID_CU_FLDMASK_END;
         }
 
+/*
         if( jsRoot->has( "dayName" ) )
         {
             criteria.setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
             m_criteriaUpdateMask |= HNID_CU_FLDMASK_DAYNAME;
         }
+*/
         
         if( criteria.validateSettings() != HNIS_RESULT_SUCCESS )
         {
@@ -248,17 +244,14 @@ HNIDActionRequest::applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria )
     if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DESC )
         tgtCriteria->setDesc( srcCriteria->getDesc() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_TYPE )
-        tgtCriteria->setType( srcCriteria->getType() );
-
     if( m_criteriaUpdateMask & HNID_CU_FLDMASK_START )
         tgtCriteria->setStartTime( srcCriteria->getStartTime().getHMSStr() );
 
     if( m_criteriaUpdateMask & HNID_CU_FLDMASK_END )
         tgtCriteria->setEndTime( srcCriteria->getEndTime().getHMSStr() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYNAME )
-        tgtCriteria->setDayIndexFromNameStr( srcCriteria->getDayName() );
+    //if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYNAME )
+    //    tgtCriteria->setDayIndexFromNameStr( srcCriteria->getDayName() );
 }
 
 bool 
@@ -385,10 +378,9 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 cObj.set( "criteriaid", cit->getID() );
                 cObj.set( "name", cit->getName() );
                 cObj.set( "description", cit->getDesc() );
-                cObj.set( "type", cit->getTypeStr() );
                 cObj.set( "startTime", cit->getStartTime().getHMSStr() );
                 cObj.set( "endTime", cit->getEndTime().getHMSStr() );
-                cObj.set( "dayName", cit->getDayName() );
+                //cObj.set( "dayName", cit->getDayName() );
 
                 jsRoot.add( cObj );
             }
@@ -407,10 +399,10 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "criteriaid", criteria->getID() );
             jsRoot.set( "name", criteria->getName() );
             jsRoot.set( "description", criteria->getDesc() );
-            jsRoot.set( "type", criteria->getTypeStr() );
+            //jsRoot.set( "type", criteria->getTypeStr() );
             jsRoot.set( "startTime", criteria->getStartTime().getHMSStr() );
             jsRoot.set( "endTime", criteria->getEndTime().getHMSStr() );
-            jsRoot.set( "dayName", criteria->getDayName() );
+            //jsRoot.set( "dayName", criteria->getDayName() );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }

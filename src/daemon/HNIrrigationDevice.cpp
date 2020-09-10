@@ -1166,9 +1166,9 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     }
     else if( "getCriteria" == opID )
     {
-        std::string eventID;
+        std::string criteriaID;
 
-        if( opData->getParam( "eventid", eventID ) == true )
+        if( opData->getParam( "criteriaid", criteriaID ) == true )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
@@ -1176,14 +1176,14 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         action.setType( HNID_AR_TYPE_CRITINFO );
-        action.setZoneID( eventID );
+        action.setCriteriaID( criteriaID );
     }
     else if( "updateCriteria" == opID )
     {
-        std::string eventID;
+        std::string criteriaID;
 
         // Make sure zoneid was provided
-        if( opData->getParam( "eventid", eventID ) == true )
+        if( opData->getParam( "criteriaid", criteriaID ) == true )
         {
             // zoneid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
@@ -1192,17 +1192,17 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         action.setType( HNID_AR_TYPE_CRITUPDATE );
-        action.setZoneID( eventID );
+        action.setCriteriaID( criteriaID );
 
         std::istream& bodyStream = opData->requestBody();
         action.setCriteriaUpdate( bodyStream );
     }
     else if( "deleteCriteria" == opID )
     {
-        std::string eventID;
+        std::string criteriaID;
 
         // Make sure zoneid was provided
-        if( opData->getParam( "eventid", eventID ) == true )
+        if( opData->getParam( "criteriaid", criteriaID ) == true )
         {
             // eventid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
@@ -1211,7 +1211,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         }
 
         action.setType( HNID_AR_TYPE_CRITDELETE );
-        action.setZoneID( eventID );
+        action.setCriteriaID( criteriaID );
     }
     else if( "getScheduleInfo" == opID )
     {
