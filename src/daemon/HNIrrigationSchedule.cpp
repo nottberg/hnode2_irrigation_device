@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <regex>
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
@@ -189,6 +190,12 @@ HNScheduleCriteria::clearDayBits()
 }
 
 void 
+HNScheduleCriteria::setDayBits( uint value )
+{
+    m_dayBits = (HNSC_DBITS_T) value;
+}
+
+void 
 HNScheduleCriteria::addDayByName( std::string name )
 {
     // Looking for match
@@ -204,6 +211,47 @@ HNScheduleCriteria::addDayByName( std::string name )
     // Set the index, NOT_SET if not found.
     m_dayIndex = (HNIS_DAY_INDX_T) index;
 */
+}
+
+bool 
+HNScheduleCriteria::hasZones()
+{
+    return ((m_zoneSet.empty() == true) ? false : true);
+}
+
+void 
+HNScheduleCriteria::clearZones()
+{
+    m_zoneSet.clear();
+}
+
+void 
+HNScheduleCriteria::addZone( std::string name )
+{
+    m_zoneSet.insert( name );
+}
+         
+std::set< std::string >& 
+HNScheduleCriteria::getZoneSetRef()
+{
+    return m_zoneSet;
+}
+
+std::string 
+HNScheduleCriteria::getZoneSetAsStr()
+{
+    std::string rspStr;
+
+    bool first = true;
+    for( std::set<std::string>::iterator it = m_zoneSet.begin(); it != m_zoneSet.end(); it++ )
+    {
+        if( first == false )
+            rspStr += " ";
+        rspStr += *it;
+        first = false;
+    }
+
+    return rspStr;
 }
 
 std::string 
@@ -240,6 +288,12 @@ bool
 HNScheduleCriteria::isForDay( HNIS_DAY_INDX_T dindx )
 {
     return true;
+}
+
+uint 
+HNScheduleCriteria::getDayBits()
+{
+    return m_dayBits;
 }
 
 HNIS_RESULT_T 
@@ -326,6 +380,56 @@ void
 HNISPeriod::setDayIndex( HNIS_DAY_INDX_T dindx )
 {
     m_dayIndx = dindx;
+}
+
+bool 
+HNISPeriod::hasZones()
+{
+    return ((m_zoneSet.empty() == true) ? false : true);
+}
+
+void 
+HNISPeriod::clearZones()
+{
+    m_zoneSet.clear();
+}
+
+void 
+HNISPeriod::addZone( std::string name )
+{
+    m_zoneSet.insert( name );
+}
+
+void 
+HNISPeriod::addZoneSet( std::set<std::string> &srcSet )
+{
+    for( std::set<std::string>::iterator it = srcSet.begin(); it != srcSet.end(); it++ )
+    {
+        m_zoneSet.insert( *it );
+    }
+}
+
+std::set< std::string >& 
+HNISPeriod::getZoneSetRef()
+{
+    return m_zoneSet;
+}
+
+std::string 
+HNISPeriod::getZoneSetAsStr()
+{
+    std::string rspStr;
+
+    bool first = true;
+    for( std::set<std::string>::iterator it = m_zoneSet.begin(); it != m_zoneSet.end(); it++ )
+    {
+        if( first == false )
+            rspStr += " ";
+        rspStr += *it;
+        first = false;
+    }
+
+    return rspStr;
 }
 
 HNIS_DAY_INDX_T 
@@ -752,7 +856,7 @@ HNISDay::compareOverlap( HNScheduleCriteria &criteria, HNISPeriod &period )
 
     std::cout << "ovcmp - cs: " << cs << "  ce: " << ce << "  ps:" << ps << "  pe:" << pe << std::endl;
 
-    if( cs <= ps )
+    if( cs < ps )
         overlapType |= 1;
     if( ce <= ps )
         overlapType |= 2;
@@ -904,8 +1008,150 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
             // Check whether to split the exiting period, or to discard this
             // criteria.
             case OVLP_TYPE_CRIT_WITHIN:
-                // Discard new criteria
-                return HNIS_RESULT_SUCCESS;
+            {
+                std::cout << "  criteria within existing period" << std::endl;
+
+                // If the criteria doesn't specify specific zones then
+                // just discard it as the time span is already covered
+                // by the existing period.
+                if( criteria.hasZones() == false )
+                {
+                    std::cout << "  criteria discard - already covered." << std::endl;
+
+                    // Discard new criteria
+                    return HNIS_RESULT_SUCCESS;
+                }
+
+                // If the period does not have a zone spec but criteria does,
+                // then break it into pieces and a new 
+                // in between period with the zone spec.
+                if( pit->hasZones() == false )
+                {
+                    std::cout << "  criteria with zones, period without" << std::endl;
+
+                    uint cs = criteria.getStartTime().getSeconds();
+                    uint ce = criteria.getEndTime().getSeconds();
+                    uint ps = pit->getStartTime().getSeconds();
+                    uint pe = pit->getEndTime().getSeconds();
+
+                    // If the criteria and period are exactly equal
+                    // then just modify the existing period to have the
+                    // zone spec
+                    if( (cs == ps) && (ce == pe) )
+                    {
+                        std::cout << "  equal criteria and period span." << std::endl;
+
+                        pit->addZoneSet( criteria.getZoneSetRef() );
+                        return HNIS_RESULT_SUCCESS;
+                    }
+
+                    // If the period starts before the criteria then 
+                    // trim the existing period, and create one or 
+                    // two more periods to represent the criteria and
+                    // and any trailing portion of the original period.
+                    if( (ps < cs) && (pe > ce) )
+                    {
+                        std::cout << "  criteria span middle" << std::endl;
+
+                        // Trim the existing period
+                        pit->setEndTimeSeconds( cs );
+
+                        // Create a new period for the criteria
+                        period.setSegmentID( segmentID );
+                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
+                        period.setDayIndex( m_dayIndex );
+                        period.setStartTime( criteria.getStartTime() );
+                        period.setEndTime( criteria.getEndTime() );
+                        period.clearZones();
+                        period.addZoneSet( criteria.getZoneSetRef() );
+
+                        std::cout << "  add 1" << std::endl;
+
+                        std::list< HNISPeriod >::iterator ins1pit = pit;
+                        ins1pit++;
+                        if( ins1pit == m_periodList.end() )
+                            m_periodList.push_back( period );
+                        else
+                            m_periodList.insert( ins1pit, period );
+
+                        // Create a period to represent the end
+                        // of the original period
+                        period.setSegmentID( pit->getSegmentID() );
+                        period.setType( pit->getType() );
+                        period.setDayIndex( m_dayIndex );
+                        period.setStartTimeSeconds( ce );
+                        period.setEndTimeSeconds( pe );
+                        period.clearZones();
+                        period.addZoneSet( pit->getZoneSetRef() );
+
+                        std::cout << "  add 2" << std::endl;
+
+                        std::list< HNISPeriod >::iterator ins2pit = pit;
+                        ins2pit++;
+                        ins2pit++;
+                        if( ins2pit == m_periodList.end() )
+                            m_periodList.push_back( period );
+                        else
+                            m_periodList.insert( ins2pit, period );
+                    }
+                    else if( (ps < cs) && (pe == ce) )
+                    {
+                        std::cout << "  criteria against end" << std::endl;
+
+                        // Trim the existing period
+                        pit->setEndTimeSeconds( cs );
+
+                        // Create a new period for the criteria
+                        period.setSegmentID( segmentID );
+                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
+                        period.setDayIndex( m_dayIndex );
+                        period.setStartTime( criteria.getStartTime() );
+                        period.setEndTime( criteria.getEndTime() );
+                        period.clearZones();
+                        period.addZoneSet( criteria.getZoneSetRef() );
+
+                        std::cout << "  add 1" << std::endl;
+
+                        std::list< HNISPeriod >::iterator ins1pit = pit;
+                        ins1pit++;
+                        if( ins1pit == m_periodList.end() )
+                            m_periodList.push_back( period );
+                        else
+                            m_periodList.insert( ins1pit, period );
+                    }
+                    else
+                    {
+                        std::cout << "  criteria against start" << std::endl;
+
+                        // Trim the existing period
+                        pit->setStartTimeSeconds( ce );
+
+                        // Create a new period for the criteria
+                        period.setSegmentID( segmentID );
+                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
+                        period.setDayIndex( m_dayIndex );
+                        period.setStartTime( criteria.getStartTime() );
+                        period.setEndTime( criteria.getEndTime() );
+                        period.clearZones();
+                        period.addZoneSet( criteria.getZoneSetRef() );
+
+                        m_periodList.insert( pit, period );
+                    }
+
+                    return HNIS_RESULT_SUCCESS;
+                }
+
+                // If the period already has a zone spec then
+                // check for equivalence with the criteria spec
+                // and discard if they are the same.
+                if( pit->hasZones() == true )
+                {
+
+                }
+
+                // Check the zone spec, if it matches the period one then
+                // discard the criteria as
+            }
             break;
 
             // For the following the criteria is trailing the current entry.
@@ -1084,7 +1330,7 @@ HNISDay::debugPrint()
     std::cout << "==== Day: " << getDayName() << " ====" << std::endl;
     for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
     {
-        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getSegmentID() << std::endl;
+        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getSegmentID() << "  " << it->getZoneSetAsStr() << std::endl;
     }    
 }
 
@@ -1388,10 +1634,29 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
             criteriaPtr->setEndTime( rstStr );
         }
 
-        //if( objPtr->getValueByName( "dayIndex", rstStr ) == HNC_RESULT_SUCCESS )
-        //{
-        //    criteriaPtr->setDayIndexFromNameStr( rstStr );
-        //}
+        if( objPtr->getValueByName( "dayBits", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->clearDayBits();
+            uint dayBits = strtol( rstStr.c_str(), NULL, 0 );
+            criteriaPtr->setDayBits( dayBits );
+        }
+
+        if( objPtr->getValueByName( "zoneList", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            const std::regex ws_re("\\s+"); // whitespace
+
+            criteriaPtr->clearZones();
+
+            // Walk the zoneList string
+            std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
+            const std::sregex_token_iterator end;
+            while( it != end )
+            {
+                // Add a new switch action to the queue.
+                criteriaPtr->addZone( *it );
+                it++;
+            }
+        }
     }
           
     return HNIS_RESULT_SUCCESS;
@@ -1477,6 +1742,11 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
         objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
         objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
 //        objPtr->updateValue( "dayName", it->second.getDayName() );
+
+        sprintf( tmpStr, "%d", it->second.getDayBits() );
+        objPtr->updateValue( "dayBits", tmpStr );
+
+        objPtr->updateValue( "zoneList", it->second.getZoneSetAsStr() );
     }
 
     return HNIS_RESULT_SUCCESS;

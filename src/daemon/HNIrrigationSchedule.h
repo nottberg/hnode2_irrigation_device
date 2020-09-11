@@ -7,6 +7,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <set>
 
 #include <hnode2/HNodeConfig.h>
 
@@ -78,7 +79,7 @@ class HNScheduleCriteria
 
         HNSC_DBITS_T m_dayBits;
 
-        std::vector< std::string > m_zoneList;
+        std::set< std::string > m_zoneSet;
 
     public:
         HNScheduleCriteria();
@@ -93,10 +94,16 @@ class HNScheduleCriteria
         HNIS_RESULT_T setEndTime( std::string endTime );
 
         void clearDayBits();
+        void setDayBits( uint value );
         void addDayByName( std::string name );
 
+        bool hasZones();
         void clearZones();
         void addZone( std::string name );
+         
+        std::set< std::string >& getZoneSetRef();
+
+        std::string getZoneSetAsStr();
 
         std::string getID();
         std::string getName();
@@ -106,6 +113,7 @@ class HNScheduleCriteria
         HNI24HTime &getEndTime();
 
         bool isForDay( HNIS_DAY_INDX_T dindx );
+        uint getDayBits();
 
         HNIS_RESULT_T validateSettings();
 };
@@ -130,6 +138,8 @@ class HNISPeriod
 
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
+
+        std::set< std::string > m_zoneSet;
 
         bool m_slideLater;
 
@@ -164,6 +174,15 @@ class HNISPeriod
         uint getEndTimeSeconds();
         std::string getEndTimeStr();
 
+        bool hasZones();
+        void clearZones();
+        void addZone( std::string name );
+
+        std::set< std::string >& getZoneSetRef();
+        void addZoneSet( std::set<std::string> &srcSet );
+
+        std::string getZoneSetAsStr();
+        
         bool isSlideLater();
 
         void moveStartToSecond( uint seconds );
