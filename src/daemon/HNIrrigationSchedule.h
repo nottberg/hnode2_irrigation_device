@@ -122,8 +122,7 @@ class HNScheduleCriteria
 typedef enum HNISPeriodTypeEnum
 {
     HNIS_PERIOD_TYPE_NOTSET,
-    HNIS_PERIOD_TYPE_AVAILABLE_ALL,
-    HNIS_PERIOD_TYPE_AVAILABLE_SELECT,
+    HNIS_PERIOD_TYPE_AVAILABLE,
     HNIS_PERIOD_TYPE_ZONE_ON
 }HNIS_PERIOD_TYPE_T;
 
@@ -287,9 +286,9 @@ class HNISDay
 
         HNIS_CAR_T assessCollision( HNISPeriod &value, uint &boundary );
 
-        OVLP_TYPE_T compareOverlap( HNScheduleCriteria &criteria, HNISPeriod &period );
+        OVLP_TYPE_T compareOverlap( uint cs, uint ce, HNISPeriod &period );
 
-        HNIS_RESULT_T resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria );
+        //HNIS_RESULT_T resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria );
 
     public:
         HNISDay();

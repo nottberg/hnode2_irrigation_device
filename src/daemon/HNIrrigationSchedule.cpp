@@ -287,7 +287,15 @@ HNScheduleCriteria::getEndTime()
 bool 
 HNScheduleCriteria::isForDay( HNIS_DAY_INDX_T dindx )
 {
-    return true;
+    uint dayMask = (1 << dindx);
+
+    if( m_dayBits == HNSC_DBITS_DAILY )
+        return true;
+
+    if( m_dayBits & dayMask )
+        return true;
+
+    return false;
 }
 
 uint 
@@ -684,7 +692,7 @@ HNIrrigationZone::getMinimumCycleTimeSeconds()
 HNIS_RESULT_T 
 HNIrrigationZone::getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod )
 {
-    std::cout << "getNextSchulingPeriod: " << dayIndex << "  " << cycleIndex << std::endl;
+    std::cout << "getNextSchedulingPeriod: " << dayIndex << "  " << cycleIndex << std::endl;
 
     // Nothing to do if already completely scheduled.
     if( cycleIndex >= getTargetCyclesPerDay() )
@@ -844,13 +852,11 @@ HNISDay::coalesce()
 }
 
 OVLP_TYPE_T 
-HNISDay::compareOverlap( HNScheduleCriteria &criteria, HNISPeriod &period )
+HNISDay::compareOverlap( uint cs, uint ce, HNISPeriod &period )
 {       
     // Day matches so check times
     uint overlapType = 0;
 
-    uint cs = criteria.getStartTime().getSeconds();
-    uint ce = criteria.getEndTime().getSeconds();
     uint ps = period.getStartTime().getSeconds();
     uint pe = period.getEndTime().getSeconds();
 
@@ -868,6 +874,7 @@ HNISDay::compareOverlap( HNScheduleCriteria &criteria, HNISPeriod &period )
     return (OVLP_TYPE_T) overlapType;
 }
 
+#if 0
 HNIS_RESULT_T
 HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria )
 {
@@ -889,7 +896,7 @@ HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap,
     while( (endFound == false) && (cpit != m_periodList.end()) )
     {       
         // Check the overlap situation with the new period
-        eolap = compareOverlap( criteria, *epit );
+        eolap = compareOverlap( criteria, *cpit );
         
         std::cout << "resolveTail - eov: " << eolap << "  segment: " << segmentID << std::endl;
 
@@ -917,6 +924,8 @@ HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap,
             case OVLP_TYPE_CRIT_BACK:
             case OVLP_TYPE_CRIT_AFTER:
             case OVLP_TYPE_CRIT_WITHIN:
+                std::cout << "  resolve tail failure" << std::endl;
+
                 // Discard new criteria
                 return HNIS_RESULT_FAILURE;
             break;
@@ -933,7 +942,7 @@ HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap,
     if( epit == m_periodList.end() )
     {
         period.setSegmentID( segmentID );
-        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
+        period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
         period.setDayIndex( m_dayIndex );
         period.setStartTime( criteria.getStartTime() );
         period.setEndTime( criteria.getEndTime() );
@@ -946,6 +955,7 @@ HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap,
         
     return HNIS_RESULT_SUCCESS;
 }
+#endif
 
 HNIS_RESULT_T 
 HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
@@ -954,13 +964,16 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
 
     std::cout << "applyCriteria: " << segmentID << "  dayIndex: " << m_dayIndex << std::endl;
 
+    uint spanStart = criteria.getStartTime().getSeconds();
+    uint spanEnd   = criteria.getEndTime().getSeconds();
+
     // Find the insertion point
     // The list should be in order, so scan until we are overlapping an entry or beyond possible entries. 
     uint index = 0;
     for( std::list< HNISPeriod >::iterator pit = m_periodList.begin(); pit != m_periodList.end(); pit++ )
     {
         // Determine the overlap type between the regions
-        OVLP_TYPE_T overlapType = compareOverlap( criteria, *pit );
+        OVLP_TYPE_T overlapType = compareOverlap( spanStart, spanEnd, *pit );
              
         std::cout << "applyCriteria - iter: " << index << "  sov: " << overlapType << "  segment: " << segmentID << std::endl;
 
@@ -974,193 +987,186 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
                 continue;
 
             // The criteria is completely before the current period,
-            // since the list should be in order, we can insert an entry
-            // and exit.
+            // since the list should be in order, we are finished with
+            // this criteria.
             case OVLP_TYPE_CRIT_BEFORE:
-            {
-                std::cout << "applyCriteria - before add" << std::endl;
 
-                period.setSegmentID( segmentID );
-                period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
-                period.setDayIndex( m_dayIndex );
-                period.setStartTime( criteria.getStartTime() );
-                period.setEndTime( criteria.getEndTime() );
+                // If there is still part of this criteria left to insert
+                // then add it now.
+                if( spanStart != spanEnd )
+                {
+                    std::cout << "applyCriteria - before add" << std::endl;
 
-                m_periodList.insert( pit, period );
+                    period.setSegmentID( segmentID );
+                    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+                    period.setDayIndex( m_dayIndex );
+                    period.setStartTimeSeconds( spanStart );
+                    period.setEndTimeSeconds( spanEnd );
 
+                    period.clearZones();
+                    period.addZoneSet( criteria.getZoneSetRef() );
+
+                    m_periodList.insert( pit, period );
+                }
+                
+                // Criteria complete
                 return HNIS_RESULT_SUCCESS;
-            }
             break;
 
             // The criteria overlap the start of the period
-            // Determine whether to enlarge the existing period,
-            // or create a new period and trim the exiting period.
+            // adjust the overlapped period 
             case OVLP_TYPE_CRIT_FRONT:
             {
-                // Enlarge the existing period
-                pit->setStartTime( criteria.getStartTime() );
-                
+                std::cout << "  front overlap - c zones - shrink and add" << std::endl;
+
+                std::cout << "  front overlap - spanStart: " << spanStart << "  pitStart: " << pit->getStartTime().getSeconds() << std::endl;
+                // If the overlap has a region before the period, add a new period for it.
+                if( spanStart < pit->getStartTime().getSeconds() )
+                {
+                    std::cout << "  front overlap - before add: " << spanStart << " : " << pit->getStartTime().getSeconds() << std::endl;
+
+                    period.setSegmentID( segmentID );
+                    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+                    period.setDayIndex( m_dayIndex );
+                    period.setStartTimeSeconds( spanStart );
+                    period.setEndTime( pit->getStartTime() );
+
+                    period.clearZones();
+                    period.addZoneSet( criteria.getZoneSetRef() ); 
+
+                    m_periodList.insert( pit, period );
+
+                    spanStart = pit->getStartTime().getSeconds();
+                }
+
+                // Create a new period to represent the overlap
+                period.setSegmentID( segmentID );
+                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+                period.setDayIndex( m_dayIndex );
+                period.setStartTimeSeconds( spanStart );
+                period.setEndTimeSeconds( spanEnd );
+
+                period.clearZones();
+                period.addZoneSet( criteria.getZoneSetRef() );
+                period.addZoneSet( pit->getZoneSetRef() );
+
+                std::cout << "  front overlap - overlap add: " << spanStart << " : " << spanEnd << std::endl;
+
+                m_periodList.insert( pit, period );
+
+                // Shrink/eliminate the existing period
+                if( spanEnd == pit->getEndTime().getSeconds() )
+                {
+                    std::cout << "  front overlap - erase tail" << std::endl;
+                    m_periodList.erase( pit );
+                }
+                else
+                {
+                    std::cout << "  front overlap - shrink tail: " << spanEnd << std::endl;
+                    pit->setStartTimeSeconds( spanEnd );
+                }
+
+                // Finished with this criteria
                 return HNIS_RESULT_SUCCESS;
             }
             break;
 
             // The criteria is encapsulated by the period
-            // Check whether to split the exiting period, or to discard this
+            // Check whether to split the existing period, or to discard this
             // criteria.
             case OVLP_TYPE_CRIT_WITHIN:
             {
                 std::cout << "  criteria within existing period" << std::endl;
 
-                // If the criteria doesn't specify specific zones then
-                // just discard it as the time span is already covered
-                // by the existing period.
-                if( criteria.hasZones() == false )
+                // Add a new period for the first portion of the original period
+                if( spanStart != pit->getStartTime().getSeconds() )
                 {
-                    std::cout << "  criteria discard - already covered." << std::endl;
+                    period.setSegmentID( pit->getSegmentID() );
+                    period.setType( pit->getType() );
+                    period.setDayIndex( pit->getDayIndex() );
+                    period.setStartTime( pit->getStartTime() );
+                    period.setEndTimeSeconds( spanStart );
 
-                    // Discard new criteria
-                    return HNIS_RESULT_SUCCESS;
+                    period.clearZones();
+                    period.addZoneSet( pit->getZoneSetRef() );
+
+                    m_periodList.insert( pit, period );
                 }
 
-                // If the period does not have a zone spec but criteria does,
-                // then break it into pieces and a new 
-                // in between period with the zone spec.
-                if( pit->hasZones() == false )
-                {
-                    std::cout << "  criteria with zones, period without" << std::endl;
+                // Add a period for the overlap section
+                period.setSegmentID( segmentID );
+                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+                period.setDayIndex( m_dayIndex );
+                period.setStartTimeSeconds( spanStart );
+                period.setEndTimeSeconds( spanEnd );
 
-                    uint cs = criteria.getStartTime().getSeconds();
-                    uint ce = criteria.getEndTime().getSeconds();
-                    uint ps = pit->getStartTime().getSeconds();
-                    uint pe = pit->getEndTime().getSeconds();
+                period.clearZones();
+                period.addZoneSet( criteria.getZoneSetRef() );
+                period.addZoneSet( pit->getZoneSetRef() );
 
-                    // If the criteria and period are exactly equal
-                    // then just modify the existing period to have the
-                    // zone spec
-                    if( (cs == ps) && (ce == pe) )
-                    {
-                        std::cout << "  equal criteria and period span." << std::endl;
+                m_periodList.insert( pit, period );
 
-                        pit->addZoneSet( criteria.getZoneSetRef() );
-                        return HNIS_RESULT_SUCCESS;
-                    }
+                // Shrink/eliminate the existing period
+                if( criteria.getEndTime().getSeconds() == pit->getEndTime().getSeconds() )
+                    m_periodList.erase( pit );
+                else
+                    pit->setStartTime( criteria.getEndTime() );            
 
-                    // If the period starts before the criteria then 
-                    // trim the existing period, and create one or 
-                    // two more periods to represent the criteria and
-                    // and any trailing portion of the original period.
-                    if( (ps < cs) && (pe > ce) )
-                    {
-                        std::cout << "  criteria span middle" << std::endl;
-
-                        // Trim the existing period
-                        pit->setEndTimeSeconds( cs );
-
-                        // Create a new period for the criteria
-                        period.setSegmentID( segmentID );
-                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
-                        period.setDayIndex( m_dayIndex );
-                        period.setStartTime( criteria.getStartTime() );
-                        period.setEndTime( criteria.getEndTime() );
-                        period.clearZones();
-                        period.addZoneSet( criteria.getZoneSetRef() );
-
-                        std::cout << "  add 1" << std::endl;
-
-                        std::list< HNISPeriod >::iterator ins1pit = pit;
-                        ins1pit++;
-                        if( ins1pit == m_periodList.end() )
-                            m_periodList.push_back( period );
-                        else
-                            m_periodList.insert( ins1pit, period );
-
-                        // Create a period to represent the end
-                        // of the original period
-                        period.setSegmentID( pit->getSegmentID() );
-                        period.setType( pit->getType() );
-                        period.setDayIndex( m_dayIndex );
-                        period.setStartTimeSeconds( ce );
-                        period.setEndTimeSeconds( pe );
-                        period.clearZones();
-                        period.addZoneSet( pit->getZoneSetRef() );
-
-                        std::cout << "  add 2" << std::endl;
-
-                        std::list< HNISPeriod >::iterator ins2pit = pit;
-                        ins2pit++;
-                        ins2pit++;
-                        if( ins2pit == m_periodList.end() )
-                            m_periodList.push_back( period );
-                        else
-                            m_periodList.insert( ins2pit, period );
-                    }
-                    else if( (ps < cs) && (pe == ce) )
-                    {
-                        std::cout << "  criteria against end" << std::endl;
-
-                        // Trim the existing period
-                        pit->setEndTimeSeconds( cs );
-
-                        // Create a new period for the criteria
-                        period.setSegmentID( segmentID );
-                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
-                        period.setDayIndex( m_dayIndex );
-                        period.setStartTime( criteria.getStartTime() );
-                        period.setEndTime( criteria.getEndTime() );
-                        period.clearZones();
-                        period.addZoneSet( criteria.getZoneSetRef() );
-
-                        std::cout << "  add 1" << std::endl;
-
-                        std::list< HNISPeriod >::iterator ins1pit = pit;
-                        ins1pit++;
-                        if( ins1pit == m_periodList.end() )
-                            m_periodList.push_back( period );
-                        else
-                            m_periodList.insert( ins1pit, period );
-                    }
-                    else
-                    {
-                        std::cout << "  criteria against start" << std::endl;
-
-                        // Trim the existing period
-                        pit->setStartTimeSeconds( ce );
-
-                        // Create a new period for the criteria
-                        period.setSegmentID( segmentID );
-                        period.setType( HNIS_PERIOD_TYPE_AVAILABLE_SELECT );
-                        period.setDayIndex( m_dayIndex );
-                        period.setStartTime( criteria.getStartTime() );
-                        period.setEndTime( criteria.getEndTime() );
-                        period.clearZones();
-                        period.addZoneSet( criteria.getZoneSetRef() );
-
-                        m_periodList.insert( pit, period );
-                    }
-
-                    return HNIS_RESULT_SUCCESS;
-                }
-
-                // If the period already has a zone spec then
-                // check for equivalence with the criteria spec
-                // and discard if they are the same.
-                if( pit->hasZones() == true )
-                {
-
-                }
-
-                // Check the zone spec, if it matches the period one then
-                // discard the criteria as
+                // Finished with this criteria
+                return HNIS_RESULT_SUCCESS;
             }
             break;
 
-            // For the following the criteria is trailing the current entry.
-            // So the start has been found, but now the end must be found to 
-            // determine the correct action.
-            case OVLP_TYPE_CRIT_AROUND:
+            // Must keep going to ensure all of criteria has
+            // been accounted for.
             case OVLP_TYPE_CRIT_BACK:
             {
-                return resolveTail( pit, overlapType, segmentID, criteria );
+                // Add a period to represent the overlap region
+                period.setSegmentID( segmentID );
+                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+                period.setDayIndex( m_dayIndex );
+                period.setStartTimeSeconds( spanStart );
+                period.setEndTime( pit->getEndTime() );
+
+                period.clearZones();
+                period.addZoneSet( criteria.getZoneSetRef() );
+                period.addZoneSet( pit->getZoneSetRef() );
+
+                // Add the new period after the current one.
+                std::list< HNISPeriod >::iterator iit = pit;
+                iit++;
+                if( iit != m_periodList.end() )
+                    m_periodList.insert( iit, period );
+                else
+                    m_periodList.push_back( period );
+
+                // Calculate the used up portion of the criteria
+                uint origEnd = pit->getEndTime().getSeconds();
+
+                // Shorten the original period to subtract the overlap
+                pit->setEndTimeSeconds( spanStart );
+
+                // Adjust the criteria remainder
+                spanStart = origEnd;
+             
+                std::cout << "  back adj - origEnd: " << origEnd << "  spanStart: " << spanStart << std::endl;
+
+                // Bump the iterator to point at the element which
+                // was just inserted and run the loop again.
+                pit++; 
+            }
+            break;
+
+            // Must keep going to ensure all of criteria has
+            // been accounted for.
+            case OVLP_TYPE_CRIT_AROUND:
+            {
+                // Update the current period zone with
+                // new criteria additions
+                pit->addZoneSet( criteria.getZoneSetRef() );
+ 
+                // Update the criteria start and next iteration
+                spanStart = pit->getEndTime().getSeconds();
             }
             break;
         }
@@ -1168,17 +1174,25 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
         index++;
     }
 
-    std::cout << "applyCriteria - no overlap add" << std::endl;
+    // If the criteria was not all used up
+    // in the collision scan then add any remainder
+    // here
+    if( spanStart != spanEnd )
+    {
+        std::cout << "applyCriteria - loop finish add" << std::endl;
 
-    // No appropriate insertion point was identified so
-    // just insert the new period whole cloth at the end.
-    period.setSegmentID( segmentID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE_ALL );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTime( criteria.getStartTime() );
-    period.setEndTime( criteria.getEndTime() );
+        // No appropriate insertion point was identified so
+        // just insert the new period whole cloth at the end.
+        period.setSegmentID( segmentID );
+        period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+        period.setDayIndex( m_dayIndex );
+        period.setStartTime( criteria.getStartTime() );
+        period.setEndTime( criteria.getEndTime() );
+        period.clearZones();
+        period.addZoneSet( criteria.getZoneSetRef() );
 
-    m_periodList.push_back( period );
+        m_periodList.push_back( period );
+    }
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -1781,7 +1795,7 @@ HNIrrigationSchedule::buildSchedule()
     for( std::map< std::string, HNScheduleCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
     {
         // Check each possible day.
-        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        for( int dayIndx = 0; dayIndx < 1 /*HNIS_DINDX_NOTSET*/; dayIndx++ )
         {
             bool inserted = false;
 
