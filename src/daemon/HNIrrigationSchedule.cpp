@@ -324,7 +324,7 @@ HNISPeriod::~HNISPeriod()
 }
 
 void 
-HNISPeriod::setSegmentID( std::string id )
+HNISPeriod::setID( std::string id )
 {
     m_id = id;
 }
@@ -367,7 +367,7 @@ HNISPeriod::setTimesFromStr( std::string startTime, std::string endTime )
 }
 
 std::string
-HNISPeriod::getSegmentID()
+HNISPeriod::getID()
 {
     return m_id;
 }
@@ -762,7 +762,7 @@ HNIrrigationZone::getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZS
 
     uint cycleOffset = cycleWidth * ( cycleIndex / 2 );
 
-    tgtPeriod.setSegmentID( getID() );
+    tgtPeriod.setID( getID() );
     tgtPeriod.setType( HNIS_PERIOD_TYPE_ZONE_ON );
 
     if( schState.isTopNext() )
@@ -874,95 +874,20 @@ HNISDay::compareOverlap( uint cs, uint ce, HNISPeriod &period )
     return (OVLP_TYPE_T) overlapType;
 }
 
-#if 0
-HNIS_RESULT_T
-HNISDay::resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria )
+void
+HNISDay::collapseSegments()
 {
-    HNISPeriod period;
-
-    // The beginning of the overlap has been found,
-    // but the trailing portion of the overlap still
-    // needs to be determined.
-
-    // Keep info about the last period that matters
-    OVLP_TYPE_T eolap = OVLP_TYPE_CRIT_NOTSET;
-    std::list< HNISPeriod >::iterator epit = m_periodList.end();
-
-    // Check for next entry
-    std::list< HNISPeriod >::iterator cpit = spit;
-    cpit++;
-
-    bool endFound = false;
-    while( (endFound == false) && (cpit != m_periodList.end()) )
-    {       
-        // Check the overlap situation with the new period
-        eolap = compareOverlap( criteria, *cpit );
-        
-        std::cout << "resolveTail - eov: " << eolap << "  segment: " << segmentID << std::endl;
-
-        // Take action based on the type of overlap
-        switch( eolap )
-        {
-            // No criteria overlap with this block,
-            // so solap and iterators should indicate the
-            // appropriate resolution now.
-            case OVLP_TYPE_CRIT_BEFORE:
-                endFound = true;
-            break;
-
-            // This block is fully encapsulated by the 
-            // criteria block continue to search for the end. 
-            case OVLP_TYPE_CRIT_AROUND:
-            break;
-
-            // Found the end overlap
-            case OVLP_TYPE_CRIT_FRONT:
-                endFound = true;
-            break;
-
-            // Should not occur, internal error
-            case OVLP_TYPE_CRIT_BACK:
-            case OVLP_TYPE_CRIT_AFTER:
-            case OVLP_TYPE_CRIT_WITHIN:
-                std::cout << "  resolve tail failure" << std::endl;
-
-                // Discard new criteria
-                return HNIS_RESULT_FAILURE;
-            break;
-        }
-
-        // Check the next segment
-        epit = cpit;
-        cpit++;
-    }
+    // Walk through the period list and collapse equivalent adjacent segments
 
 
-    // If no entry followed the previous one
-    // then we are clear to insert the new period
-    if( epit == m_periodList.end() )
-    {
-        period.setSegmentID( segmentID );
-        period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-        period.setDayIndex( m_dayIndex );
-        period.setStartTime( criteria.getStartTime() );
-        period.setEndTime( criteria.getEndTime() );
-
-        m_periodList.insert( epit, period );
-
-        return HNIS_RESULT_SUCCESS;
-    }
-         
-        
-    return HNIS_RESULT_SUCCESS;
 }
-#endif
 
 HNIS_RESULT_T 
-HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
+HNISDay::applyCriteria( HNScheduleCriteria &criteria )
 {
     HNISPeriod period;
 
-    std::cout << "applyCriteria: " << segmentID << "  dayIndex: " << m_dayIndex << std::endl;
+    std::cout << std::endl << "applyCriteria: " << criteria.getID() << "  dayIndex: " << m_dayIndex << std::endl;
 
     uint spanStart = criteria.getStartTime().getSeconds();
     uint spanEnd   = criteria.getEndTime().getSeconds();
@@ -975,7 +900,7 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
         // Determine the overlap type between the regions
         OVLP_TYPE_T overlapType = compareOverlap( spanStart, spanEnd, *pit );
              
-        std::cout << "applyCriteria - iter: " << index << "  sov: " << overlapType << "  segment: " << segmentID << std::endl;
+        std::cout << "applyCriteria - iter: " << index << "  sov: " << overlapType << "  segment: " << criteria.getID() << std::endl;
 
         // Take action based on the type of overlap
         switch( overlapType )
@@ -996,17 +921,7 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
                 if( spanStart != spanEnd )
                 {
                     std::cout << "applyCriteria - before add" << std::endl;
-
-                    period.setSegmentID( segmentID );
-                    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-                    period.setDayIndex( m_dayIndex );
-                    period.setStartTimeSeconds( spanStart );
-                    period.setEndTimeSeconds( spanEnd );
-
-                    period.clearZones();
-                    period.addZoneSet( criteria.getZoneSetRef() );
-
-                    m_periodList.insert( pit, period );
+                    insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
                 }
                 
                 // Criteria complete
@@ -1024,35 +939,17 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
                 if( spanStart < pit->getStartTime().getSeconds() )
                 {
                     std::cout << "  front overlap - before add: " << spanStart << " : " << pit->getStartTime().getSeconds() << std::endl;
-
-                    period.setSegmentID( segmentID );
-                    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-                    period.setDayIndex( m_dayIndex );
-                    period.setStartTimeSeconds( spanStart );
-                    period.setEndTime( pit->getStartTime() );
-
-                    period.clearZones();
-                    period.addZoneSet( criteria.getZoneSetRef() ); 
-
-                    m_periodList.insert( pit, period );
+                    insertBeforeAvailablePeriod( pit, spanStart, pit->getStartTime().getSeconds(), criteria.getZoneSetRef() );
 
                     spanStart = pit->getStartTime().getSeconds();
                 }
 
                 // Create a new period to represent the overlap
-                period.setSegmentID( segmentID );
-                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-                period.setDayIndex( m_dayIndex );
-                period.setStartTimeSeconds( spanStart );
-                period.setEndTimeSeconds( spanEnd );
-
-                period.clearZones();
-                period.addZoneSet( criteria.getZoneSetRef() );
-                period.addZoneSet( pit->getZoneSetRef() );
-
                 std::cout << "  front overlap - overlap add: " << spanStart << " : " << spanEnd << std::endl;
 
-                m_periodList.insert( pit, period );
+                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
+
+                applyZoneSet( pID, pit->getZoneSetRef() );
 
                 // Shrink/eliminate the existing period
                 if( spanEnd == pit->getEndTime().getSeconds() )
@@ -1081,30 +978,13 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
                 // Add a new period for the first portion of the original period
                 if( spanStart != pit->getStartTime().getSeconds() )
                 {
-                    period.setSegmentID( pit->getSegmentID() );
-                    period.setType( pit->getType() );
-                    period.setDayIndex( pit->getDayIndex() );
-                    period.setStartTime( pit->getStartTime() );
-                    period.setEndTimeSeconds( spanStart );
-
-                    period.clearZones();
-                    period.addZoneSet( pit->getZoneSetRef() );
-
-                    m_periodList.insert( pit, period );
+                    insertBeforeAvailablePeriod( pit, pit->getStartTime().getSeconds(), spanStart, pit->getZoneSetRef() );
                 }
 
                 // Add a period for the overlap section
-                period.setSegmentID( segmentID );
-                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-                period.setDayIndex( m_dayIndex );
-                period.setStartTimeSeconds( spanStart );
-                period.setEndTimeSeconds( spanEnd );
+                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
 
-                period.clearZones();
-                period.addZoneSet( criteria.getZoneSetRef() );
-                period.addZoneSet( pit->getZoneSetRef() );
-
-                m_periodList.insert( pit, period );
+                applyZoneSet( pID, pit->getZoneSetRef() );
 
                 // Shrink/eliminate the existing period
                 if( criteria.getEndTime().getSeconds() == pit->getEndTime().getSeconds() )
@@ -1122,23 +1002,9 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
             case OVLP_TYPE_CRIT_BACK:
             {
                 // Add a period to represent the overlap region
-                period.setSegmentID( segmentID );
-                period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-                period.setDayIndex( m_dayIndex );
-                period.setStartTimeSeconds( spanStart );
-                period.setEndTime( pit->getEndTime() );
+                std::string pID = insertAfterAvailablePeriod( pit, spanStart, pit->getEndTime().getSeconds(), criteria.getZoneSetRef() );
 
-                period.clearZones();
-                period.addZoneSet( criteria.getZoneSetRef() );
-                period.addZoneSet( pit->getZoneSetRef() );
-
-                // Add the new period after the current one.
-                std::list< HNISPeriod >::iterator iit = pit;
-                iit++;
-                if( iit != m_periodList.end() )
-                    m_periodList.insert( iit, period );
-                else
-                    m_periodList.push_back( period );
+                applyZoneSet( pID, pit->getZoneSetRef() );
 
                 // Calculate the used up portion of the criteria
                 uint origEnd = pit->getEndTime().getSeconds();
@@ -1181,26 +1047,108 @@ HNISDay::applyCriteria( std::string segmentID, HNScheduleCriteria &criteria )
     {
         std::cout << "applyCriteria - loop finish add" << std::endl;
 
-        // No appropriate insertion point was identified so
-        // just insert the new period whole cloth at the end.
-        period.setSegmentID( segmentID );
-        period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-        period.setDayIndex( m_dayIndex );
-        period.setStartTime( criteria.getStartTime() );
-        period.setEndTime( criteria.getEndTime() );
-        period.clearZones();
-        period.addZoneSet( criteria.getZoneSetRef() );
-
-        m_periodList.push_back( period );
+        addAvailablePeriod( criteria.getStartTime().getSeconds(), criteria.getEndTime().getSeconds(), criteria.getZoneSetRef() );
     }
 
     return HNIS_RESULT_SUCCESS;
 }
 
+void
+HNISDay::applyZoneSet( std::string periodID, std::set< std::string > &zoneSet )
+{
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        if( it->getID() == periodID )
+        {
+            it->addZoneSet( zoneSet );
+            return;
+        }
+    }     
+}
+
+std::string 
+HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet );
+
+    m_periodList.push_back( period );
+
+    return newID;
+}
+
+std::string
+HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet ); 
+
+    m_periodList.insert( it, period );
+
+    return newID;
+}
+
+std::string
+HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    // Add a period to represent the overlap region
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet );
+
+    // Add the new period after the current one.
+    std::list< HNISPeriod >::iterator iit = it;
+    iit++;
+    if( iit != m_periodList.end() )
+        m_periodList.insert( iit, period );
+    else
+        m_periodList.push_back( period );
+
+    return newID;
+}
+
+//HNIS_RESULT_T 
+//HNISDay::getAvailableScheduleZone( std::string zoneID, std::vector<HNISPeriod> &availableList )
+//{
+//
+//}
+
 HNIS_RESULT_T 
 HNISDay::addPeriod( HNISPeriod value )
 {
-    std::cout << "addPeriod: " << value.getSegmentID() << std::endl;
+    std::cout << "addPeriod: " << value.getID() << std::endl;
 
     m_periodList.push_back( value );
 
@@ -1344,7 +1292,7 @@ HNISDay::debugPrint()
     std::cout << "==== Day: " << getDayName() << " ====" << std::endl;
     for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
     {
-        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getSegmentID() << "  " << it->getZoneSetAsStr() << std::endl;
+        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getID() << "  " << it->getZoneSetAsStr() << std::endl;
     }    
 }
 
@@ -1804,7 +1752,7 @@ HNIrrigationSchedule::buildSchedule()
                 continue;
 
             // Insert the new criteria
-            m_dayArr[ dayIndx ].applyCriteria( cit->second.getID(), cit->second );
+            m_dayArr[ dayIndx ].applyCriteria( cit->second );
         }
     }    
 
@@ -1985,10 +1933,10 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             jsSWAction.set( "action", "on" );
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
-            jsSWAction.set( "zoneid", it->getSegmentID() );
+            jsSWAction.set( "zoneid", it->getID() );
 
             std::string zName;
-            getZoneName( it->getSegmentID(), zName );
+            getZoneName( it->getID(), zName );
             jsSWAction.set( "name", zName );
 
             jsActions.add( jsSWAction );
@@ -2037,7 +1985,7 @@ HNIrrigationSchedule::calculateSMCRC32()
             digest.update( "swon" );
             digest.update( it->getStartTimeStr() );
             digest.update( it->getEndTimeStr() );
-            digest.update( m_zoneMap[ it->getSegmentID() ].getSWIDListStr() );
+            digest.update( m_zoneMap[ it->getID() ].getSWIDListStr() );
         }
         
     }
@@ -2095,9 +2043,9 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
 
-            std::cout << "zone id: " << it->getSegmentID() << std::endl;
+            std::cout << "zone id: " << it->getID() << std::endl;
 
-            jsSWAction.set( "swid", m_zoneMap[ it->getSegmentID() ].getSWIDListStr() );
+            jsSWAction.set( "swid", m_zoneMap[ it->getID() ].getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }

@@ -146,7 +146,7 @@ class HNISPeriod
         HNISPeriod();
        ~HNISPeriod();
 
-        void setSegmentID( std::string id );
+        void setID( std::string id );
         void setType( HNIS_PERIOD_TYPE_T value );
 
         void setSlideLater( bool value );
@@ -160,7 +160,7 @@ class HNISPeriod
 
         void setTimesFromStr( std::string startTime, std::string endTime ); 
 
-        std::string getSegmentID();
+        std::string getID();
         HNIS_PERIOD_TYPE_T getType();
 
         HNIS_DAY_INDX_T getDayIndex();
@@ -286,9 +286,14 @@ class HNISDay
 
         HNIS_CAR_T assessCollision( HNISPeriod &value, uint &boundary );
 
+        void applyZoneSet( std::string periodID, std::set< std::string > &zoneSet );
+        std::string addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet );
+        std::string insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet );
+        std::string insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet );
+
         OVLP_TYPE_T compareOverlap( uint cs, uint ce, HNISPeriod &period );
 
-        //HNIS_RESULT_T resolveTail( std::list< HNISPeriod >::iterator spit, OVLP_TYPE_T solap, std::string segmentID, HNScheduleCriteria &criteria );
+        void collapseSegments();
 
     public:
         HNISDay();
@@ -301,7 +306,7 @@ class HNISDay
         void sort();
         void coalesce();
 
-        HNIS_RESULT_T applyCriteria( std::string segmentID, HNScheduleCriteria &criteria );
+        HNIS_RESULT_T applyCriteria( HNScheduleCriteria &criteria );
 
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
