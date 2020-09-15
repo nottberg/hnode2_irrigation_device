@@ -97,7 +97,7 @@ class HNScheduleCriteria
         void setDayBits( uint value );
         void addDayByName( std::string name );
 
-        bool hasZones();
+        bool hasZone( std::string zoneID );
         void clearZones();
         void addZone( std::string name );
          
@@ -173,7 +173,7 @@ class HNISPeriod
         uint getEndTimeSeconds();
         std::string getEndTimeStr();
 
-        bool hasZones();
+        bool hasZone( std::string zoneID );
         void clearZones();
         void addZone( std::string name );
 
@@ -222,7 +222,7 @@ class HNIrrigationZone
         std::string m_zoneDesc;
 
         uint m_weeklySec;
-        uint m_dailyCycles;
+        uint m_maxCycleSec;
         uint m_minCycleSec;
 
         std::string m_swidList;
@@ -236,8 +236,8 @@ class HNIrrigationZone
         void setDesc( std::string desc );
        
         void setWeeklySeconds( uint value );
-        void setTargetCyclesPerDay( uint value );
         void setMinimumCycleTimeSeconds( uint value );
+        void setMaximumCycleTimeSeconds( uint value );
 
         void setSWIDList( std::string swidList );
 
@@ -250,11 +250,11 @@ class HNIrrigationZone
         std::string getSWIDListStr();
 
         uint getWeeklySeconds();
-        uint getTargetCyclesPerDay();
         uint getMinimumCycleTimeSeconds();
+        uint getMaximumCycleTimeSeconds();
 
-        HNIS_RESULT_T getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
-        HNIS_RESULT_T accountPeriodPlacement( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
+        //HNIS_RESULT_T getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
+        //HNIS_RESULT_T accountPeriodPlacement( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
 };
 
 // Enumerate the possible overlap cases
@@ -310,11 +310,15 @@ class HNISDay
 
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
-        HNIS_RESULT_T scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigationZone &zone );
+        //HNIS_RESULT_T scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigationZone &zone );
 
         std::string getDayName();
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
+
+        HNIS_RESULT_T addAvailableScheduleForZone( std::string zoneID, uint &secAvailable, std::vector<HNISPeriod> &availableList );
+
+        void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
 
         void debugPrint();
 };

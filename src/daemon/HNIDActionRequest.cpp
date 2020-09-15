@@ -92,16 +92,16 @@ HNIDActionRequest::setZoneUpdate( std::istream& bodyStream )
             m_zoneUpdateMask |= HNID_ZU_FLDMASK_SPW;
         }
 
-        if( jsRoot->has( "cyclesPerDay" ) )
+        if( jsRoot->has( "secondsMaxCycle" ) )
         {
-            zone.setTargetCyclesPerDay( jsRoot->getValue<uint>( "cyclesPerDay" ) );
-            m_zoneUpdateMask |= HNID_ZU_FLDMASK_CPD;
+            zone.setMaximumCycleTimeSeconds( jsRoot->getValue<uint>( "secondsMaxCycle" ) );
+            m_zoneUpdateMask |= HNID_ZU_FLDMASK_MAXSPC;
         }
 
         if( jsRoot->has( "secondsMinCycle" ) )
         {
             zone.setMinimumCycleTimeSeconds( jsRoot->getValue<uint>( "secondsMinCycle" ) );
-            m_zoneUpdateMask |= HNID_ZU_FLDMASK_SMC;
+            m_zoneUpdateMask |= HNID_ZU_FLDMASK_MINSPC;
         }
 
         if( jsRoot->has( "swidList" ) )
@@ -146,10 +146,10 @@ HNIDActionRequest::applyZoneUpdate( HNIrrigationZone *tgtZone )
     if( m_zoneUpdateMask & HNID_ZU_FLDMASK_SPW )
         tgtZone->setWeeklySeconds( srcZone->getWeeklySeconds() );
 
-    if( m_zoneUpdateMask & HNID_ZU_FLDMASK_CPD )
-        tgtZone->setTargetCyclesPerDay( srcZone->getTargetCyclesPerDay() );
+    if( m_zoneUpdateMask & HNID_ZU_FLDMASK_MAXSPC )
+        tgtZone->setMaximumCycleTimeSeconds( srcZone->getMaximumCycleTimeSeconds() );
 
-    if( m_zoneUpdateMask & HNID_ZU_FLDMASK_SMC )
+    if( m_zoneUpdateMask & HNID_ZU_FLDMASK_MINSPC )
         tgtZone->setMinimumCycleTimeSeconds( srcZone->getMinimumCycleTimeSeconds() );
 
     if( m_zoneUpdateMask & HNID_ZU_FLDMASK_SWLST )
@@ -336,7 +336,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 znObj.set( "name", zit->getName() );
                 znObj.set( "description", zit->getDesc() );
                 znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
-                znObj.set( "cyclesPerDay", zit->getTargetCyclesPerDay() );
+                znObj.set( "secondsMaxCycle", zit->getMaximumCycleTimeSeconds() );
                 znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
                 znObj.set( "swidList", zit->getSWIDListStr() );
 
@@ -358,7 +358,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "name", zone->getName() );
             jsRoot.set( "description", zone->getDesc() );
             jsRoot.set( "secondsPerWeek", zone->getWeeklySeconds() );
-            jsRoot.set( "cyclesPerDay", zone->getTargetCyclesPerDay() );
+            jsRoot.set( "secondsMaxCycle", zone->getMaximumCycleTimeSeconds() );
             jsRoot.set( "secondsMinCycle", zone->getMinimumCycleTimeSeconds() );
             jsRoot.set( "swidList", zone->getSWIDListStr() );
 

@@ -214,9 +214,18 @@ HNScheduleCriteria::addDayByName( std::string name )
 }
 
 bool 
-HNScheduleCriteria::hasZones()
+HNScheduleCriteria::hasZone( std::string zoneID )
 {
-    return ((m_zoneSet.empty() == true) ? false : true);
+    // No zones is interpreted as all zones.
+    if( m_zoneSet.size() == 0 )
+        return true;
+
+    // Check against the specified set.
+    if( m_zoneSet.find( zoneID ) != m_zoneSet.end() )
+        return true;
+
+    // No found
+    return false;
 }
 
 void 
@@ -391,9 +400,18 @@ HNISPeriod::setDayIndex( HNIS_DAY_INDX_T dindx )
 }
 
 bool 
-HNISPeriod::hasZones()
+HNISPeriod::hasZone( std::string zoneID )
 {
-    return ((m_zoneSet.empty() == true) ? false : true);
+    // No zones is interpreted as all zones.
+    if( m_zoneSet.size() == 0 )
+        return true;
+
+    // Check against the specified set.
+    if( m_zoneSet.find( zoneID ) != m_zoneSet.end() )
+        return true;
+
+    // No found
+    return false;
 }
 
 void 
@@ -589,8 +607,8 @@ HNIZScheduleState::getBottomSeconds()
 HNIrrigationZone::HNIrrigationZone()
 {
     m_weeklySec   = (((5 * 60) * 2) * 7);
-    m_dailyCycles = 2;
     m_minCycleSec = (2 * 60);
+    m_maxCycleSec = (2 * 10);
 }
 
 HNIrrigationZone::~HNIrrigationZone()
@@ -623,17 +641,17 @@ HNIrrigationZone::setWeeklySeconds( uint value )
 }
 
 void
-HNIrrigationZone::setTargetCyclesPerDay( uint value )
-{
-    m_dailyCycles = value;
-}
-
-void
 HNIrrigationZone::setMinimumCycleTimeSeconds( uint value )
 {
     m_minCycleSec = value;
 }
   
+void
+HNIrrigationZone::setMaximumCycleTimeSeconds( uint value )
+{
+    m_maxCycleSec = value;
+}
+
 void 
 HNIrrigationZone::setSWIDList( std::string swidList )
 {
@@ -674,21 +692,22 @@ HNIrrigationZone::getSWIDListStr()
 uint 
 HNIrrigationZone::getWeeklySeconds()
 {
-    return m_weeklySec; // (((5 * 60) * 2) * 7);
-}
-
-uint 
-HNIrrigationZone::getTargetCyclesPerDay()
-{
-    return m_dailyCycles; // 2;
+    return m_weeklySec; 
 }
 
 uint 
 HNIrrigationZone::getMinimumCycleTimeSeconds()
 {
-    return m_minCycleSec; // (2 * 60);
+    return m_minCycleSec; 
 }
 
+uint 
+HNIrrigationZone::getMaximumCycleTimeSeconds()
+{
+    return m_maxCycleSec; 
+}
+
+#if 0
 HNIS_RESULT_T 
 HNIrrigationZone::getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod )
 {
@@ -810,7 +829,7 @@ HNIrrigationZone::accountPeriodPlacement( uint dayIndex, uint cycleIndex, HNIZSc
     std::cout << "New schedule state - nextTop: " << schState.isTopNext() << "  bottom: " << schState.getBottomSeconds() << "  top: " << schState.getTopSeconds() << std::endl;
     return HNIS_RESULT_SUCCESS;
 }
-
+#endif
 
 HNISDay::HNISDay()
 {
@@ -849,6 +868,93 @@ HNISDay::coalesce()
    // Cycle through all periods,
    // Combine exclusions that overlapp
 
+}
+
+
+std::string 
+HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet );
+
+    m_periodList.push_back( period );
+
+    return newID;
+}
+
+std::string
+HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet ); 
+
+    m_periodList.insert( it, period );
+
+    return newID;
+}
+
+std::string
+HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+{
+    HNISPeriod period;
+
+    char newID[64];
+    sprintf( newID, "%ld", m_periodList.size() );
+
+    // Add a period to represent the overlap region
+    period.setID( newID );
+    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setDayIndex( m_dayIndex );
+    period.setStartTimeSeconds( startSec );
+    period.setEndTimeSeconds( endSec );
+
+    period.clearZones();
+    period.addZoneSet( zoneSet );
+
+    // Add the new period after the current one.
+    std::list< HNISPeriod >::iterator iit = it;
+    iit++;
+    if( iit != m_periodList.end() )
+        m_periodList.insert( iit, period );
+    else
+        m_periodList.push_back( period );
+
+    return newID;
+}
+
+void
+HNISDay::applyZoneSet( std::string periodID, std::set< std::string > &zoneSet )
+{
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        if( it->getID() == periodID )
+        {
+            it->addZoneSet( zoneSet );
+            return;
+        }
+    }     
 }
 
 OVLP_TYPE_T 
@@ -1053,97 +1159,78 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
     return HNIS_RESULT_SUCCESS;
 }
 
-void
-HNISDay::applyZoneSet( std::string periodID, std::set< std::string > &zoneSet )
+HNIS_RESULT_T 
+HNISDay::addAvailableScheduleForZone( std::string zoneID, uint &secAvailable, std::vector<HNISPeriod> &availableList )
 {
     for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
     {
-        if( it->getID() == periodID )
+        if( it->getType() == HNIS_PERIOD_TYPE_AVAILABLE )
         {
-            it->addZoneSet( zoneSet );
+            if( it->hasZone( zoneID ) )
+            {
+                // Add to the running total of available scheduling seconds
+                secAvailable += (it->getEndTime().getSeconds() - it->getStartTime().getSeconds());
+
+                // Add the record for the scheduleable period
+                availableList.push_back( *it );
+            }
+        }
+    }         
+}
+
+void
+HNISDay::addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec )
+{
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        if( it->getID() != periodID )
+            continue;
+
+        if( it->getType() != HNIS_PERIOD_TYPE_AVAILABLE )
+            continue;
+
+        uint periodSec = it->getEndTime().getSeconds() - it->getStartTime().getSeconds();
+
+        if( durationSec > periodSec )
+        {
             return;
         }
-    }     
+        else if( durationSec == periodSec )
+        {
+            // Current period will be consumed
+            // so just turn it into the zone-on period
+            it->setType( HNIS_PERIOD_TYPE_ZONE_ON );
+            it->clearZones();
+            it->addZone( zoneID );
+        }
+        else
+        {
+            // Determine the dividing time
+            uint dTime = it->getStartTime().getSeconds() + durationSec;
+
+            // Create a new period for the zone on time
+            char newID[64];
+            HNISPeriod period;
+
+            sprintf( newID, "%ld", m_periodList.size() );
+
+            // Add a period to represent the overlap region
+            period.setID( newID );
+            period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
+            period.setDayIndex( m_dayIndex );
+            period.setStartTime( it->getStartTime() );
+            period.setEndTimeSeconds( dTime );
+
+            period.clearZones();
+            period.addZone( zoneID );
+
+            m_periodList.insert( it, period );
+
+            // Shorten the available time period
+            it->setStartTimeSeconds( dTime );
+        }        
+    }
 }
-
-std::string 
-HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet )
-{
-    HNISPeriod period;
-
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
-
-    period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-
-    period.clearZones();
-    period.addZoneSet( zoneSet );
-
-    m_periodList.push_back( period );
-
-    return newID;
-}
-
-std::string
-HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
-{
-    HNISPeriod period;
-
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
-
-    period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-
-    period.clearZones();
-    period.addZoneSet( zoneSet ); 
-
-    m_periodList.insert( it, period );
-
-    return newID;
-}
-
-std::string
-HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
-{
-    HNISPeriod period;
-
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
-
-    // Add a period to represent the overlap region
-    period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-
-    period.clearZones();
-    period.addZoneSet( zoneSet );
-
-    // Add the new period after the current one.
-    std::list< HNISPeriod >::iterator iit = it;
-    iit++;
-    if( iit != m_periodList.end() )
-        m_periodList.insert( iit, period );
-    else
-        m_periodList.push_back( period );
-
-    return newID;
-}
-
-//HNIS_RESULT_T 
-//HNISDay::getAvailableScheduleZone( std::string zoneID, std::vector<HNISPeriod> &availableList )
-//{
-//
-//}
 
 HNIS_RESULT_T 
 HNISDay::addPeriod( HNISPeriod value )
@@ -1207,6 +1294,7 @@ HNISDay::assessCollision( HNISPeriod &value, uint &boundary )
      return HNIS_CAR_NONE;
 }
 
+#if 0
 HNIS_RESULT_T 
 HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigationZone &zone )
 {
@@ -1264,6 +1352,7 @@ HNISDay::scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigat
     // Done scheduling this zone.
     return result;
 }
+#endif
 
 void 
 HNISDay::getPeriodList( std::vector< HNISPeriod > &periodList )
@@ -1526,9 +1615,9 @@ HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
             zonePtr->setWeeklySeconds( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
-        if( objPtr->getValueByName( "cyclesPerDay", rstStr ) == HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "secondsMaxCycle", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            zonePtr->setTargetCyclesPerDay( strtol( rstStr.c_str(), NULL, 0 ) );
+            zonePtr->setMaximumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
         if( objPtr->getValueByName( "secondsMinCycle", rstStr ) == HNC_RESULT_SUCCESS )
@@ -1538,6 +1627,7 @@ HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
 
         if( objPtr->getValueByName( "swidList", rstStr ) == HNC_RESULT_SUCCESS )
         {
+            std::cout << "== READ SWIDLIST: " << rstStr << std::endl;
             zonePtr->setSWIDList( rstStr );
         }
 
@@ -1666,8 +1756,8 @@ HNIrrigationSchedule::updateZoneListSection( HNodeConfig &cfg )
         sprintf( tmpStr, "%d", it->second.getWeeklySeconds() );
         objPtr->updateValue( "secondsPerWeek", tmpStr );
 
-        sprintf( tmpStr, "%d", it->second.getTargetCyclesPerDay() );
-        objPtr->updateValue( "cyclesPerDay", tmpStr );
+        sprintf( tmpStr, "%d", it->second.getMaximumCycleTimeSeconds() );
+        objPtr->updateValue( "secondsMaxCycle", tmpStr );
 
         sprintf( tmpStr, "%d", it->second.getMinimumCycleTimeSeconds() );
         objPtr->updateValue( "secondsMinCycle", tmpStr );
@@ -1743,7 +1833,7 @@ HNIrrigationSchedule::buildSchedule()
     for( std::map< std::string, HNScheduleCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
     {
         // Check each possible day.
-        for( int dayIndx = 0; dayIndx < 1 /*HNIS_DINDX_NOTSET*/; dayIndx++ )
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
         {
             bool inserted = false;
 
@@ -1759,6 +1849,77 @@ HNIrrigationSchedule::buildSchedule()
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].debugPrint();
     
+
+    // Attempt to schedule each zone
+    for( std::map< std::string, HNIrrigationZone >::iterator zit = m_zoneMap.begin(); zit != m_zoneMap.end(); zit++ )
+    {
+        std::set<std::string> allocatedSlots;
+        std::vector<HNISPeriod> availSlotList;
+        uint totalAvailSeconds = 0;
+
+        for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+            m_dayArr[ indx ].addAvailableScheduleForZone( zit->second.getID(), totalAvailSeconds, availSlotList );
+
+        uint uniqueSlots = availSlotList.size();
+
+        std::cout << "==== Zone: " << zit->second.getID() << "  availSec: " << totalAvailSeconds << "  slotCount: " << uniqueSlots << std::endl;
+
+        // Calculate the total weekly time needed for the zone.
+        uint totalWeeklySeconds = zit->second.getWeeklySeconds();
+        
+        // Make sure it will fit.
+        if( totalWeeklySeconds > totalAvailSeconds )
+        {
+            // Mark the zone as unable to schedule
+
+            // Attempt next zone
+            continue;
+        }
+
+        // Calculate the desired number of cycles.
+        uint maxCycleCnt = totalWeeklySeconds / zit->second.getMinimumCycleTimeSeconds();
+        uint minCycleCnt = totalWeeklySeconds / zit->second.getMaximumCycleTimeSeconds();
+
+        uint cycleTimePerSlot = totalWeeklySeconds / uniqueSlots;
+
+        std::cout << "  totWSec: " << totalWeeklySeconds << "  minCycleCnt: " << minCycleCnt << "  maxCycleCnt: " << maxCycleCnt << " PerSlotTime: " << cycleTimePerSlot << std::endl;
+
+        // Determine the number of slots to use.
+        // First check that the number of available slots is sufficient
+        if( minCycleCnt > uniqueSlots )
+        {
+            // Mark zone as unschedulable
+
+            // Attempt next zone
+            continue;
+        }
+
+        // Shoot for an average time between lower and upper bound
+        uint targetCycleTime = zit->second.getMinimumCycleTimeSeconds();
+        if( targetCycleTime < cycleTimePerSlot )
+            targetCycleTime = cycleTimePerSlot;
+
+        targetCycleTime = ( ( targetCycleTime + zit->second.getMaximumCycleTimeSeconds() ) / 2 );
+        uint targetSlotCnt = totalWeeklySeconds / targetCycleTime;
+    
+        std::cout << "  targetCycleTime: " << targetCycleTime << "  targetSlotCnt: " << targetSlotCnt << std::endl;
+
+        // Make the allocations
+        std::vector<HNISPeriod>::iterator slit = availSlotList.begin();
+        for( uint slotIndex = 0; slotIndex < targetSlotCnt; slit++, slotIndex++ )
+        {
+            m_dayArr[ slit->getDayIndex() ].addPeriodZoneOn( slit->getID(), zit->second.getID(), targetCycleTime );
+        }
+
+    }
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        m_dayArr[ indx ].debugPrint();
+
+    // Calculate a hash value for this schedule
+    // which will be used to determine update flow.
+    calculateSMCRC32();
+
 #if 0
 /*
         HNISPeriod period;
@@ -1985,7 +2146,7 @@ HNIrrigationSchedule::calculateSMCRC32()
             digest.update( "swon" );
             digest.update( it->getStartTimeStr() );
             digest.update( it->getEndTimeStr() );
-            digest.update( m_zoneMap[ it->getID() ].getSWIDListStr() );
+            digest.update( m_zoneMap[ it->getZoneSetAsStr() ].getSWIDListStr() );
         }
         
     }
@@ -2045,7 +2206,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
 
             std::cout << "zone id: " << it->getID() << std::endl;
 
-            jsSWAction.set( "swid", m_zoneMap[ it->getID() ].getSWIDListStr() );
+            jsSWAction.set( "swid", m_zoneMap[ it->getZoneSetAsStr() ].getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }
