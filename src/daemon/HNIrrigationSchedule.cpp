@@ -135,7 +135,8 @@ HNI24HTime::subtractSeconds( uint seconds )
 
 HNScheduleCriteria::HNScheduleCriteria()
 {
-    m_dayBits   = HNSC_DBITS_DAILY;
+    m_rank = 5;
+    m_dayBits    = HNSC_DBITS_DAILY;
 }
 
 HNScheduleCriteria::~HNScheduleCriteria()
@@ -181,6 +182,12 @@ HNIS_RESULT_T
 HNScheduleCriteria::setEndTime( std::string endTime )
 {
     m_endTime.parseTime( endTime );
+}
+
+void 
+HNScheduleCriteria::setRank( uint value )
+{
+    m_rank = value;
 }
 
 void 
@@ -293,6 +300,12 @@ HNScheduleCriteria::getEndTime()
     return m_endTime;
 }
 
+uint 
+HNScheduleCriteria::getRank()
+{
+    return m_rank;
+}
+
 bool 
 HNScheduleCriteria::isForDay( HNIS_DAY_INDX_T dindx )
 {
@@ -323,7 +336,7 @@ HNScheduleCriteria::validateSettings()
 HNISPeriod::HNISPeriod()
 {
     m_type = HNIS_PERIOD_TYPE_NOTSET;
-
+    m_rank = 0;
     m_slideLater = true;
 }
 
@@ -373,6 +386,12 @@ HNISPeriod::setTimesFromStr( std::string startTime, std::string endTime )
 {
     m_startTime.parseTime( startTime );
     m_endTime.parseTime( endTime );
+}
+
+void 
+HNISPeriod::setRank( uint value )
+{
+    m_rank = value;
 }
 
 std::string
@@ -500,6 +519,12 @@ HNISPeriod::getEndTimeStr()
     return m_endTime.getHMSStr();
 }
 
+uint 
+HNISPeriod::getRank()
+{
+    return m_rank;
+}
+
 bool
 HNISPeriod::isSlideLater()
 {
@@ -543,8 +568,15 @@ HNISPeriod::moveEndToSecond( uint seconds )
 }
 
 bool 
-HNISPeriod::sortCompare( const HNISPeriod& first, const HNISPeriod& second )
+HNISPeriod::rankCompare( const HNISPeriod& first, const HNISPeriod& second )
 {
+  // First sort by rank
+  if( first.m_rank < second.m_rank )
+      return true;
+  else if( first.m_rank < second.m_rank )
+      return false;
+
+  // If ranks are equal then sort by time
   return ( first.m_startTime.getSeconds() < second.m_startTime.getSeconds() );
 }
 
@@ -857,12 +889,6 @@ HNISDay::setIndex( HNIS_DAY_INDX_T dayIndex )
 }
 
 void 
-HNISDay::sort()
-{
-    m_periodList.sort( HNISPeriod::sortCompare );
-}
-
-void 
 HNISDay::coalesce()
 {
    // Cycle through all periods,
@@ -872,7 +898,7 @@ HNISDay::coalesce()
 
 
 std::string 
-HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet )
+HNISDay::addAvailablePeriod( uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
 {
     HNISPeriod period;
 
@@ -884,6 +910,7 @@ HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string >
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
     period.setEndTimeSeconds( endSec );
+    period.setRank( rank );
 
     period.clearZones();
     period.addZoneSet( zoneSet );
@@ -894,7 +921,7 @@ HNISDay::addAvailablePeriod( uint startSec, uint endSec, std::set< std::string >
 }
 
 std::string
-HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
 {
     HNISPeriod period;
 
@@ -906,6 +933,7 @@ HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uin
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
     period.setEndTimeSeconds( endSec );
+    period.setRank( rank );
 
     period.clearZones();
     period.addZoneSet( zoneSet ); 
@@ -916,7 +944,7 @@ HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uin
 }
 
 std::string
-HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet )
+HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
 {
     HNISPeriod period;
 
@@ -929,6 +957,7 @@ HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
     period.setEndTimeSeconds( endSec );
+    period.setRank( rank );
 
     period.clearZones();
     period.addZoneSet( zoneSet );
@@ -1027,7 +1056,7 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
                 if( spanStart != spanEnd )
                 {
                     std::cout << "applyCriteria - before add" << std::endl;
-                    insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
+                    insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
                 }
                 
                 // Criteria complete
@@ -1045,7 +1074,7 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
                 if( spanStart < pit->getStartTime().getSeconds() )
                 {
                     std::cout << "  front overlap - before add: " << spanStart << " : " << pit->getStartTime().getSeconds() << std::endl;
-                    insertBeforeAvailablePeriod( pit, spanStart, pit->getStartTime().getSeconds(), criteria.getZoneSetRef() );
+                    insertBeforeAvailablePeriod( pit, spanStart, pit->getStartTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
 
                     spanStart = pit->getStartTime().getSeconds();
                 }
@@ -1053,7 +1082,7 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
                 // Create a new period to represent the overlap
                 std::cout << "  front overlap - overlap add: " << spanStart << " : " << spanEnd << std::endl;
 
-                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
+                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
 
                 applyZoneSet( pID, pit->getZoneSetRef() );
 
@@ -1084,11 +1113,11 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
                 // Add a new period for the first portion of the original period
                 if( spanStart != pit->getStartTime().getSeconds() )
                 {
-                    insertBeforeAvailablePeriod( pit, pit->getStartTime().getSeconds(), spanStart, pit->getZoneSetRef() );
+                    insertBeforeAvailablePeriod( pit, pit->getStartTime().getSeconds(), spanStart, criteria.getRank(), pit->getZoneSetRef() );
                 }
 
                 // Add a period for the overlap section
-                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getZoneSetRef() );
+                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
 
                 applyZoneSet( pID, pit->getZoneSetRef() );
 
@@ -1108,7 +1137,7 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
             case OVLP_TYPE_CRIT_BACK:
             {
                 // Add a period to represent the overlap region
-                std::string pID = insertAfterAvailablePeriod( pit, spanStart, pit->getEndTime().getSeconds(), criteria.getZoneSetRef() );
+                std::string pID = insertAfterAvailablePeriod( pit, spanStart, pit->getEndTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
 
                 applyZoneSet( pID, pit->getZoneSetRef() );
 
@@ -1153,12 +1182,13 @@ HNISDay::applyCriteria( HNScheduleCriteria &criteria )
     {
         std::cout << "applyCriteria - loop finish add" << std::endl;
 
-        addAvailablePeriod( criteria.getStartTime().getSeconds(), criteria.getEndTime().getSeconds(), criteria.getZoneSetRef() );
+        addAvailablePeriod( criteria.getStartTime().getSeconds(), criteria.getEndTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
     }
 
     return HNIS_RESULT_SUCCESS;
 }
 
+#if 0
 HNIS_RESULT_T 
 HNISDay::addAvailableScheduleForZone( std::string zoneID, uint &secAvailable, std::vector<HNISPeriod> &availableList )
 {
@@ -1176,6 +1206,29 @@ HNISDay::addAvailableScheduleForZone( std::string zoneID, uint &secAvailable, st
             }
         }
     }         
+}
+#endif
+
+HNIS_RESULT_T 
+HNISDay::getAvailableSlotsForZone( std::string zoneID, std::vector< HNISPeriod > &slotList )
+{
+    // Build a list of available slots for this zone.
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        if( it->getType() == HNIS_PERIOD_TYPE_AVAILABLE )
+        {
+            if( it->hasZone( zoneID ) )
+            {
+                slotList.push_back( *it );
+            }
+        }
+    }
+
+    // Sort the zone list by rank and time.
+    // Lower Ranks and earlier times are favored
+    std::sort( slotList.begin(), slotList.end(), HNISPeriod::rankCompare );
+
+    return HNIS_RESULT_SUCCESS;
 }
 
 void
@@ -1238,8 +1291,6 @@ HNISDay::addPeriod( HNISPeriod value )
     std::cout << "addPeriod: " << value.getID() << std::endl;
 
     m_periodList.push_back( value );
-
-    sort();
 }
 
 HNIS_CAR_T
@@ -1686,6 +1737,12 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
             criteriaPtr->setEndTime( rstStr );
         }
 
+        if( objPtr->getValueByName( "rank", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            uint offset = strtol( rstStr.c_str(), NULL, 0 );
+            criteriaPtr->setRank( offset );
+        }
+
         if( objPtr->getValueByName( "dayBits", rstStr ) == HNC_RESULT_SUCCESS )
         {
             criteriaPtr->clearDayBits();
@@ -1793,7 +1850,9 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
         objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
         objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
-//        objPtr->updateValue( "dayName", it->second.getDayName() );
+
+        sprintf( tmpStr, "%d", it->second.getRank() );
+        objPtr->updateValue( "rank", tmpStr );
 
         sprintf( tmpStr, "%d", it->second.getDayBits() );
         objPtr->updateValue( "dayBits", tmpStr );
@@ -1853,14 +1912,48 @@ HNIrrigationSchedule::buildSchedule()
     // Attempt to schedule each zone
     for( std::map< std::string, HNIrrigationZone >::iterator zit = m_zoneMap.begin(); zit != m_zoneMap.end(); zit++ )
     {
-        std::set<std::string> allocatedSlots;
-        std::vector<HNISPeriod> availSlotList;
+        // Generate an ordered list 
+        // of available slots for scheduling.
+        // Order the slots so that they are
+        // spread temporally, so that as the 
+        // amount of watering time goes up/down
+        // the watering is still spread evenly.
+        std::vector<HNISPeriod> availSlotLists[ HNIS_DINDX_NOTSET ];
+        uint maxLayer = 0;
         uint totalAvailSeconds = 0;
 
+        // Generate a list of available zone slots for each day.
         for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-            m_dayArr[ indx ].addAvailableScheduleForZone( zit->second.getID(), totalAvailSeconds, availSlotList );
+        {
+            m_dayArr[ indx ].getAvailableSlotsForZone( zit->second.getID(), availSlotLists[ indx ] );
 
-        uint uniqueSlots = availSlotList.size();
+            if( maxLayer < availSlotLists[ indx ].size() )
+                maxLayer = availSlotLists[ indx ].size();
+        }
+
+        // Now generate an ordered list across all days
+        // by traversing the individual day list in a specific
+        // pattern
+        uint insOrdArr[] = { HNIS_DINDX_SUNDAY, HNIS_DINDX_MONDAY, HNIS_DINDX_TUESDAY, HNIS_DINDX_WEDNESDAY, HNIS_DINDX_THURSDAY, HNIS_DINDX_FRIDAY, HNIS_DINDX_SATURDAY };
+        std::vector<HNISPeriod> orderedSlotList;
+
+        for( uint layerIndex = 0; layerIndex < maxLayer; layerIndex++ )
+        {
+            for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+            {
+                HNISPeriod slot;
+                uint dayIndx = insOrdArr[ indx ];
+                if( layerIndex < availSlotLists[ dayIndx ].size() )
+                {
+                    slot = availSlotLists[ dayIndx ][ layerIndex ];
+                    totalAvailSeconds += ( slot.getEndTime().getSeconds() - slot.getStartTime().getSeconds() );
+                    orderedSlotList.push_back( slot );
+                }
+            }
+        }
+
+        // Calculate how many of the slots to use.
+        uint uniqueSlots = orderedSlotList.size();
 
         std::cout << "==== Zone: " << zit->second.getID() << "  availSec: " << totalAvailSeconds << "  slotCount: " << uniqueSlots << std::endl;
 
@@ -1905,9 +1998,10 @@ HNIrrigationSchedule::buildSchedule()
         std::cout << "  targetCycleTime: " << targetCycleTime << "  targetSlotCnt: " << targetSlotCnt << std::endl;
 
         // Make the allocations
-        std::vector<HNISPeriod>::iterator slit = availSlotList.begin();
+        std::vector<HNISPeriod>::iterator slit = orderedSlotList.begin();
         for( uint slotIndex = 0; slotIndex < targetSlotCnt; slit++, slotIndex++ )
         {
+            std::cout << "    day: " << slit->getDayIndex() << "  rank: " << slit->getRank() << "  startSec: " << slit->getStartTime().getSeconds() << std::endl;
             m_dayArr[ slit->getDayIndex() ].addPeriodZoneOn( slit->getID(), zit->second.getID(), targetCycleTime );
         }
 

@@ -77,6 +77,8 @@ class HNScheduleCriteria
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
 
+        uint m_rank;
+
         HNSC_DBITS_T m_dayBits;
 
         std::set< std::string > m_zoneSet;
@@ -92,6 +94,8 @@ class HNScheduleCriteria
         HNIS_RESULT_T setTimesFromStr( std::string startTime, std::string endTime ); 
         HNIS_RESULT_T setStartTime( std::string startTime );
         HNIS_RESULT_T setEndTime( std::string endTime );
+
+        void setRank( uint value );
 
         void clearDayBits();
         void setDayBits( uint value );
@@ -111,6 +115,8 @@ class HNScheduleCriteria
 
         HNI24HTime &getStartTime();
         HNI24HTime &getEndTime();
+
+        uint getRank();
 
         bool isForDay( HNIS_DAY_INDX_T dindx );
         uint getDayBits();
@@ -138,6 +144,8 @@ class HNISPeriod
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
 
+        uint m_rank;
+
         std::set< std::string > m_zoneSet;
 
         bool m_slideLater;
@@ -159,6 +167,8 @@ class HNISPeriod
         void setEndTimeSeconds( uint seconds );
 
         void setTimesFromStr( std::string startTime, std::string endTime ); 
+
+        void setRank( uint value );
 
         std::string getID();
         HNIS_PERIOD_TYPE_T getType();
@@ -182,12 +192,14 @@ class HNISPeriod
 
         std::string getZoneSetAsStr();
         
+        uint getRank();
+
         bool isSlideLater();
 
         void moveStartToSecond( uint seconds );
         void moveEndToSecond( uint seconds );
 
-        static bool sortCompare( const HNISPeriod& first, const HNISPeriod& second );
+        static bool rankCompare( const HNISPeriod& first, const HNISPeriod& second );
 
 };
 
@@ -287,9 +299,9 @@ class HNISDay
         HNIS_CAR_T assessCollision( HNISPeriod &value, uint &boundary );
 
         void applyZoneSet( std::string periodID, std::set< std::string > &zoneSet );
-        std::string addAvailablePeriod( uint startSec, uint endSec, std::set< std::string > &zoneSet );
-        std::string insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet );
-        std::string insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, std::set< std::string > &zoneSet );
+        std::string addAvailablePeriod( uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
+        std::string insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
+        std::string insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
 
         OVLP_TYPE_T compareOverlap( uint cs, uint ce, HNISPeriod &period );
 
@@ -303,7 +315,6 @@ class HNISDay
 
         void clear();
 
-        void sort();
         void coalesce();
 
         HNIS_RESULT_T applyCriteria( HNScheduleCriteria &criteria );
@@ -316,7 +327,7 @@ class HNISDay
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
 
-        HNIS_RESULT_T addAvailableScheduleForZone( std::string zoneID, uint &secAvailable, std::vector<HNISPeriod> &availableList );
+        HNIS_RESULT_T getAvailableSlotsForZone( std::string zoneID, std::vector< HNISPeriod > &slotList );
 
         void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
 
