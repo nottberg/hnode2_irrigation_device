@@ -148,8 +148,6 @@ class HNISPeriod
 
         std::set< std::string > m_zoneSet;
 
-        bool m_slideLater;
-
     public:
         HNISPeriod();
        ~HNISPeriod();
@@ -194,36 +192,11 @@ class HNISPeriod
         
         uint getRank();
 
-        bool isSlideLater();
-
         void moveStartToSecond( uint seconds );
         void moveEndToSecond( uint seconds );
 
         static bool rankCompare( const HNISPeriod& first, const HNISPeriod& second );
 
-};
-
-class HNIZScheduleState
-{
-    private:
-        bool m_nextTop;
-
-        uint m_lastBottomSec;
-        uint m_lastTopSec;
-
-    public:
-        HNIZScheduleState();
-       ~HNIZScheduleState();
-
-        void setNextTop( bool value );
-        void setTopSeconds( uint value );
-        void setBottomSeconds( uint value );
-
-        void toggleNextTop();
-        bool isTopNext();
-
-        uint getTopSeconds();
-        uint getBottomSeconds();
 };
 
 class HNIrrigationZone
@@ -265,8 +238,6 @@ class HNIrrigationZone
         uint getMinimumCycleTimeSeconds();
         uint getMaximumCycleTimeSeconds();
 
-        //HNIS_RESULT_T getNextSchedulingPeriod( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
-        //HNIS_RESULT_T accountPeriodPlacement( uint dayIndex, uint cycleIndex, HNIZScheduleState &schState, HNISPeriod &tgtPeriod );
 };
 
 // Enumerate the possible overlap cases
@@ -296,16 +267,12 @@ class HNISDay
   
         std::list< HNISPeriod > m_periodList;
 
-        HNIS_CAR_T assessCollision( HNISPeriod &value, uint &boundary );
-
         void applyZoneSet( std::string periodID, std::set< std::string > &zoneSet );
         std::string addAvailablePeriod( uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
         std::string insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
         std::string insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
 
         OVLP_TYPE_T compareOverlap( uint cs, uint ce, HNISPeriod &period );
-
-        void collapseSegments();
 
     public:
         HNISDay();
@@ -321,15 +288,13 @@ class HNISDay
 
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
-        //HNIS_RESULT_T scheduleTimeSlots( uint cycleIndex, HNIZScheduleState &state, HNIrrigationZone &zone );
+        void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
 
         std::string getDayName();
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
 
         HNIS_RESULT_T getAvailableSlotsForZone( std::string zoneID, std::vector< HNISPeriod > &slotList );
-
-        void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
 
         void debugPrint();
 };
