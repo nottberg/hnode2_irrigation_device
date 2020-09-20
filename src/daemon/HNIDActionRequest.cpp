@@ -106,7 +106,16 @@ HNIDActionRequest::setZoneUpdate( std::istream& bodyStream )
 
         if( jsRoot->has( "swidList" ) )
         {
-            zone.setSWIDList( jsRoot->getValue<std::string>( "swidList" ) );
+            pjs::Array::Ptr jsSWIDList = jsRoot->getArray( "swidList" );
+
+            zone.clearSWIDSet();
+            
+            for( uint index = 0; index < jsSWIDList->size(); index++ )
+            {
+                std::string value = jsSWIDList->getElement<std::string>(index);
+                zone.addSWID( value );
+            }
+            
             m_zoneUpdateMask |= HNID_ZU_FLDMASK_SWLST;
         }
         
@@ -153,8 +162,10 @@ HNIDActionRequest::applyZoneUpdate( HNIrrigationZone *tgtZone )
         tgtZone->setMinimumCycleTimeSeconds( srcZone->getMinimumCycleTimeSeconds() );
 
     if( m_zoneUpdateMask & HNID_ZU_FLDMASK_SWLST )
-        tgtZone->setSWIDList( srcZone->getSWIDListStr() );
-
+    {
+        tgtZone->clearSWIDSet();
+        tgtZone->addSWIDSet( srcZone->getSWIDSetRef() );
+    }
 }
 
 
@@ -203,14 +214,43 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
             m_criteriaUpdateMask |= HNID_CU_FLDMASK_END;
         }
 
-/*
-        if( jsRoot->has( "dayName" ) )
+        if( jsRoot->has( "rank" ) )
         {
-            criteria.setDayIndexFromNameStr( jsRoot->getValue<std::string>( "dayName" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DAYNAME;
+            int value = jsRoot->getValue<int>( "rank" );
+            criteria.setRank( value );
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_RANK;
         }
-*/
-        
+
+        if( jsRoot->has( "dayList" ) )
+        {
+            pjs::Array::Ptr jsDayList = jsRoot->getArray( "dayList" );
+
+            criteria.clearDayBits();
+            
+            for( uint index = 0; index < jsDayList->size(); index++ )
+            {
+                std::string value = jsDayList->getElement<std::string>(index);
+                criteria.addDayByName( value );
+            }
+            
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DAYBITS;
+        }
+     
+        if( jsRoot->has( "zoneList" ) )
+        {
+            pjs::Array::Ptr jsZoneList = jsRoot->getArray( "zoneList" );
+
+            criteria.clearZones();
+            
+            for( uint index = 0; index < jsZoneList->size(); index++ )
+            {
+                std::string value = jsZoneList->getElement<std::string>(index);
+                criteria.addZone( value );
+            }
+            
+            m_criteriaUpdateMask |= HNID_CU_FLDMASK_ZONELIST;
+        }
+   
         if( criteria.validateSettings() != HNIS_RESULT_SUCCESS )
         {
             std::cout << "updateCriteria validate failed" << std::endl;
@@ -250,8 +290,17 @@ HNIDActionRequest::applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria )
     if( m_criteriaUpdateMask & HNID_CU_FLDMASK_END )
         tgtCriteria->setEndTime( srcCriteria->getEndTime().getHMSStr() );
 
-    //if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYNAME )
-    //    tgtCriteria->setDayIndexFromNameStr( srcCriteria->getDayName() );
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_RANK )
+        tgtCriteria->setRank( srcCriteria->getRank() );
+
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYBITS )
+        tgtCriteria->setDayBits( srcCriteria->getDayBits() );
+
+    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_ZONELIST )
+    {
+        tgtCriteria->clearZones();
+        tgtCriteria->addZoneSet( srcCriteria->getZoneSetRef() );
+    }
 }
 
 bool 
@@ -331,6 +380,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             for( std::vector< HNIrrigationZone >::iterator zit = refZoneList().begin(); zit != refZoneList().end(); zit++ )
             { 
                 pjs::Object znObj;
+                pjs::Array  jsSwitchList;
 
                 znObj.set( "zoneid", zit->getID() );
                 znObj.set( "name", zit->getName() );
@@ -338,7 +388,15 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 znObj.set( "secondsPerWeek", zit->getWeeklySeconds() );
                 znObj.set( "secondsMaxCycle", zit->getMaximumCycleTimeSeconds() );
                 znObj.set( "secondsMinCycle", zit->getMinimumCycleTimeSeconds() );
-                znObj.set( "swidList", zit->getSWIDListStr() );
+
+                // Compose Switch List
+                for( std::set< std::string >::iterator sit = zit->getSWIDSetRef().begin(); sit != zit->getSWIDSetRef().end(); sit++ )
+                {
+                    jsSwitchList.add( *sit );
+                }
+
+                // Add Switch List field
+                znObj.set( "swidList", jsSwitchList );
 
                 jsRoot.add( znObj );
             }
@@ -350,8 +408,9 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         case HNID_AR_TYPE_ZONEINFO:
         {
             // Create a json root object
-            pjs::Object      jsRoot;
-
+            pjs::Object  jsRoot;
+            pjs::Array   jsSwitchList;
+   
             std::vector< HNIrrigationZone >::iterator zone = refZoneList().begin();
 
             jsRoot.set( "zoneid", zone->getID() );
@@ -360,7 +419,15 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "secondsPerWeek", zone->getWeeklySeconds() );
             jsRoot.set( "secondsMaxCycle", zone->getMaximumCycleTimeSeconds() );
             jsRoot.set( "secondsMinCycle", zone->getMinimumCycleTimeSeconds() );
-            jsRoot.set( "swidList", zone->getSWIDListStr() );
+
+            // Compose Switch List
+            for( std::set< std::string >::iterator sit = zone->getSWIDSetRef().begin(); sit != zone->getSWIDSetRef().end(); sit++ )
+            {
+                jsSwitchList.add( *sit );
+            }
+
+            // Add Switch List field
+            jsRoot.set( "swidList", jsSwitchList );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }
@@ -374,14 +441,47 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             for( std::vector< HNScheduleCriteria >::iterator cit = refCriteriaList().begin(); cit != refCriteriaList().end(); cit++ )
             { 
                 pjs::Object cObj;
+                pjs::Array dayList;
+                pjs::Array zoneList;
 
                 cObj.set( "criteriaid", cit->getID() );
                 cObj.set( "name", cit->getName() );
                 cObj.set( "description", cit->getDesc() );
                 cObj.set( "startTime", cit->getStartTime().getHMSStr() );
                 cObj.set( "endTime", cit->getEndTime().getHMSStr() );
-                //cObj.set( "dayName", cit->getDayName() );
+                cObj.set( "rank", cit->getRank() );
 
+                // Compose Day List, Empty equals everyday
+                uint dayBits = cit->getDayBits();
+ 
+                if( dayBits & HNSC_DBITS_SUNDAY )
+                    dayList.add( "Sunday" );
+                if( dayBits & HNSC_DBITS_MONDAY )
+                    dayList.add( "Monday" );
+                if( dayBits & HNSC_DBITS_TUESDAY )
+                    dayList.add( "Tuesday" );
+                if( dayBits & HNSC_DBITS_WEDNESDAY )
+                    dayList.add( "Wednesday" );
+                if( dayBits & HNSC_DBITS_THURSDAY )
+                    dayList.add( "Thursday" );
+                if( dayBits & HNSC_DBITS_FRIDAY )
+                    dayList.add( "Friday" );
+                if( dayBits & HNSC_DBITS_SATURDAY )
+                    dayList.add( "Saturday" );
+
+                // Add Daylist field
+                cObj.set( "dayList", dayList );
+
+                // Compose Zone List
+                for( std::set< std::string >::iterator zit = cit->getZoneSetRef().begin(); zit != cit->getZoneSetRef().end(); zit++ )
+                {
+                    zoneList.add( *zit );
+                }
+
+                // Add Zonelist field
+                cObj.set( "zoneList", zoneList );
+                
+                // Add new criteria object to return list
                 jsRoot.add( cObj );
             }
 
@@ -393,16 +493,47 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         {
             // Create a json root object
             pjs::Object      jsRoot;
+            pjs::Array dayList;
+            pjs::Array zoneList;
 
             std::vector< HNScheduleCriteria >::iterator criteria = refCriteriaList().begin();
 
             jsRoot.set( "criteriaid", criteria->getID() );
             jsRoot.set( "name", criteria->getName() );
             jsRoot.set( "description", criteria->getDesc() );
-            //jsRoot.set( "type", criteria->getTypeStr() );
             jsRoot.set( "startTime", criteria->getStartTime().getHMSStr() );
             jsRoot.set( "endTime", criteria->getEndTime().getHMSStr() );
-            //jsRoot.set( "dayName", criteria->getDayName() );
+            jsRoot.set( "rank", criteria->getRank() );
+
+            // Compose Day List, Empty equals everyday
+            uint dayBits = criteria->getDayBits();
+ 
+            if( dayBits & HNSC_DBITS_SUNDAY )
+                dayList.add( "Sunday" );
+            if( dayBits & HNSC_DBITS_MONDAY )
+                dayList.add( "Monday" );
+            if( dayBits & HNSC_DBITS_TUESDAY )
+                dayList.add( "Tuesday" );
+            if( dayBits & HNSC_DBITS_WEDNESDAY )
+                dayList.add( "Wednesday" );
+            if( dayBits & HNSC_DBITS_THURSDAY )
+                dayList.add( "Thursday" );
+            if( dayBits & HNSC_DBITS_FRIDAY )
+                dayList.add( "Friday" );
+            if( dayBits & HNSC_DBITS_SATURDAY )
+                dayList.add( "Saturday" );
+
+            // Add Daylist field
+            jsRoot.set( "dayList", dayList );
+
+            // Compose Zone List
+            for( std::set< std::string >::iterator zit = criteria->getZoneSetRef().begin(); zit != criteria->getZoneSetRef().end(); zit++ )
+            {
+                zoneList.add( *zit );
+            }
+
+            // Add Zonelist field
+            jsRoot.set( "zoneList", zoneList );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }

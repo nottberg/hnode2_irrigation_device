@@ -104,7 +104,8 @@ class HNScheduleCriteria
         bool hasZone( std::string zoneID );
         void clearZones();
         void addZone( std::string name );
-         
+        void addZoneSet( std::set<std::string> &srcSet );
+
         std::set< std::string >& getZoneSetRef();
 
         std::string getZoneSetAsStr();
@@ -210,7 +211,8 @@ class HNIrrigationZone
         uint m_maxCycleSec;
         uint m_minCycleSec;
 
-        std::string m_swidList;
+        //std::string m_swidList;
+        std::set< std::string > m_swidSet;
 
     public:
         HNIrrigationZone();
@@ -224,7 +226,9 @@ class HNIrrigationZone
         void setMinimumCycleTimeSeconds( uint value );
         void setMaximumCycleTimeSeconds( uint value );
 
-        void setSWIDList( std::string swidList );
+        void clearSWIDSet();
+        void addSWID( std::string swid );
+        void addSWIDSet( std::set< std::string > &swidSet );
 
         HNIS_RESULT_T validateSettings();
 
@@ -232,6 +236,7 @@ class HNIrrigationZone
         std::string getName();
         std::string getDesc();
 
+        std::set< std::string >& getSWIDSetRef();
         std::string getSWIDListStr();
 
         uint getWeeklySeconds();

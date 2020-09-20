@@ -246,7 +246,16 @@ HNScheduleCriteria::addZone( std::string name )
 {
     m_zoneSet.insert( name );
 }
-         
+ 
+void 
+HNScheduleCriteria::addZoneSet( std::set<std::string> &srcSet )
+{
+    for( std::set<std::string>::iterator it = srcSet.begin(); it != srcSet.end(); it++ )
+    {
+        m_zoneSet.insert( *it );
+    }
+}
+        
 std::set< std::string >& 
 HNScheduleCriteria::getZoneSetRef()
 {
@@ -616,9 +625,24 @@ HNIrrigationZone::setMaximumCycleTimeSeconds( uint value )
 }
 
 void 
-HNIrrigationZone::setSWIDList( std::string swidList )
+HNIrrigationZone::clearSWIDSet()
 {
-    m_swidList = swidList;
+    m_swidSet.clear();
+}
+
+void 
+HNIrrigationZone::addSWID( std::string swid )
+{
+    m_swidSet.insert( swid );
+}
+
+void 
+HNIrrigationZone::addSWIDSet( std::set< std::string > &swidSet )
+{
+    for( std::set< std::string >::iterator it = m_swidSet.begin(); it != m_swidSet.end(); it++ )
+    {
+        m_swidSet.insert( *it );
+    }
 }
 
 HNIS_RESULT_T 
@@ -646,10 +670,29 @@ HNIrrigationZone::getDesc()
     return m_zoneDesc;
 }
 
+std::set< std::string >& 
+HNIrrigationZone::getSWIDSetRef()
+{
+    return m_swidSet;
+}
+
 std::string 
 HNIrrigationZone::getSWIDListStr()
 {
-    return m_swidList;
+    std::ostringstream swidStr;
+
+    bool first = true;
+    for( std::set< std::string >::iterator it = m_swidSet.begin(); it != m_swidSet.end(); it++ )
+    {
+        if( first == false )
+            swidStr << " ";
+
+        swidStr << *it;
+
+        first = false;
+    }
+    
+    return swidStr.str();
 }
 
 uint 
@@ -1344,8 +1387,21 @@ HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
 
         if( objPtr->getValueByName( "swidList", rstStr ) == HNC_RESULT_SUCCESS )
         {
+            const std::regex ws_re("\\s+"); // whitespace
+
             std::cout << "== READ SWIDLIST: " << rstStr << std::endl;
-            zonePtr->setSWIDList( rstStr );
+
+            zonePtr->clearSWIDSet();
+
+            // Walk the switch List string
+            std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
+            const std::sregex_token_iterator end;
+            while( it != end )
+            {
+                // Add a new switch id.
+                zonePtr->addSWID( *it );
+                it++;
+            }
         }
 
     }
@@ -1625,30 +1681,25 @@ HNIrrigationSchedule::buildSchedule()
         if( totalWeeklySeconds > totalAvailSeconds )
         {
             // Mark the zone as unable to schedule
+            std::cout << "   Error - not enough available time to schedule zone - needed: " << totalWeeklySeconds << "  available: " << totalAvailSeconds << std::endl;
 
             // Attempt next zone
             continue;
         }
 
-        // Calculate the desired number of cycles.
-        uint maxCycleCnt = totalWeeklySeconds / zit->second.getMinimumCycleTimeSeconds();
+        // Check that the number of available slots is sufficient
         uint minCycleCnt = totalWeeklySeconds / zit->second.getMaximumCycleTimeSeconds();
-
-        uint cycleTimePerSlot = totalWeeklySeconds / uniqueSlots;
-
-        std::cout << "  totWSec: " << totalWeeklySeconds << "  minCycleCnt: " << minCycleCnt << "  maxCycleCnt: " << maxCycleCnt << " PerSlotTime: " << cycleTimePerSlot << std::endl;
-
-        // Determine the number of slots to use.
-        // First check that the number of available slots is sufficient
         if( minCycleCnt > uniqueSlots )
         {
             // Mark zone as unschedulable
+            std::cout << "   Error - not enough slots available to schedule zone - needed: " << minCycleCnt << "  available: " << uniqueSlots << std::endl;
 
             // Attempt next zone
             continue;
         }
 
         // Shoot for an average time between lower and upper bound
+        uint cycleTimePerSlot = totalWeeklySeconds / uniqueSlots;
         uint targetCycleTime = zit->second.getMinimumCycleTimeSeconds();
         if( targetCycleTime < cycleTimePerSlot )
             targetCycleTime = cycleTimePerSlot;
@@ -1658,7 +1709,7 @@ HNIrrigationSchedule::buildSchedule()
     
         std::cout << "  targetCycleTime: " << targetCycleTime << "  targetSlotCnt: " << targetSlotCnt << std::endl;
 
-        // Make the allocations
+        // Make the allocations of slots from the ordered list
         std::vector<HNISPeriod>::iterator slit = orderedSlotList.begin();
         for( uint slotIndex = 0; slotIndex < targetSlotCnt; slit++, slotIndex++ )
         {
