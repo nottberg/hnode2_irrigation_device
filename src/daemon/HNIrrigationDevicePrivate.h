@@ -91,6 +91,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
         void handleSWDSwitchInfoRsp( HNSWDPacketClient &packet );
 
+        bool getIrrigationStatusJSON( std::ostream &ostr );
+
     protected:
         // HNDevice REST callback
         virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );

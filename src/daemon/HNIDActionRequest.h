@@ -27,7 +27,8 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_CRITINFO   = 9,
     HNID_AR_TYPE_CRITCREATE = 10,
     HNID_AR_TYPE_CRITUPDATE = 11,
-    HNID_AR_TYPE_CRITDELETE = 12
+    HNID_AR_TYPE_CRITDELETE = 12,
+    HNID_AR_TYPE_IRRSTATUS  = 13
 }HNID_AR_TYPE_T;
 
 typedef enum HNIDActionZoneUpdateMaskEnum
@@ -70,7 +71,7 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string m_criteriaID;
 
         std::vector< HNIrrigationZone > m_zoneList;
-        std::vector< HNScheduleCriteria > m_criteriaList;
+        std::vector< HNIrrigationCriteria > m_criteriaList;
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
@@ -94,10 +95,10 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string getCriteriaID();
 
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
-        void applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria );
+        void applyCriteriaUpdate( HNIrrigationCriteria *tgtCriteria );
 
         std::vector< HNIrrigationZone > &refZoneList();
-        std::vector< HNScheduleCriteria > &refCriteriaList();
+        std::vector< HNIrrigationCriteria > &refCriteriaList();
         std::vector< HNSWDSwitchInfo > &refSwitchList();
 
         std::stringstream &refRspStream();

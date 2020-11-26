@@ -1,3 +1,5 @@
+#include <regex>
+
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
@@ -16,9 +18,42 @@ HNSWDStatus::~HNSWDStatus()
 
 }
 
-void
-HNSWDStatus::setFromJSON( std::string jsonStr )
+uint 
+HNSWDStatus::getSMCRC32()
 {
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_schCRC32;
+}
+
+std::string
+HNSWDStatus::getSMCRC32Str()
+{
+    char tmpStr[64];
+
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    sprintf( tmpStr, "0x%x", m_schCRC32 );
+    return tmpStr;
+}
+
+bool
+HNSWDStatus::healthDegraded()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return false;
+}
+
+void
+HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
     // Parse the response
     try
     {
@@ -31,34 +66,39 @@ HNSWDStatus::setFromJSON( std::string jsonStr )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        std::string m_date = jsRoot->optValue( "date", empty );
-        std::string m_time = jsRoot->optValue( "time", empty );
-        std::string m_tz   = jsRoot->optValue( "timezone", empty );
-        std::string m_swON = jsRoot->optValue( "swOnList", empty );
+        m_date = jsRoot->optValue( "date", empty );
+        m_time = jsRoot->optValue( "time", empty );
+        m_tz   = jsRoot->optValue( "timezone", empty );
 
-        std::string m_schState = jsRoot->optValue( "schedulerState", empty );
-        std::string m_inhUntil = jsRoot->optValue( "inhibitUntil", empty );
+        m_schState = jsRoot->optValue( "schedulerState", empty );
+        m_inhUntil = jsRoot->optValue( "inhibitUntil", empty );
 
-        std::string m_schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
+        m_schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
 
-        std::string m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
+        m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
         m_schCRC32 = strtol( m_schCRC32Str.c_str(), NULL, 0 );
 
         pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
                             
-        std::string m_ohstat = jsOHealth->optValue( "status", empty );
-        std::string m_ohmsg = jsOHealth->optValue( "msg", empty ); 
+        m_ohstat = jsOHealth->optValue( "status", empty );
+        m_ohmsg = jsOHealth->optValue( "msg", empty ); 
 
-        printf( "       Date: %s\n", m_date.c_str() );
-        printf( "       Time: %s\n", m_time.c_str() );
-        printf( "   Timezone: %s\n\n", m_tz.c_str() );
-        printf( "   Schduler State: %s\n", m_schState.c_str() );
-        printf( "    Inhibit Until: %s\n", m_inhUntil.c_str() );
-        printf( "Schedule Up Index: %s\n", m_schUIStr.c_str() );
-        printf( "   Schedule CRC32: 0x%x\n\n", m_schCRC32 );
+        // Map switches to zones
+        const std::regex ws_re("\\s+"); // whitespace
+        std::string swONStr = jsRoot->optValue( "swOnList", empty );
 
-        printf( "  Switch On: %s\n", m_swON.c_str() );
-        printf( "     Health: %s (%s)\n", m_ohstat.c_str(), m_ohmsg.c_str() );
+        m_swON.clear();
+
+        // Walk the switch List string
+        std::sregex_token_iterator it( swONStr.begin(), swONStr.end(), ws_re, -1 );
+        const std::sregex_token_iterator end;
+        while( it != end )
+        {
+            // Add a new switch id.
+            m_swON.insert( *it );
+            it++;
+        }
+
     }
     catch( Poco::Exception ex )
     {
@@ -67,23 +107,79 @@ HNSWDStatus::setFromJSON( std::string jsonStr )
 
 }
 
-uint 
-HNSWDStatus::getSMCRC32()
-{
-    return m_schCRC32;
-}
-
-std::string
-HNSWDStatus::getSMCRC32Str()
-{
-    char tmpStr[64];
-    sprintf( tmpStr, "0x%x", m_schCRC32 );
-    return tmpStr;
-}
-
 bool
-HNSWDStatus::healthDegraded()
+HNSWDStatus::getAsRESTJSON( std::ostream &ostr )
 {
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    jsRoot.set( "date", m_date );
+    jsRoot.set( "time", m_time );
+    jsRoot.set( "timezone", m_tz );
+
+    jsRoot.set( "schedulerState", m_schState );
+    jsRoot.set( "inhibitUntil", m_inhUntil );
+
+    pjs::Object ovHealth;
+
+    ovHealth.set( "status", m_ohstat );
+    ovHealth.set( "msg", m_ohmsg );
+
+    jsRoot.set( "overallHealth", ovHealth );
+
+#if 0
+    // Add data for each day
+    pjs::Object jsDays;
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+    {
+        pjs::Array jsActions;
+
+        std::vector< HNISPeriod > periodList;
+        m_dayArr[ indx ].getPeriodList( periodList );
+
+        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
+        {
+            pjs::Object jsSWAction;
+
+            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
+            {
+                std::cout << "js continue" << std::endl;                
+                continue;
+            }
+
+            jsSWAction.set( "action", "on" );
+            jsSWAction.set( "startTime", it->getStartTimeStr() );
+            jsSWAction.set( "endTime", it->getEndTimeStr() );
+            jsSWAction.set( "zoneid", it->getID() );
+
+            std::string zName;
+            getZoneName( it->getID(), zName );
+            jsSWAction.set( "name", zName );
+
+            jsActions.add( jsSWAction );
+        }
+        
+        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+    }
+
+    jsRoot.set( "scheduleMatrix", jsDays );
+#endif
+
+    try
+    {
+        // Write out the generated json
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+    }
+    catch( ... )
+    {
+        return true;
+    }
+
+    // Success
     return false;
 }
 

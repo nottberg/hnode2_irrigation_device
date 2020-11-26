@@ -25,323 +25,6 @@ static const char *s_dayNames[] =
     "Not Set"
 };
 
-// Must match the static event type enum from the header file.
-static const char *s_criteriaTypeStrs[] =
-{
-    "notset",            // HNIS_CTYPE_NOTSET
-    "everyday-keepout",  // HNIS_CTYPE_EVERYDAY_KEEPOUT,
-    "single-keepout",    // HNIS_CTYPE_SINGLE_KEEPOUT,
-    "everyday-zone",     // HNIS_CTYPE_EVERYDAY_ZONE,
-    "single-zone",       // HNIS_CTYPE_SINGLE_ZONE,
-    "unknown"            // HNIS_CTYPE_LASTENTRY
-};
-
-HNI24HTime::HNI24HTime()
-{
-    secOfDay = 0;
-}
-
-HNI24HTime::~HNI24HTime()
-{
-
-}
-
-uint
-HNI24HTime::getSeconds() const
-{
-    return secOfDay;
-}
-
-void
-HNI24HTime::getHMS( uint &hour, uint &minute, uint &second )
-{
-    hour    = (secOfDay / (60 * 60));
-    minute  = (secOfDay - (hour * 60 * 60))/60;
-    second  = secOfDay - ((hour * 60 * 60) + (minute * 60));
-}
-
-//#include <string.h>
-
-std::string
-HNI24HTime::getHMSStr()
-{
-    std::string result;
-    char tmpBuf[256];
-    uint hour, minute, second;
-
-    getHMS( hour, minute, second );
-
-//    std::cout << "hms: " << hour << " " << minute << " " << second << std::endl;
-
-    sprintf( tmpBuf, "%2.2d:%2.2d:%2.2d", hour, minute, second );
-
-    //std::cout << "sl: " << strlen(tmpBuf) << "<str>" << tmpBuf << "<eos>" << std::endl;
-
-    result.assign( tmpBuf );
-
-    return result;
-}
-
-HNIS_RESULT_T
-HNI24HTime::setFromHMS( uint hour, uint min, uint sec )
-{
-    secOfDay = (hour * 60 * 60) + (min * 60) + sec;
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNI24HTime::setFromSeconds( uint seconds )
-{
-    // Set to provided value, cieling 24 hours.
-    secOfDay = seconds;
-    if( secOfDay > HNIS_SECONDS_IN_24H )
-        secOfDay = HNIS_SECONDS_IN_24H;
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNI24HTime::parseTime( std::string value )
-{
-    uint hour;
-    uint min;
-    uint sec;
-
-    sscanf( value.c_str(), "%d:%d:%d", &hour, &min, &sec );
-
-    return setFromHMS( hour, min, sec );
-}
-
-void
-HNI24HTime::addSeconds( uint seconds )
-{
-    // Add the two times, cap 24 hours
-    secOfDay = (secOfDay + seconds); 
-    if( secOfDay > HNIS_SECONDS_IN_24H )
-        secOfDay = HNIS_SECONDS_IN_24H;
-}
-
-void
-HNI24HTime::subtractSeconds( uint seconds )
-{
-    // Subtract seconds, cap at 0 hour
-
-    if( secOfDay <= seconds )
-        secOfDay = 0;
-
-    secOfDay = (secOfDay - seconds); 
-}
-
-HNScheduleCriteria::HNScheduleCriteria()
-{
-    m_rank = 5;
-    m_dayBits    = HNSC_DBITS_DAILY;
-}
-
-HNScheduleCriteria::~HNScheduleCriteria()
-{
-
-}
-
-void 
-HNScheduleCriteria::setID( std::string id )
-{
-    m_id = id;
-}
-
-void 
-HNScheduleCriteria::setName( std::string value )
-{
-    m_name = value;
-}
-
-void 
-HNScheduleCriteria::setDesc( std::string value )
-{
-    m_desc = value;
-}
-
-HNIS_RESULT_T 
-HNScheduleCriteria::setTimesFromStr( std::string startTime, std::string endTime )
-{
-    m_startTime.parseTime( startTime );
- 
-    std::cout << "mst: " << m_startTime.getHMSStr() << std::endl;
-
-    m_endTime.parseTime( endTime );
-}
-
-HNIS_RESULT_T 
-HNScheduleCriteria::setStartTime( std::string startTime )
-{
-    m_startTime.parseTime( startTime );
-}
-
-HNIS_RESULT_T 
-HNScheduleCriteria::setEndTime( std::string endTime )
-{
-    m_endTime.parseTime( endTime );
-}
-
-void 
-HNScheduleCriteria::setRank( uint value )
-{
-    m_rank = value;
-}
-
-void 
-HNScheduleCriteria::clearDayBits()
-{
-    m_dayBits = HNSC_DBITS_DAILY;
-}
-
-void 
-HNScheduleCriteria::setDayBits( uint value )
-{
-    m_dayBits = (HNSC_DBITS_T) value;
-}
-
-void 
-HNScheduleCriteria::addDayByName( std::string name )
-{
-    // Looking for match
-    uint index;
-    for( index = 0; index <= HNIS_DINDX_NOTSET; index++ )
-    {
-        // If found break out
-        if( s_dayNames[ index ] == name )
-            break;
-    }
-
-/* FIXME
-    // Set the index, NOT_SET if not found.
-    m_dayIndex = (HNIS_DAY_INDX_T) index;
-*/
-}
-
-bool 
-HNScheduleCriteria::hasZone( std::string zoneID )
-{
-    // No zones is interpreted as all zones.
-    if( m_zoneSet.size() == 0 )
-        return true;
-
-    // Check against the specified set.
-    if( m_zoneSet.find( zoneID ) != m_zoneSet.end() )
-        return true;
-
-    // No found
-    return false;
-}
-
-void 
-HNScheduleCriteria::clearZones()
-{
-    m_zoneSet.clear();
-}
-
-void 
-HNScheduleCriteria::addZone( std::string name )
-{
-    m_zoneSet.insert( name );
-}
- 
-void 
-HNScheduleCriteria::addZoneSet( std::set<std::string> &srcSet )
-{
-    for( std::set<std::string>::iterator it = srcSet.begin(); it != srcSet.end(); it++ )
-    {
-        m_zoneSet.insert( *it );
-    }
-}
-        
-std::set< std::string >& 
-HNScheduleCriteria::getZoneSetRef()
-{
-    return m_zoneSet;
-}
-
-std::string 
-HNScheduleCriteria::getZoneSetAsStr()
-{
-    std::string rspStr;
-
-    bool first = true;
-    for( std::set<std::string>::iterator it = m_zoneSet.begin(); it != m_zoneSet.end(); it++ )
-    {
-        if( first == false )
-            rspStr += " ";
-        rspStr += *it;
-        first = false;
-    }
-
-    return rspStr;
-}
-
-std::string 
-HNScheduleCriteria::getID()
-{
-    return m_id;
-}
-
-std::string 
-HNScheduleCriteria::getName()
-{
-    return m_name;
-}
-
-std::string 
-HNScheduleCriteria::getDesc()
-{
-    return m_desc;
-}
-
-HNI24HTime&
-HNScheduleCriteria::getStartTime()
-{
-    return m_startTime;
-}
-
-HNI24HTime&
-HNScheduleCriteria::getEndTime()
-{
-    return m_endTime;
-}
-
-uint 
-HNScheduleCriteria::getRank()
-{
-    return m_rank;
-}
-
-bool 
-HNScheduleCriteria::isForDay( HNIS_DAY_INDX_T dindx )
-{
-    uint dayMask = (1 << dindx);
-
-    if( m_dayBits == HNSC_DBITS_DAILY )
-        return true;
-
-    if( m_dayBits & dayMask )
-        return true;
-
-    return false;
-}
-
-uint 
-HNScheduleCriteria::getDayBits()
-{
-    return m_dayBits;
-}
-
-HNIS_RESULT_T 
-HNScheduleCriteria::validateSettings()
-{
-    // Add validation checking here
-    return HNIS_RESULT_SUCCESS;
-}
-
 HNISPeriod::HNISPeriod()
 {
     m_type = HNIS_PERIOD_TYPE_NOTSET;
@@ -576,143 +259,6 @@ HNISPeriod::rankCompare( const HNISPeriod& first, const HNISPeriod& second )
   return ( first.m_startTime.getSeconds() < second.m_startTime.getSeconds() );
 }
 
-HNIrrigationZone::HNIrrigationZone()
-{
-    m_weeklySec   = (((5 * 60) * 2) * 7);
-    m_minCycleSec = (2 * 60);
-    m_maxCycleSec = (2 * 10);
-}
-
-HNIrrigationZone::~HNIrrigationZone()
-{
-
-}
-
-void 
-HNIrrigationZone::setID( std::string id )
-{
-    m_zoneID = id;
-}
-
-void 
-HNIrrigationZone::setName( std::string name )
-{
-    m_zoneName = name;
-}
-
-void 
-HNIrrigationZone::setDesc( std::string desc )
-{
-    m_zoneDesc = desc;
-}
-     
-void
-HNIrrigationZone::setWeeklySeconds( uint value )
-{
-    m_weeklySec = value;
-}
-
-void
-HNIrrigationZone::setMinimumCycleTimeSeconds( uint value )
-{
-    m_minCycleSec = value;
-}
-  
-void
-HNIrrigationZone::setMaximumCycleTimeSeconds( uint value )
-{
-    m_maxCycleSec = value;
-}
-
-void 
-HNIrrigationZone::clearSWIDSet()
-{
-    m_swidSet.clear();
-}
-
-void 
-HNIrrigationZone::addSWID( std::string swid )
-{
-    m_swidSet.insert( swid );
-}
-
-void 
-HNIrrigationZone::addSWIDSet( std::set< std::string > &swidSet )
-{
-    for( std::set< std::string >::iterator it = m_swidSet.begin(); it != m_swidSet.end(); it++ )
-    {
-        m_swidSet.insert( *it );
-    }
-}
-
-HNIS_RESULT_T 
-HNIrrigationZone::validateSettings()
-{
-    // Add validation checking here
-    return HNIS_RESULT_SUCCESS;
-}
-
-std::string 
-HNIrrigationZone::getID()
-{
-    return m_zoneID;
-}
-
-std::string 
-HNIrrigationZone::getName()
-{
-    return m_zoneName;
-}
-
-std::string 
-HNIrrigationZone::getDesc()
-{
-    return m_zoneDesc;
-}
-
-std::set< std::string >& 
-HNIrrigationZone::getSWIDSetRef()
-{
-    return m_swidSet;
-}
-
-std::string 
-HNIrrigationZone::getSWIDListStr()
-{
-    std::ostringstream swidStr;
-
-    bool first = true;
-    for( std::set< std::string >::iterator it = m_swidSet.begin(); it != m_swidSet.end(); it++ )
-    {
-        if( first == false )
-            swidStr << " ";
-
-        swidStr << *it;
-
-        first = false;
-    }
-    
-    return swidStr.str();
-}
-
-uint 
-HNIrrigationZone::getWeeklySeconds()
-{
-    return m_weeklySec; 
-}
-
-uint 
-HNIrrigationZone::getMinimumCycleTimeSeconds()
-{
-    return m_minCycleSec; 
-}
-
-uint 
-HNIrrigationZone::getMaximumCycleTimeSeconds()
-{
-    return m_maxCycleSec; 
-}
-
 HNISDay::HNISDay()
 {
     m_dayIndex = HNIS_DINDX_NOTSET;
@@ -860,7 +406,7 @@ HNISDay::compareOverlap( uint cs, uint ce, HNISPeriod &period )
 }
 
 HNIS_RESULT_T 
-HNISDay::applyCriteria( HNScheduleCriteria &criteria )
+HNISDay::applyCriteria( HNIrrigationCriteria &criteria )
 {
     HNISPeriod period;
 
@@ -1198,7 +744,7 @@ HNIrrigationSchedule::getSMCRC32Str()
 bool 
 HNIrrigationSchedule::hasCriteria( std::string eventID )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
 
     if( it == m_criteriaMap.end() )
         return false;
@@ -1206,16 +752,16 @@ HNIrrigationSchedule::hasCriteria( std::string eventID )
     return true;
 }
 
-HNScheduleCriteria*
+HNIrrigationCriteria*
 HNIrrigationSchedule::updateCriteria( std::string id )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( id );
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
 
     if( it == m_criteriaMap.end() )
     {
-        HNScheduleCriteria nSpec;
+        HNIrrigationCriteria nSpec;
         nSpec.setID( id );
-        m_criteriaMap.insert( std::pair< std::string, HNScheduleCriteria >( id, nSpec ) );\
+        m_criteriaMap.insert( std::pair< std::string, HNIrrigationCriteria >( id, nSpec ) );\
         return &( m_criteriaMap[ id ] );
     }
 
@@ -1226,7 +772,7 @@ void
 HNIrrigationSchedule::deleteCriteria( std::string eventID )
 {
     // Find the referenced zone
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
 
     // If already no existant than nothing to do.
     if( it == m_criteriaMap.end() )
@@ -1237,18 +783,18 @@ HNIrrigationSchedule::deleteCriteria( std::string eventID )
 }
 
 void 
-HNIrrigationSchedule::getCriteriaList( std::vector< HNScheduleCriteria > &criteriaList )
+HNIrrigationSchedule::getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList )
 {
-    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
+    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
     {
         criteriaList.push_back( it->second );
     }
 }
 
 HNIS_RESULT_T 
-HNIrrigationSchedule::getCriteria( std::string eventID, HNScheduleCriteria &event )
+HNIrrigationSchedule::getCriteria( std::string eventID, HNIrrigationCriteria &event )
 {
-    std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.find( eventID );
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
 
     if( it == m_criteriaMap.end() )
         return HNIS_RESULT_FAILURE;
@@ -1437,7 +983,7 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
         }
 
         // Get the internal reference to the zone.
-        HNScheduleCriteria *criteriaPtr = updateCriteria( criteriaID );
+        HNIrrigationCriteria *criteriaPtr = updateCriteria( criteriaID );
 
         if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
         {
@@ -1478,13 +1024,23 @@ HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
 
             criteriaPtr->clearZones();
 
+            std::cout << "Config Read ZoneList: '" << rstStr << "'" << std::endl;
+
+            // Ignore the empty string.
+            if( rstStr.empty() == true )
+                continue;
+
             // Walk the zoneList string
             std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
             const std::sregex_token_iterator end;
             while( it != end )
             {
+                std::cout << "Config Read Add Zone: '" << *it << "'" << std::endl;
+
                 // Add a new switch action to the queue.
-                criteriaPtr->addZone( *it );
+                std::string zoneName = *it;
+                if( zoneName.empty() == false )    
+                    criteriaPtr->addZone( zoneName );
                 it++;
             }
         }
@@ -1558,7 +1114,7 @@ HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
     HNCObjList *listPtr;
     secPtr->updateList( "criteriaList", &listPtr );
 
-    for( std::map< std::string, HNScheduleCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
+    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
     { 
         HNCObj *objPtr;
 
@@ -1611,7 +1167,7 @@ HNIrrigationSchedule::buildSchedule()
         m_dayArr[ indx ].clear();
 
     // Create an array covering a week of non-overlapping available scheduling slots
-    for( std::map< std::string, HNScheduleCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
+    for( std::map< std::string, HNIrrigationCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
     {
         // Check each possible day.
         for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )

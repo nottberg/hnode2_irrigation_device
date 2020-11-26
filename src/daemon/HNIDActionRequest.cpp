@@ -110,9 +110,12 @@ HNIDActionRequest::setZoneUpdate( std::istream& bodyStream )
 
             zone.clearSWIDSet();
             
+            std::cout << "Zone Update - start" << std::endl;
+
             for( uint index = 0; index < jsSWIDList->size(); index++ )
             {
                 std::string value = jsSWIDList->getElement<std::string>(index);
+                std::cout << "Zone Update - value: " << value << std::endl;
                 zone.addSWID( value );
             }
             
@@ -173,7 +176,7 @@ bool
 HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 {
     std::string rstStr;
-    HNScheduleCriteria criteria;
+    HNIrrigationCriteria criteria;
 
     // Clear the update mask
     m_criteriaUpdateMask = HNID_CU_FLDMASK_CLEAR;
@@ -188,7 +191,7 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNScheduleCriteria *event = m_schedule.updateCriteria( criteriaID );
+        //HNIrrigationCriteria *event = m_schedule.updateCriteria( criteriaID );
 
         if( jsRoot->has( "name" ) )
         {
@@ -230,6 +233,7 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
             for( uint index = 0; index < jsDayList->size(); index++ )
             {
                 std::string value = jsDayList->getElement<std::string>(index);
+                std::cout << "DayName: " << value << std::endl; 
                 criteria.addDayByName( value );
             }
             
@@ -274,9 +278,9 @@ HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
 }
 
 void 
-HNIDActionRequest::applyCriteriaUpdate( HNScheduleCriteria *tgtCriteria )
+HNIDActionRequest::applyCriteriaUpdate( HNIrrigationCriteria *tgtCriteria )
 {
-    HNScheduleCriteria *srcCriteria = &m_criteriaList[0];
+    HNIrrigationCriteria *srcCriteria = &m_criteriaList[0];
 
     if( m_criteriaUpdateMask & HNID_CU_FLDMASK_NAME )
         tgtCriteria->setName( srcCriteria->getName() );
@@ -438,7 +442,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             // Create a json root object
             pjs::Array jsRoot;
 
-            for( std::vector< HNScheduleCriteria >::iterator cit = refCriteriaList().begin(); cit != refCriteriaList().end(); cit++ )
+            for( std::vector< HNIrrigationCriteria >::iterator cit = refCriteriaList().begin(); cit != refCriteriaList().end(); cit++ )
             { 
                 pjs::Object cObj;
                 pjs::Array dayList;
@@ -496,7 +500,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             pjs::Array dayList;
             pjs::Array zoneList;
 
-            std::vector< HNScheduleCriteria >::iterator criteria = refCriteriaList().begin();
+            std::vector< HNIrrigationCriteria >::iterator criteria = refCriteriaList().begin();
 
             jsRoot.set( "criteriaid", criteria->getID() );
             jsRoot.set( "name", criteria->getName() );
@@ -554,7 +558,7 @@ HNIDActionRequest::refZoneList()
     return m_zoneList;
 }
 
-std::vector< HNScheduleCriteria >&
+std::vector< HNIrrigationCriteria >&
 HNIDActionRequest::refCriteriaList()
 {
     return m_criteriaList;

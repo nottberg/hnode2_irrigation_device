@@ -4,15 +4,18 @@
 #include <stdint.h>
 
 #include <string>
+#include <mutex>
 
 class HNSWDStatus
 {
     private:
+        // Protect access to the data members
+        std::mutex m_accessMutex;
 
+        // Status data fields
         std::string m_date;
         std::string m_time;
         std::string m_tz;
-        std::string m_swON;
 
         std::string m_schState;
         std::string m_inhUntil;
@@ -25,6 +28,8 @@ class HNSWDStatus
         std::string m_ohstat;
         std::string m_ohmsg; 
 
+        std::set< std::string > m_swON;
+
     public:
         HNSWDStatus();
        ~HNSWDStatus();
@@ -34,7 +39,8 @@ class HNSWDStatus
 
         bool healthDegraded();
 
-        void setFromJSON( std::string jsonStr );
+        void setFromSwitchDaemonJSON( std::string jsonStr );
+        bool getAsRESTJSON( std::ostream &ostr );
 };
 
 #endif // __HN_SWD_STATUS_H__

@@ -41,6 +41,28 @@ const std::string g_HNode2IrrigationRest = R"(
     "title": ""
   },
   "paths": {
+      "/hnode2/irrigation/status": {
+        "get": {
+          "summary": "Get irrigation device status.",
+          "operationId": "getStatus",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
       "/hnode2/irrigation/switches": {
         "get": {
           "summary": "Get a list of controllable switches.",
@@ -445,16 +467,16 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
     std::string msg;
 
     packet.getMsg( msg );
-    std::cout << "=== Daemon Status Recieved - result code: " << packet.getResult() << " ===" << std::endl;
+    //std::cout << "=== Daemon Status Recieved - result code: " << packet.getResult() << " ===" << std::endl;
 
-    m_swdStatus.setFromJSON( msg );
+    m_swdStatus.setFromSwitchDaemonJSON( msg );
 
     // Check if the schedule on the switch daemon
     // needs to be updated to match our current
     // schedule.
     if( m_swdStatus.getSMCRC32() != m_schedule.getSMCRC32() )
     {
-        m_sendSchedule = true;
+    //    m_sendSchedule = true;
     }
 
     // Check if the switch daemon is unhealthy,
@@ -483,6 +505,7 @@ HNIrrigationDevice::handleSWDSwitchInfoRsp( HNSWDPacketClient &packet )
 {
     std::string msg;
 
+    std::cout << "Response RX: " << m_state << std::endl;
     // If response was spurious then ignore it
     if( m_state != HNID_STATE_WAIT_SWINFO )
     {
@@ -554,7 +577,7 @@ HNIrrigationDevice::handleSWDPacket()
     HNSWDPacketClient packet;
     HNSWDP_RESULT_T   result;
 
-    printf( "Waiting for packet reception...\n" );
+    //printf( "Waiting for packet reception...\n" );
 
     // Read the header portion of the packet
     result = packet.rcvHeader( m_swdFD );
@@ -599,7 +622,7 @@ HNIrrigationDevice::handleSWDPacket()
 void
 HNIrrigationDevice::fdEvent( int sfd )
 {
-    std::cout << "FD Event Handler: " << sfd << std::endl;
+    //std::cout << "FD Event Handler: " << sfd << std::endl;
 
     if( sfd == m_swdFD )
     {
@@ -607,6 +630,13 @@ HNIrrigationDevice::fdEvent( int sfd )
     }
     else if( sfd == m_actionQueue.getEventFD() )
     {
+        // Verify that we can handle a new action,
+        // otherwise just spin.
+        std::cout << "Current State: " << getState() << std::endl;
+        if( getState() != HNID_STATE_READY )
+            return;
+
+        // Start the new action
         startAction();
     }
 }
@@ -814,6 +844,89 @@ HNIrrigationDevice::getUniqueCriteriaID( HNIDActionRequest *action )
     return false;    
 }
 
+bool
+HNIrrigationDevice::getIrrigationStatusJSON( std::ostream &ostr )
+{
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    // Add the timezone name field
+    jsRoot.set( "scheduleTimezone", "Americas/Denver" );
+
+#if 0
+        std::string m_date = jsRoot->optValue( "date", empty );
+        std::string m_time = jsRoot->optValue( "time", empty );
+        std::string m_tz   = jsRoot->optValue( "timezone", empty );
+
+        std::string m_schState = jsRoot->optValue( "schedulerState", empty );
+        std::string m_inhUntil = jsRoot->optValue( "inhibitUntil", empty );
+
+        std::string m_schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
+
+        std::string m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
+        m_schCRC32 = strtol( m_schCRC32Str.c_str(), NULL, 0 );
+
+        pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
+                            
+        std::string m_ohstat = jsOHealth->optValue( "status", empty );
+        std::string m_ohmsg = jsOHealth->optValue( "msg", empty ); 
+
+        // Map switches to zones
+        std::string m_swON = jsRoot->optValue( "swOnList", empty );
+#endif
+
+#if 0
+    // Add data for each day
+    pjs::Object jsDays;
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+    {
+        pjs::Array jsActions;
+
+        std::vector< HNISPeriod > periodList;
+        m_dayArr[ indx ].getPeriodList( periodList );
+
+        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
+        {
+            pjs::Object jsSWAction;
+
+            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
+            {
+                std::cout << "js continue" << std::endl;                
+                continue;
+            }
+
+            jsSWAction.set( "action", "on" );
+            jsSWAction.set( "startTime", it->getStartTimeStr() );
+            jsSWAction.set( "endTime", it->getEndTimeStr() );
+            jsSWAction.set( "zoneid", it->getID() );
+
+            std::string zName;
+            getZoneName( it->getID(), zName );
+            jsSWAction.set( "name", zName );
+
+            jsActions.add( jsSWAction );
+        }
+        
+        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+    }
+
+    jsRoot.set( "scheduleMatrix", jsDays );
+#endif
+
+    try
+    {
+        // Write out the generated json
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+    }
+    catch( ... )
+    {
+        return true;
+    }
+
+    return false;
+}
+
 typedef enum HNIDStartActionBitsEnum
 {
     HNID_ACTBIT_CLEAR     = 0x0000,
@@ -839,10 +952,25 @@ HNIrrigationDevice::startAction()
     // Pop the action from the queue
     m_curAction = ( HNIDActionRequest* ) m_actionQueue.aquireRecord();
 
-    std::cout << "Action aquired - type: " << m_curAction->getType() << std::endl;
+    std::cout << "Action aquired - type: " << m_curAction->getType()  << "  thread: " << std::this_thread::get_id() << std::endl;
 
     switch( m_curAction->getType() )
     {
+        case HNID_AR_TYPE_IRRSTATUS:
+        {
+            // Get current device status as JSON
+            if( getIrrigationStatusJSON( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
         case HNID_AR_TYPE_SWLIST:
         {
             // Request the switch list information 
@@ -956,7 +1084,7 @@ HNIrrigationDevice::startAction()
 
         case HNID_AR_TYPE_CRITINFO:
         {
-            HNScheduleCriteria event;
+            HNIrrigationCriteria event;
 
             if( m_schedule.getCriteria( m_curAction->getCriteriaID(), event ) != HNIS_RESULT_SUCCESS )
             {
@@ -984,7 +1112,7 @@ HNIrrigationDevice::startAction()
             }
 
             // Create the zone record
-            HNScheduleCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
+            HNIrrigationCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
 
             // Update the fields of the zone record.
             m_curAction->applyCriteriaUpdate( event );
@@ -1004,7 +1132,7 @@ HNIrrigationDevice::startAction()
             }
 
             // Get a point to zone record
-            HNScheduleCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
+            HNIrrigationCriteria *event = m_schedule.updateCriteria( m_curAction->getCriteriaID() );
 
             // Update the fields of the zone record.
             m_curAction->applyCriteriaUpdate( event );
@@ -1050,13 +1178,15 @@ HNIrrigationDevice::startAction()
     // Send a request down to the switch daemon
     if( actBits & HNID_ACTBIT_SENDREQ )
     {
-        std::cout << "Sending a switch deamon request..." << std::endl;
+        std::cout << "Sending a switch deamon request..." << "  thread: " << std::this_thread::get_id() << std::endl;
         packet.sendAll( m_swdFD );
     }
 
     // There was an error, complete with error
     if( actBits & HNID_ACTBIT_ERROR )
     {
+        std::cout << "Failing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+
         // Signal failure
         m_curAction->complete( false );
         m_curAction = NULL;
@@ -1066,6 +1196,8 @@ HNIrrigationDevice::startAction()
     // Request has been completed successfully
     if( actBits & HNID_ACTBIT_COMPLETE )
     {
+        std::cout << "Completing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+
         // Done with this request
         m_curAction->complete( true );
         m_curAction = NULL;
@@ -1081,11 +1213,17 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     std::cout << "HNIrrigationDevice::dispatchEP() - entry" << std::endl;
     std::cout << "  dispatchID: " << opData->getDispatchID() << std::endl;
     std::cout << "  opID: " << opData->getOpID() << std::endl;
+    std::cout << "  thread: " << std::this_thread::get_id() << std::endl;
 
     std::string opID = opData->getOpID();
 
+    // GET "/hnode2/irrigation/status"
+    if( "getStatus" == opID )
+    {
+        action.setType( HNID_AR_TYPE_IRRSTATUS );
+    }
     // GET "/hnode2/irrigation/switches"
-    if( "getSwitchList" == opID )
+    else if( "getSwitchList" == opID )
     {
         action.setType( HNID_AR_TYPE_SWLIST );
     }
@@ -1225,12 +1363,12 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         return;
     }
 
-    std::cout << "Start Action - client: " << action.getType() << std::endl;
+    std::cout << "Start Action - client: " << action.getType() << "  thread: " << std::this_thread::get_id() << std::endl;
 
     // Submit the action and block for response
     m_actionQueue.postAndWait( &action );
 
-    std::cout << "Finish Action - client" << std::endl;
+    std::cout << "Finish Action - client" << "  thread: " << std::this_thread::get_id() << std::endl;
 
     // Determine what happened
     switch( action.getStatus() )
