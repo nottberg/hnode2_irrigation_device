@@ -670,6 +670,8 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
         return;
     }
 
+    std::cout << "Received Schedule State Response" << std::endl;
+
     // TODO error handling
 
     // Finish the request
@@ -1246,8 +1248,8 @@ HNIrrigationDevice::startAction()
         case HNID_AR_TYPE_GETSCHSTATE:
         {
             actBits = HNID_ACTBIT_ERROR;
-            break;
         }
+        break;
 
         case HNID_AR_TYPE_SETSCHSTATE:
         {
@@ -1295,6 +1297,7 @@ HNIrrigationDevice::startAction()
             packet.setMsg( msg.str() );
             actBits = HNID_ACTBIT_SENDREQ;
         }
+        break;
 
         case HNID_AR_TYPE_ZONECTL:
         {

@@ -46,6 +46,7 @@ class HNIrrigationClient: public Application
         bool _statusRequested     = false;
 
         bool _getScheduleRequested = false;
+        bool _schstateRequested    = false;
 
         bool _zoneListRequested    = false;
         bool _createZoneRequested  = false;
@@ -74,6 +75,7 @@ class HNIrrigationClient: public Application
         bool _stPresent           = false;
         bool _etPresent           = false;
         bool _dayPresent          = false;
+        bool _durationPresent     = false;
 
         std::string _hostStr;
         std::string _nameStr;
@@ -84,6 +86,9 @@ class HNIrrigationClient: public Application
         std::string _startTimeStr;
         std::string _endTimeStr;
         std::string _dayStr;
+        std::string _durationStr;
+        std::string _schstateNewState;
+
         uint _spwInt;
         uint _cpdInt;
         uint _smcInt;
@@ -133,6 +138,8 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("schedule", "s", "Request the current schedule").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
+            options.addOption( Option("schstate", "", "Change the scheduler state. Possible states: enabled|disabled|inhibit. For inhibit the duration parameter is also required.").required(false).repeatable(false).argument("newstate").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
             options.addOption( Option("zone-list", "", "Get a list of defined zones.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("create-zone", "", "Create a new zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
@@ -176,6 +183,8 @@ class HNIrrigationClient: public Application
             options.addOption( Option("end-time", "", "Specify an end time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("day", "", "Specify a day name parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("duration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
         }
 	
         void handleHelp(const std::string& name, const std::string& value)
@@ -215,6 +224,17 @@ class HNIrrigationClient: public Application
                 _switchListRequested = true;
             else if( "schedule" == name )
                 _getScheduleRequested = true;
+            else if( "schstate" == name )
+            {
+                _schstateRequested = true;
+                _schstateNewState  = value;
+            }
+            else if( "duration" == name )
+            {
+                _durationPresent = true;
+                _durationStr     = value;
+            }
+
             else if( "host" == name )
             {
                 _hostPresent = true;
@@ -1168,6 +1188,70 @@ class HNIrrigationClient: public Application
             std::cout << body << std::endl;
         }
 
+        void setSchedulerState()
+        {
+            std::stringstream msg;
+
+            // Error check the provided parameters
+            if(   ( _schstateNewState != "enable" )
+               && ( _schstateNewState != "disable" )
+               && ( _schstateNewState != "inhibit" ) )
+            {
+                std::cout << "ERROR: Request scheduling state is not supported: " << _schstateNewState << std::endl;
+                return;
+            }
+
+            if( ( _schstateNewState == "inhibit" ) && ( _durationPresent == false ) )
+            {
+                std::cout << "ERROR: When requesting the inhibit state a duration must be provided: " << _durationStr << std::endl;
+                return;
+            }
+          
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/schedule/state" );
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_PUT, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add the timezone setting
+            jsRoot.set( "state", _schstateNewState );
+
+            // Add the current date
+            if( _durationPresent )
+                jsRoot.set( "inhibitDuration", _durationStr );
+            else
+                jsRoot.set( "inhibitDuration", "00:00:00" );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
         int main( const ArgVec& args )
         {
             uint sockfd = 0;
@@ -1191,6 +1275,10 @@ class HNIrrigationClient: public Application
             else if( _getScheduleRequested == true )
             {
                 getScheduleInfo();
+            }
+            else if( _schstateRequested == true )
+            {
+                setSchedulerState();
             }
             else if( _zoneListRequested == true )
             {
