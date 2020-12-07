@@ -49,7 +49,7 @@ HNSWDStatus::healthDegraded()
 }
 
 void
-HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr )
+HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
@@ -87,15 +87,13 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr )
         const std::regex ws_re("\\s+"); // whitespace
         std::string swONStr = jsRoot->optValue( "swOnList", empty );
 
-        m_swON.clear();
-
-        // Walk the switch List string
+        // Set zone status
+        zones->clearStatus();
         std::sregex_token_iterator it( swONStr.begin(), swONStr.end(), ws_re, -1 );
         const std::sregex_token_iterator end;
         while( it != end )
         {
-            // Add a new switch id.
-            m_swON.insert( *it );
+            zones->setStatusActive( *it );
             it++;
         }
 
@@ -107,8 +105,8 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr )
 
 }
 
-bool
-HNSWDStatus::getAsRESTJSON( std::ostream &ostr )
+HNIS_RESULT_T
+HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
@@ -130,56 +128,58 @@ HNSWDStatus::getAsRESTJSON( std::ostream &ostr )
 
     jsRoot.set( "overallHealth", ovHealth );
 
-#if 0
-    // Add data for each day
-    pjs::Object jsDays;
-
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+    pjs::Array activeZones;
+    std::vector< HNIrrigationZone > azoneList;
+    zones->getActiveZones( azoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = azoneList.begin(); it != azoneList.end(); it++ )
     {
-        pjs::Array jsActions;
-
-        std::vector< HNISPeriod > periodList;
-        m_dayArr[ indx ].getPeriodList( periodList );
-
-        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
-        {
-            pjs::Object jsSWAction;
-
-            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
-            {
-                std::cout << "js continue" << std::endl;                
-                continue;
-            }
-
-            jsSWAction.set( "action", "on" );
-            jsSWAction.set( "startTime", it->getStartTimeStr() );
-            jsSWAction.set( "endTime", it->getEndTimeStr() );
-            jsSWAction.set( "zoneid", it->getID() );
-
-            std::string zName;
-            getZoneName( it->getID(), zName );
-            jsSWAction.set( "name", zName );
-
-            jsActions.add( jsSWAction );
-        }
-        
-        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+        pjs::Object azone;
+        azone.set( "id", it->getID() );
+        azone.set( "name", it->getName() );
+        activeZones.add( azone );
     }
+    jsRoot.set( "activeZones", activeZones );
 
-    jsRoot.set( "scheduleMatrix", jsDays );
-#endif
+    pjs::Array disabledZones;
+    std::vector< HNIrrigationZone > dzoneList;
+    zones->getDisabledZones( dzoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = dzoneList.begin(); it != dzoneList.end(); it++ )
+    {
+        pjs::Object dzone;
+        dzone.set( "id", it->getID() );
+        dzone.set( "name", it->getName() );
+        disabledZones.add( dzone );
+    }
+    jsRoot.set( "disabledZones", disabledZones );
+
+    pjs::Array inhibitedZones;
+    std::vector< HNIrrigationZone > izoneList;
+    zones->getInhibitedZones( izoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = izoneList.begin(); it != izoneList.end(); it++ )
+    {
+        pjs::Object izone;
+        izone.set( "id", it->getID() );
+        izone.set( "name", it->getName() );
+        izone.set( "until", it->getInhibitedUntil() );
+        inhibitedZones.add( izone );
+    }
+    jsRoot.set( "inhibitedZones", inhibitedZones );
 
     try
     {
+        std::stringstream rStr;
+        pjs::Stringifier::stringify( jsRoot, rStr, 1 );
+        std::cout << rStr.str() << std::endl;
+
         // Write out the generated json
         pjs::Stringifier::stringify( jsRoot, ostr, 1 );
     }
     catch( ... )
     {
-        return true;
+        return HNIS_RESULT_FAILURE;
     }
 
     // Success
-    return false;
+    return HNIS_RESULT_SUCCESS;
 }
 

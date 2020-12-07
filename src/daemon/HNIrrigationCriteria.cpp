@@ -1,4 +1,5 @@
 #include <iostream>
+#include <regex>
 
 #include "HNIrrigationCriteria.h"
 
@@ -227,4 +228,253 @@ HNIrrigationCriteriaSet::~HNIrrigationCriteriaSet()
 
 }
 
+void
+HNIrrigationCriteriaSet::clear()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    m_criteriaMap.clear();
+}
+
+bool 
+HNIrrigationCriteriaSet::hasID( std::string id )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
+
+    if( it == m_criteriaMap.end() )
+        return false;
+
+    return true;
+}
+
+HNIrrigationCriteria*
+HNIrrigationCriteriaSet::internalUpdateCriteria( std::string id )
+{
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
+
+    if( it == m_criteriaMap.end() )
+    {
+        HNIrrigationCriteria nSpec;
+        nSpec.setID( id );
+        m_criteriaMap.insert( std::pair< std::string, HNIrrigationCriteria >( id, nSpec ) );\
+        return &( m_criteriaMap[ id ] );
+    }
+
+    return &(it->second);
+}
+
+HNIrrigationCriteria*
+HNIrrigationCriteriaSet::updateCriteria( std::string id )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return internalUpdateCriteria( id );
+}
+
+void 
+HNIrrigationCriteriaSet::deleteCriteria( std::string id )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    // Find the referenced zone
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
+
+    // If already no existant than nothing to do.
+    if( it == m_criteriaMap.end() )
+        return;
+
+    // Get rid of the zone record
+    m_criteriaMap.erase( it );
+}
+
+void 
+HNIrrigationCriteriaSet::getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
+    {
+        criteriaList.push_back( it->second );
+    }
+}
+
+HNIS_RESULT_T 
+HNIrrigationCriteriaSet::getCriteria( std::string id, HNIrrigationCriteria &event )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
+
+    if( it == m_criteriaMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    event = it->second;
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationCriteriaSet::initCriteriaListSection( HNodeConfig &cfg )
+{
+    HNCSection *secPtr;
+
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
+    
+    HNCObjList *listPtr;
+    secPtr->updateList( "criteriaList", &listPtr );
+
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationCriteriaSet::readCriteriaListSection( HNodeConfig &cfg )
+{
+    HNCSection  *secPtr;
+
+    std::cout << "rc1" << std::endl;
+
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
+
+    // Get a list pointer
+    HNCObjList *listPtr;
+    secPtr->updateList( "criteriaList", &listPtr );
+
+    std::cout << "rc2: " << listPtr->size() << std::endl;
+
+    for( uint indx = 0; indx < listPtr->size(); indx++ )
+    {
+        std::string criteriaID;
+        std::string rstStr;
+        HNCObj *objPtr;
+
+        if( listPtr->getObjPtr( indx, &objPtr ) != HNC_RESULT_SUCCESS )
+            continue;
+
+        // Get the zoneID first, if missing skip the record
+        if( objPtr->getValueByName( "criteriaid", criteriaID ) != HNC_RESULT_SUCCESS )
+        {
+            continue;
+        }
+
+        // Get the internal reference to the zone.
+        HNIrrigationCriteria *criteriaPtr = internalUpdateCriteria( criteriaID );
+
+        if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->setName( rstStr );
+        }
+
+        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->setDesc( rstStr );
+        }
+
+        if( objPtr->getValueByName( "startTime", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->setStartTime( rstStr );
+        }
+
+        if( objPtr->getValueByName( "endTime", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->setEndTime( rstStr );
+        }
+
+        if( objPtr->getValueByName( "rank", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            uint offset = strtol( rstStr.c_str(), NULL, 0 );
+            criteriaPtr->setRank( offset );
+        }
+
+        if( objPtr->getValueByName( "dayBits", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            criteriaPtr->clearDayBits();
+            uint dayBits = strtol( rstStr.c_str(), NULL, 0 );
+            criteriaPtr->setDayBits( dayBits );
+        }
+
+        if( objPtr->getValueByName( "zoneList", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            const std::regex ws_re("\\s+"); // whitespace
+
+            criteriaPtr->clearZones();
+
+            std::cout << "Config Read ZoneList: '" << rstStr << "'" << std::endl;
+
+            // Ignore the empty string.
+            if( rstStr.empty() == true )
+                continue;
+
+            // Walk the zoneList string
+            std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
+            const std::sregex_token_iterator end;
+            while( it != end )
+            {
+                std::cout << "Config Read Add Zone: '" << *it << "'" << std::endl;
+
+                // Add a new switch action to the queue.
+                std::string zoneName = *it;
+                if( zoneName.empty() == false )    
+                    criteriaPtr->addZone( zoneName );
+                it++;
+            }
+        }
+    }
+          
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNIrrigationCriteriaSet::updateCriteriaListSection( HNodeConfig &cfg )
+{
+    char tmpStr[256];
+    HNCSection *secPtr;
+    HNCObjList *listPtr;
+
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    cfg.updateSection( "irrCriteriaInfo", &secPtr );
+
+    secPtr->updateList( "criteriaList", &listPtr );
+
+    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
+    { 
+        HNCObj *objPtr;
+
+        // Aquire a new list entry
+        listPtr->appendObj( &objPtr );
+
+        // Fill the entry with the static event info
+        objPtr->updateValue( "criteriaid", it->second.getID() );
+
+        objPtr->updateValue( "name", it->second.getName() );
+        objPtr->updateValue( "description", it->second.getDesc() );
+        objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
+        objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
+
+        sprintf( tmpStr, "%d", it->second.getRank() );
+        objPtr->updateValue( "rank", tmpStr );
+
+        sprintf( tmpStr, "%d", it->second.getDayBits() );
+        objPtr->updateValue( "dayBits", tmpStr );
+
+        objPtr->updateValue( "zoneList", it->second.getZoneSetAsStr() );
+    }
+
+    return HNIS_RESULT_SUCCESS;
+}
 

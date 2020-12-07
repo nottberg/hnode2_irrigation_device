@@ -6,6 +6,8 @@
 #include <string>
 #include <mutex>
 
+#include "HNIrrigationZone.h"
+
 class HNSWDStatus
 {
     private:
@@ -28,8 +30,6 @@ class HNSWDStatus
         std::string m_ohstat;
         std::string m_ohmsg; 
 
-        std::set< std::string > m_swON;
-
     public:
         HNSWDStatus();
        ~HNSWDStatus();
@@ -39,8 +39,8 @@ class HNSWDStatus
 
         bool healthDegraded();
 
-        void setFromSwitchDaemonJSON( std::string jsonStr );
-        bool getAsRESTJSON( std::ostream &ostr );
+        void setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones );
+        HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
 };
 
 #endif // __HN_SWD_STATUS_H__

@@ -36,6 +36,36 @@ HNIDActionRequest::setCriteriaID( std::string value )
     m_criteriaID = value;
 }
 
+void 
+HNIDActionRequest::setScheduleStateRequestType( HNID_SSR_T value )
+{
+    m_schReqType = value;
+}
+
+void 
+HNIDActionRequest::setZoneControlRequestType( HNID_ZCR_T value )
+{
+    m_zoneReqType = value;
+}
+
+void 
+HNIDActionRequest::setInhibitDuration( std::string value )
+{
+    m_inhibitDuration = value;
+}
+
+void 
+HNIDActionRequest::setOnDuration( std::string value )
+{
+    m_onDuration = value;
+}
+
+void 
+HNIDActionRequest::setOffDuration( std::string value )
+{
+   m_offDuration = value;
+}
+
 HNID_AR_TYPE_T
 HNIDActionRequest::getType()
 {
@@ -54,8 +84,38 @@ HNIDActionRequest::getCriteriaID()
     return m_criteriaID;
 }
 
+HNID_SSR_T 
+HNIDActionRequest::getScheduleStateRequestType()
+{
+    return m_schReqType;
+}
+
+HNID_ZCR_T 
+HNIDActionRequest::getZoneControlRequestType()
+{
+    return m_zoneReqType;
+}
+
+std::string
+HNIDActionRequest::getInhibitDuration()
+{
+    return m_inhibitDuration;
+}
+
+std::string 
+HNIDActionRequest::getOnDuration()
+{
+    return m_onDuration;
+}
+
+std::string 
+HNIDActionRequest::getOffDuration()
+{
+   return m_offDuration;
+}
+
 bool
-HNIDActionRequest::setZoneUpdate( std::istream& bodyStream )
+HNIDActionRequest::decodeZoneUpdate( std::istream& bodyStream )
 {
     HNIrrigationZone zone;
 
@@ -173,7 +233,7 @@ HNIDActionRequest::applyZoneUpdate( HNIrrigationZone *tgtZone )
 
 
 bool
-HNIDActionRequest::setCriteriaUpdate( std::istream& bodyStream )
+HNIDActionRequest::decodeCriteriaUpdate( std::istream& bodyStream )
 {
     std::string rstStr;
     HNIrrigationCriteria criteria;
@@ -307,6 +367,117 @@ HNIDActionRequest::applyCriteriaUpdate( HNIrrigationCriteria *tgtCriteria )
     }
 }
 
+bool
+HNIDActionRequest::decodeSchedulerState( std::istream& bodyStream )
+{
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        if( jsRoot->has( "state" ) )
+        {
+            std::string newState = jsRoot->getValue<std::string>( "state" );
+            if( "enable" == newState )
+            {
+                setScheduleStateRequestType( HNID_SSR_ENABLE );
+            }
+            else if( "disable" == newState )
+            {
+                setScheduleStateRequestType( HNID_SSR_DISABLE );
+            }
+            else if( "inhibit" == newState )
+            {
+                if( jsRoot->has( "inhibitDuration" ) == false )
+                {
+                    std::cout << "ERROR: schedule control request requires inhibit duration." << std::endl;
+                    return true;
+                }
+
+                setScheduleStateRequestType( HNID_SSR_INHIBIT );
+                setInhibitDuration( jsRoot->getValue<std::string>( "inhibitDuration" ) );
+            }
+            else
+            {
+                std::cout << "ERROR: Unsupported schedule control request" << std::endl;
+                return true;
+            }
+        }
+
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "ERROR: decodeSchedulerState exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        return true;
+    }
+
+    // Done
+    return false;
+}
+
+bool
+HNIDActionRequest::decodeZoneCtrl( std::istream& bodyStream )
+{
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+#if 0
+        if( jsRoot->has( "state" ) )
+        {
+            std::string newState = jsRoot->getValue<std::string>( "state" );
+            if( "enable" == newState )
+            {
+                setScheduleStateRequestType( HNID_SSR_ENABLE );
+            }
+            else if( "disable" == newState )
+            {
+                setScheduleStateRequestType( HNID_SSR_DISABLE );
+            }
+            else if( "inhibit" == newState )
+            {
+                if( jsRoot->has( "inhibitDuration" ) == false )
+                {
+                    std::cout << "ERROR: schedule control request requires inhibit duration." << std::endl;
+                    return true;
+                }
+
+                setScheduleStateRequestType( HNID_SSR_INHIBIT );
+                setInhibitDuration( jsRoot->getValue<std::string>( "inhibitDuration" ) );
+            }
+            else
+            {
+#endif
+                std::cout << "ERROR: Unsupported schedule control request" << std::endl;
+                return true;
+#if 0
+            }
+        }
+#endif
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "ERROR: decodeSchedulerState exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        return true;
+    }
+
+    // Done
+    return false;
+}
+
 bool 
 HNIDActionRequest::hasRspContent( std::string &contentType )
 {
@@ -320,6 +491,7 @@ HNIDActionRequest::hasRspContent( std::string &contentType )
         case HNID_AR_TYPE_SCHINFO: 
         case HNID_AR_TYPE_CRITLIST:
         case HNID_AR_TYPE_CRITINFO:
+        case HNID_AR_TYPE_IRRSTATUS:
             contentType = "application/json";
             return true;
 
@@ -544,6 +716,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         break;
 
         case HNID_AR_TYPE_SCHINFO:
+        case HNID_AR_TYPE_IRRSTATUS:
             Poco::StreamCopier::copyStream( refRspStream(), ostr );
         break;
     }

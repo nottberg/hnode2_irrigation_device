@@ -158,16 +158,8 @@ class HNIrrigationSchedule
 
         HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
 
-        std::map< std::string, HNIrrigationCriteria >   m_criteriaMap;
-        std::map< std::string, HNIrrigationZone >  m_zoneMap;
-
-        HNIS_RESULT_T initZoneListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T readZoneListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T updateZoneListSection( HNodeConfig &cfg );
-
-        HNIS_RESULT_T initCriteriaListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T readCriteriaListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T updateCriteriaListSection( HNodeConfig &cfg );
+        HNIrrigationCriteriaSet *m_criteria;
+        HNIrrigationZoneSet     *m_zones;
 
         void calculateSMCRC32();
 
@@ -175,25 +167,14 @@ class HNIrrigationSchedule
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
 
+        void init( HNIrrigationCriteriaSet *criteria, HNIrrigationZoneSet *zones );
+
         std::string getTimezoneStr();
 
         uint getSMCRC32();
         std::string getSMCRC32Str();
 
         void clear();
-
-        bool hasCriteria( std::string eventID );
-        HNIrrigationCriteria *updateCriteria( std::string id );
-        void deleteCriteria( std::string eventID );
-        void getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList );
-        HNIS_RESULT_T getCriteria( std::string eventID, HNIrrigationCriteria &event );
-
-        bool hasZone( std::string zoneID );
-        HNIrrigationZone *updateZone( std::string zoneID );
-        void deleteZone( std::string zoneID );
-        void getZoneList( std::vector< HNIrrigationZone > &zoneList );
-        HNIS_RESULT_T getZone( std::string zoneID, HNIrrigationZone &zone );
-        HNIS_RESULT_T getZoneName( std::string zoneID, std::string &name );
 
         HNIS_RESULT_T initConfigSections( HNodeConfig &cfg );
         HNIS_RESULT_T readConfigSections( HNodeConfig &cfg );

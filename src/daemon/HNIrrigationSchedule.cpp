@@ -709,6 +709,15 @@ HNIrrigationSchedule::~HNIrrigationSchedule()
 
 }
 
+void
+HNIrrigationSchedule::init( HNIrrigationCriteriaSet *criteria, HNIrrigationZoneSet *zones )
+{
+    std::cout << "HNIrrigationSchedule -- init" << std::endl;
+
+    m_criteria = criteria;
+    m_zones = zones;
+}
+
 void 
 HNIrrigationSchedule::clear()
 {
@@ -716,8 +725,8 @@ HNIrrigationSchedule::clear()
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].clear();
 
-    m_criteriaMap.clear();
-    m_zoneMap.clear();
+    //m_criteria->clear();
+    //m_zones->clear();
     m_schCRC32 = 0;
 }
 
@@ -741,419 +750,21 @@ HNIrrigationSchedule::getSMCRC32Str()
     return tmpStr;
 }
 
-bool 
-HNIrrigationSchedule::hasCriteria( std::string eventID )
-{
-    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
-
-    if( it == m_criteriaMap.end() )
-        return false;
-
-    return true;
-}
-
-HNIrrigationCriteria*
-HNIrrigationSchedule::updateCriteria( std::string id )
-{
-    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( id );
-
-    if( it == m_criteriaMap.end() )
-    {
-        HNIrrigationCriteria nSpec;
-        nSpec.setID( id );
-        m_criteriaMap.insert( std::pair< std::string, HNIrrigationCriteria >( id, nSpec ) );\
-        return &( m_criteriaMap[ id ] );
-    }
-
-    return &(it->second);
-}
-
-void 
-HNIrrigationSchedule::deleteCriteria( std::string eventID )
-{
-    // Find the referenced zone
-    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
-
-    // If already no existant than nothing to do.
-    if( it == m_criteriaMap.end() )
-        return;
-
-    // Get rid of the zone record
-    m_criteriaMap.erase( it );
-}
-
-void 
-HNIrrigationSchedule::getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList )
-{
-    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
-    {
-        criteriaList.push_back( it->second );
-    }
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::getCriteria( std::string eventID, HNIrrigationCriteria &event )
-{
-    std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.find( eventID );
-
-    if( it == m_criteriaMap.end() )
-        return HNIS_RESULT_FAILURE;
-
-    event = it->second;
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIrrigationZone*
-HNIrrigationSchedule::updateZone( std::string zoneID )
-{
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
-
-    if( it == m_zoneMap.end() )
-    {
-        HNIrrigationZone nZone;
-        nZone.setID( zoneID );
-        m_zoneMap.insert( std::pair< std::string, HNIrrigationZone >( zoneID, nZone ) );\
-        return &( m_zoneMap[ zoneID ] );
-    }
-
-    return &(it->second);
-}
-
-void 
-HNIrrigationSchedule::deleteZone( std::string zoneID )
-{
-    // Find the referenced zone
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
-
-    // If already no existant than nothing to do.
-    if( it == m_zoneMap.end() )
-        return;
-
-    // Get rid of the zone record
-    m_zoneMap.erase( it );
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::initZoneListSection( HNodeConfig &cfg )
-{
-    HNCSection *secPtr;
-
-    cfg.updateSection( "irrZoneInfo", &secPtr );
-    
-    HNCObjList *listPtr;
-    secPtr->updateList( "zoneList", &listPtr );
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::initCriteriaListSection( HNodeConfig &cfg )
-{
-    HNCSection *secPtr;
-
-    cfg.updateSection( "irrCriteriaInfo", &secPtr );
-    
-    HNCObjList *listPtr;
-    secPtr->updateList( "criteriaList", &listPtr );
-
-    return HNIS_RESULT_SUCCESS;
-}
-
 HNIS_RESULT_T 
 HNIrrigationSchedule::initConfigSections( HNodeConfig &cfg )
 {
-    HNIS_RESULT_T result;
-
-    result = initZoneListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
-    result = initCriteriaListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::readZoneListSection( HNodeConfig &cfg )
-{
-    HNCSection  *secPtr;
-
-    // Aquire a pointer to the "device" section
-    cfg.updateSection( "irrZoneInfo", &secPtr );
-
-    // Get a list pointer
-    HNCObjList *listPtr;
-    secPtr->updateList( "zoneList", &listPtr );
-
-    for( uint indx = 0; indx < listPtr->size(); indx++ )
-    {
-        std::string zoneID;
-        std::string rstStr;
-        HNCObj *objPtr;
-
-        if( listPtr->getObjPtr( indx, &objPtr ) != HNC_RESULT_SUCCESS )
-            continue;
-
-        // Get the zoneID first, if missing skip the record
-        if( objPtr->getValueByName( "zoneid", zoneID ) != HNC_RESULT_SUCCESS )
-        {
-            continue;
-        }
-
-        // Get the internal reference to the zone.
-        HNIrrigationZone *zonePtr = updateZone( zoneID );
-
-        if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            std::cout << "== READ ZONE NAME: " << rstStr << std::endl;
-            zonePtr->setName( rstStr );
-        }
-
-        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setDesc( rstStr );
-        }
-
-        if( objPtr->getValueByName( "secondsPerWeek", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setWeeklySeconds( strtol( rstStr.c_str(), NULL, 0 ) );
-        }
-
-        if( objPtr->getValueByName( "secondsMaxCycle", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setMaximumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
-        }
-
-        if( objPtr->getValueByName( "secondsMinCycle", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            zonePtr->setMinimumCycleTimeSeconds( strtol( rstStr.c_str(), NULL, 0 ) );
-        }
-
-        if( objPtr->getValueByName( "swidList", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            const std::regex ws_re("\\s+"); // whitespace
-
-            std::cout << "== READ SWIDLIST: " << rstStr << std::endl;
-
-            zonePtr->clearSWIDSet();
-
-            // Walk the switch List string
-            std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
-            const std::sregex_token_iterator end;
-            while( it != end )
-            {
-                // Add a new switch id.
-                zonePtr->addSWID( *it );
-                it++;
-            }
-        }
-
-    }
-          
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::readCriteriaListSection( HNodeConfig &cfg )
-{
-    HNCSection  *secPtr;
-
-    // Aquire a pointer to the "device" section
-    cfg.updateSection( "irrCriteriaInfo", &secPtr );
-
-    // Get a list pointer
-    HNCObjList *listPtr;
-    secPtr->updateList( "criteriaList", &listPtr );
-
-    for( uint indx = 0; indx < listPtr->size(); indx++ )
-    {
-        std::string criteriaID;
-        std::string rstStr;
-        HNCObj *objPtr;
-
-        if( listPtr->getObjPtr( indx, &objPtr ) != HNC_RESULT_SUCCESS )
-            continue;
-
-        // Get the zoneID first, if missing skip the record
-        if( objPtr->getValueByName( "criteriaid", criteriaID ) != HNC_RESULT_SUCCESS )
-        {
-            continue;
-        }
-
-        // Get the internal reference to the zone.
-        HNIrrigationCriteria *criteriaPtr = updateCriteria( criteriaID );
-
-        if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            criteriaPtr->setName( rstStr );
-        }
-
-        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            criteriaPtr->setDesc( rstStr );
-        }
-
-        if( objPtr->getValueByName( "startTime", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            criteriaPtr->setStartTime( rstStr );
-        }
-
-        if( objPtr->getValueByName( "endTime", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            criteriaPtr->setEndTime( rstStr );
-        }
-
-        if( objPtr->getValueByName( "rank", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            uint offset = strtol( rstStr.c_str(), NULL, 0 );
-            criteriaPtr->setRank( offset );
-        }
-
-        if( objPtr->getValueByName( "dayBits", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            criteriaPtr->clearDayBits();
-            uint dayBits = strtol( rstStr.c_str(), NULL, 0 );
-            criteriaPtr->setDayBits( dayBits );
-        }
-
-        if( objPtr->getValueByName( "zoneList", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            const std::regex ws_re("\\s+"); // whitespace
-
-            criteriaPtr->clearZones();
-
-            std::cout << "Config Read ZoneList: '" << rstStr << "'" << std::endl;
-
-            // Ignore the empty string.
-            if( rstStr.empty() == true )
-                continue;
-
-            // Walk the zoneList string
-            std::sregex_token_iterator it( rstStr.begin(), rstStr.end(), ws_re, -1 );
-            const std::sregex_token_iterator end;
-            while( it != end )
-            {
-                std::cout << "Config Read Add Zone: '" << *it << "'" << std::endl;
-
-                // Add a new switch action to the queue.
-                std::string zoneName = *it;
-                if( zoneName.empty() == false )    
-                    criteriaPtr->addZone( zoneName );
-                it++;
-            }
-        }
-    }
-          
     return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
 HNIrrigationSchedule::readConfigSections( HNodeConfig &cfg )
 {
-    HNIS_RESULT_T result;
-
-    result = readZoneListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
-    result = readCriteriaListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::updateZoneListSection( HNodeConfig &cfg )
-{
-    char tmpStr[256];
-    HNCSection *secPtr;
-    cfg.updateSection( "irrZoneInfo", &secPtr );
-    //secPtr->updateValue( "test1", "value1" );
-
-    HNCObjList *listPtr;
-    secPtr->updateList( "zoneList", &listPtr );
-
-    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
-    { 
-        HNCObj *objPtr;
-
-        // Aquire a new list entry
-        listPtr->appendObj( &objPtr );
-
-        // Fill the entry with the zone info
-        objPtr->updateValue( "zoneid", it->second.getID() );
-        objPtr->updateValue( "name", it->second.getName() );
-        objPtr->updateValue( "description", it->second.getDesc() );
-
-        sprintf( tmpStr, "%d", it->second.getWeeklySeconds() );
-        objPtr->updateValue( "secondsPerWeek", tmpStr );
-
-        sprintf( tmpStr, "%d", it->second.getMaximumCycleTimeSeconds() );
-        objPtr->updateValue( "secondsMaxCycle", tmpStr );
-
-        sprintf( tmpStr, "%d", it->second.getMinimumCycleTimeSeconds() );
-        objPtr->updateValue( "secondsMinCycle", tmpStr );
-
-        objPtr->updateValue( "swidList", it->second.getSWIDListStr() );    
-    }
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::updateCriteriaListSection( HNodeConfig &cfg )
-{
-    char tmpStr[256];
-    HNCSection *secPtr;
-    cfg.updateSection( "irrCriteriaInfo", &secPtr );
-    //secPtr->updateValue( "test1", "value1" );
-
-    HNCObjList *listPtr;
-    secPtr->updateList( "criteriaList", &listPtr );
-
-    for( std::map< std::string, HNIrrigationCriteria >::iterator it = m_criteriaMap.begin(); it != m_criteriaMap.end(); it++ )
-    { 
-        HNCObj *objPtr;
-
-        // Aquire a new list entry
-        listPtr->appendObj( &objPtr );
-
-        // Fill the entry with the static event info
-        objPtr->updateValue( "criteriaid", it->second.getID() );
-
-        objPtr->updateValue( "name", it->second.getName() );
-        objPtr->updateValue( "description", it->second.getDesc() );
-        objPtr->updateValue( "startTime", it->second.getStartTime().getHMSStr() );
-        objPtr->updateValue( "endTime", it->second.getEndTime().getHMSStr() );
-
-        sprintf( tmpStr, "%d", it->second.getRank() );
-        objPtr->updateValue( "rank", tmpStr );
-
-        sprintf( tmpStr, "%d", it->second.getDayBits() );
-        objPtr->updateValue( "dayBits", tmpStr );
-
-        objPtr->updateValue( "zoneList", it->second.getZoneSetAsStr() );
-    }
-
     return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
 HNIrrigationSchedule::updateConfigSections( HNodeConfig &cfg )
 {
-    HNIS_RESULT_T result;
-
-    result = updateZoneListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
-    result = updateCriteriaListSection( cfg );
-    if( result != HNIS_RESULT_SUCCESS )
-        return result;
-
     return HNIS_RESULT_SUCCESS;
 }
 
@@ -1167,7 +778,9 @@ HNIrrigationSchedule::buildSchedule()
         m_dayArr[ indx ].clear();
 
     // Create an array covering a week of non-overlapping available scheduling slots
-    for( std::map< std::string, HNIrrigationCriteria >::iterator cit = m_criteriaMap.begin(); cit != m_criteriaMap.end(); cit++ )
+    std::vector< HNIrrigationCriteria > criteriaList;
+    m_criteria->getCriteriaList( criteriaList );
+    for( std::vector< HNIrrigationCriteria >::iterator cit = criteriaList.begin(); cit != criteriaList.end(); cit++ )
     {
         // Check each possible day.
         for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
@@ -1175,11 +788,11 @@ HNIrrigationSchedule::buildSchedule()
             bool inserted = false;
 
             // Check whether this day applies to the criteria
-            if( cit->second.isForDay( (HNIS_DAY_INDX_T) dayIndx ) == false )
+            if( cit->isForDay( (HNIS_DAY_INDX_T) dayIndx ) == false )
                 continue;
 
             // Insert the new criteria
-            m_dayArr[ dayIndx ].applyCriteria( cit->second );
+            m_dayArr[ dayIndx ].applyCriteria( *cit );
         }
     }    
 
@@ -1188,7 +801,9 @@ HNIrrigationSchedule::buildSchedule()
     
 
     // Attempt to schedule each zone
-    for( std::map< std::string, HNIrrigationZone >::iterator zit = m_zoneMap.begin(); zit != m_zoneMap.end(); zit++ )
+    std::vector< HNIrrigationZone > zoneList;
+    m_zones->getZoneList( zoneList );
+    for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
     {
         std::vector<HNISPeriod> availSlotLists[ HNIS_DINDX_NOTSET ];
         uint maxLayer = 0;
@@ -1197,7 +812,7 @@ HNIrrigationSchedule::buildSchedule()
         // Generate a list of available zone slots for each day.
         for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         {
-            m_dayArr[ indx ].getAvailableSlotsForZone( zit->second.getID(), availSlotLists[ indx ] );
+            m_dayArr[ indx ].getAvailableSlotsForZone( zit->getID(), availSlotLists[ indx ] );
 
             if( maxLayer < availSlotLists[ indx ].size() )
                 maxLayer = availSlotLists[ indx ].size();
@@ -1228,10 +843,10 @@ HNIrrigationSchedule::buildSchedule()
         // Calculate how many of the slots to use.
         uint uniqueSlots = orderedSlotList.size();
 
-        std::cout << "==== Zone: " << zit->second.getID() << "  availSec: " << totalAvailSeconds << "  slotCount: " << uniqueSlots << std::endl;
+        std::cout << "==== Zone: " << zit->getID() << "  availSec: " << totalAvailSeconds << "  slotCount: " << uniqueSlots << std::endl;
 
         // Calculate the total weekly time needed for the zone.
-        uint totalWeeklySeconds = zit->second.getWeeklySeconds();
+        uint totalWeeklySeconds = zit->getWeeklySeconds();
         
         // Make sure it will fit.
         if( totalWeeklySeconds > totalAvailSeconds )
@@ -1244,7 +859,7 @@ HNIrrigationSchedule::buildSchedule()
         }
 
         // Check that the number of available slots is sufficient
-        uint minCycleCnt = totalWeeklySeconds / zit->second.getMaximumCycleTimeSeconds();
+        uint minCycleCnt = totalWeeklySeconds / zit->getMaximumCycleTimeSeconds();
         if( minCycleCnt > uniqueSlots )
         {
             // Mark zone as unschedulable
@@ -1256,11 +871,11 @@ HNIrrigationSchedule::buildSchedule()
 
         // Shoot for an average time between lower and upper bound
         uint cycleTimePerSlot = totalWeeklySeconds / uniqueSlots;
-        uint targetCycleTime = zit->second.getMinimumCycleTimeSeconds();
+        uint targetCycleTime = zit->getMinimumCycleTimeSeconds();
         if( targetCycleTime < cycleTimePerSlot )
             targetCycleTime = cycleTimePerSlot;
 
-        targetCycleTime = ( ( targetCycleTime + zit->second.getMaximumCycleTimeSeconds() ) / 2 );
+        targetCycleTime = ( ( targetCycleTime + zit->getMaximumCycleTimeSeconds() ) / 2 );
         uint targetSlotCnt = totalWeeklySeconds / targetCycleTime;
     
         std::cout << "  targetCycleTime: " << targetCycleTime << "  targetSlotCnt: " << targetSlotCnt << std::endl;
@@ -1270,7 +885,7 @@ HNIrrigationSchedule::buildSchedule()
         for( uint slotIndex = 0; slotIndex < targetSlotCnt; slit++, slotIndex++ )
         {
             std::cout << "    day: " << slit->getDayIndex() << "  rank: " << slit->getRank() << "  startSec: " << slit->getStartTime().getSeconds() << std::endl;
-            m_dayArr[ slit->getDayIndex() ].addPeriodZoneOn( slit->getID(), zit->second.getID(), targetCycleTime );
+            m_dayArr[ slit->getDayIndex() ].addPeriodZoneOn( slit->getID(), zit->getID(), targetCycleTime );
         }
 
     }
@@ -1284,52 +899,6 @@ HNIrrigationSchedule::buildSchedule()
 
     return HNIS_RESULT_SUCCESS;
 
-}
-
-void 
-HNIrrigationSchedule::getZoneList( std::vector< HNIrrigationZone > &zoneList )
-{
-    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
-    {
-        zoneList.push_back( it->second );
-    }
-}
-
-bool 
-HNIrrigationSchedule::hasZone( std::string zoneID )
-{
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
-
-    if( it == m_zoneMap.end() )
-        return false;
-
-    return true;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::getZone( std::string zoneID, HNIrrigationZone &zone )
-{
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
-
-    if( it == m_zoneMap.end() )
-        return HNIS_RESULT_FAILURE;
-
-    zone = it->second;
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::getZoneName( std::string zoneID, std::string &name )
-{
-    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneID );
-
-    name.clear();
-
-    if( it == m_zoneMap.end() )
-        return HNIS_RESULT_FAILURE;
-
-    name = it->second.getName();
-    return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
@@ -1367,7 +936,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             jsSWAction.set( "zoneid", it->getID() );
 
             std::string zName;
-            getZoneName( it->getID(), zName );
+            m_zones->getZoneName( it->getID(), zName );
             jsSWAction.set( "name", zName );
 
             jsActions.add( jsSWAction );
@@ -1416,7 +985,10 @@ HNIrrigationSchedule::calculateSMCRC32()
             digest.update( "swon" );
             digest.update( it->getStartTimeStr() );
             digest.update( it->getEndTimeStr() );
-            digest.update( m_zoneMap[ it->getZoneSetAsStr() ].getSWIDListStr() );
+    
+            HNIrrigationZone zone;
+            m_zones->getZone( it->getZoneSetAsStr(), zone );
+            digest.update( zone.getSWIDListStr() );
         }
         
     }
@@ -1476,7 +1048,9 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
 
             std::cout << "zone id: " << it->getID() << std::endl;
 
-            jsSWAction.set( "swid", m_zoneMap[ it->getZoneSetAsStr() ].getSWIDListStr() );
+            HNIrrigationZone zone;
+            m_zones->getZone( it->getZoneSetAsStr(), zone );
+            jsSWAction.set( "swid", zone.getSWIDListStr() );
 
             jsActions.add( jsSWAction );
         }

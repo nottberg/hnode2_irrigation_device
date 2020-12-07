@@ -3,8 +3,13 @@
 
 #include <stdint.h>
 
+#include <string>
+#include <vector>
 #include <map>
 #include <set>
+#include <mutex>
+
+#include <hnode2/HNodeConfig.h>
 
 #include "HNIrrigationTypes.h"
 
@@ -81,12 +86,29 @@ class HNIrrigationCriteria
 class HNIrrigationCriteriaSet
 {
     private:
+        // Protect access to the data members
+        std::mutex m_accessMutex;
+
         std::map< std::string, HNIrrigationCriteria > m_criteriaMap;
+
+        HNIrrigationCriteria* internalUpdateCriteria( std::string id );
 
     public:
         HNIrrigationCriteriaSet();
        ~HNIrrigationCriteriaSet();
 
+        bool hasID( std::string id );
+
+        HNIrrigationCriteria* updateCriteria( std::string id );
+        void deleteCriteria( std::string criteriaID );
+        void getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList );
+        HNIS_RESULT_T getCriteria( std::string criteriaID, HNIrrigationCriteria &event );
+
+        void clear();
+
+        HNIS_RESULT_T initCriteriaListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T readCriteriaListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T updateCriteriaListSection( HNodeConfig &cfg );
 };
 
 #endif // __HN_IRRIGATION_CRITERIA_H__

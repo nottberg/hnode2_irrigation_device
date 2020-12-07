@@ -30,6 +30,8 @@ typedef enum HNIrrigationDeviceProcessStateEnum
   HNID_STATE_SEND_SET_SCHEDULE,
   HNID_STATE_WAIT_SET_SCHEDULE,
   HNID_STATE_WAIT_SWINFO,
+  HNID_STATE_WAIT_SCHCTL,
+  HNID_STATE_WAIT_ZONECTL
 }HNID_STATE_T;
 
 typedef enum HNIrrigationDeviceResultEnum
@@ -64,7 +66,9 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         HNodeDevice m_hnodeDev;
 
-        HNIrrigationSchedule m_schedule;
+        HNIrrigationCriteriaSet m_criteria;
+        HNIrrigationZoneSet     m_zones;
+        HNIrrigationSchedule    m_schedule;
 
         bool m_sendSchedule;
 
@@ -87,11 +91,16 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         void startAction();
 
+        void sendScheduleUpdate();
+
         void handleSWDStatus( HNSWDPacketClient &packet );
+        void handleSWDEvent( HNSWDPacketClient &packet );
         void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
         void handleSWDSwitchInfoRsp( HNSWDPacketClient &packet );
+        void handleScheduleStateRsp( HNSWDPacketClient &packet );
+        void handleZoneCtrlRsp( HNSWDPacketClient &packet );
 
-        bool getIrrigationStatusJSON( std::ostream &ostr );
+        //bool getIrrigationStatusJSON( std::ostream &ostr );
 
     protected:
         // HNDevice REST callback

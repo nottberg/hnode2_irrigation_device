@@ -43,6 +43,8 @@ class HNIrrigationClient: public Application
         bool _helpRequested       = false;
         bool _devInfoRequested    = false;
 
+        bool _statusRequested     = false;
+
         bool _getScheduleRequested = false;
 
         bool _zoneListRequested    = false;
@@ -121,6 +123,8 @@ class HNIrrigationClient: public Application
         {
             Application::defineOptions( options );
 
+            options.addOption( Option("status", "", "Query the current irrigation device status.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
 		    options.addOption( Option("help", "h", "display help information on command line arguments").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleHelp)));
 
             options.addOption( Option("device-info", "i", "Request Hnode2 Device Info").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
@@ -185,6 +189,8 @@ class HNIrrigationClient: public Application
         {
             if( "device-info" == name )
                 _devInfoRequested = true;
+            else if( "status" == name )
+                _statusRequested = true;
             else if( "zone-list" == name )
                 _zoneListRequested = true;
             else if( "create-zone" == name )
@@ -336,6 +342,32 @@ class HNIrrigationClient: public Application
             std::string body;
             Poco::StreamCopier::copyToString( rs, body );
             std::cout << body << std::endl;
+        }
+
+        void getIrrigationStatus()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/status" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << "Response:" << std::endl << body << std::endl;
         }
 
         void getScheduleInfo()
@@ -1151,6 +1183,10 @@ class HNIrrigationClient: public Application
             if( _devInfoRequested == true )
             {
                 getHNodeDeviceInfo();
+            }
+            else if( _statusRequested == true )
+            {
+                getIrrigationStatus();
             }
             else if( _getScheduleRequested == true )
             {
