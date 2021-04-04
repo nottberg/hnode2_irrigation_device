@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED( VERSION 2.8 )
 PROJECT( hnode2-irrigation-device ) 
 
 SET( MAJOR_VERSION 2 )
-SET( MINOR_VERSION 0 )
+SET( MINOR_VERSION 1 )
 SET( PATCH_VERSION 0 )
 SET( RELEASE_VERSION 0 )
 
@@ -23,6 +23,17 @@ ADD_DEFINITIONS( -DVERSION=${VERSION} )
 SET( HNIRRIGATIOND_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/hnirrigationd.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationDevice.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationSchedule.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIDActionRequest.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNSWDPacketClient.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNSWDStatus.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationZone.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationCriteria.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationTypes.cpp
+)
+
+SET( HNIRRIGATIOND_CLIENT_SRC
+     ${CMAKE_SOURCE_DIR}/src/client/hnirrigationd_client.cpp
 )
 
 SET(CMAKE_BUILD_TYPE Debug)
@@ -35,7 +46,13 @@ ADD_EXECUTABLE( hnirrigationd ${HNIRRIGATIOND_SRC} )
 TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::JSON )
 TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE "-lhnode2" )
 
+ADD_EXECUTABLE( hnirrigationd_client ${HNIRRIGATIOND_CLIENT_SRC} )
+TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::JSON )
+TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE "-lhnode2" )
+
 INSTALL( TARGETS hnirrigationd DESTINATION ${CMAKE_INSTALL_PREFIX}/sbin COMPONENT daemon )
+
+INSTALL( TARGETS hnirrigationd_client DESTINATION ${CMAKE_INSTALL_PREFIX}/sbin COMPONENT client )
 
 #CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/pkg/hnswitchd.service.in ${CMAKE_BINARY_DIR}/hnswitchd.service @ONLY )
 #INSTALL( FILES ${CMAKE_BINARY_DIR}/hnswitchd.service DESTINATION /etc/systemd/system/ COMPONENT daemon )
