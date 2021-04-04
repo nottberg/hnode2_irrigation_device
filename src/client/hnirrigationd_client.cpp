@@ -26,6 +26,7 @@
 #include <sstream>
 #include <fstream>
 #include <iterator>
+#include <regex>
 
 using Poco::Util::Application;
 using Poco::Util::Option;
@@ -54,13 +55,15 @@ class HNIrrigationClient: public Application
         bool _updateZoneRequested  = false;
         bool _deleteZoneRequested  = false;
 
-        bool _staticEventListRequested   = false;
-        bool _createStaticEventRequested = false;
-        bool _staticEventInfoRequested   = false;
-        bool _updateStaticEventRequested = false;
-        bool _deleteStaticEventRequested = false;
+        bool _listCriteriaRequested   = false;
+        bool _createCriteriaRequested = false;
+        bool _infoCriteriaRequested   = false;
+        bool _updateCriteriaRequested = false;
+        bool _deleteCriteriaRequested = false;
 
         bool _switchListRequested = false;
+
+        bool _zonectlRequested    = false;
 
         bool _hostPresent         = false;
         bool _namePresent         = false;
@@ -75,7 +78,10 @@ class HNIrrigationClient: public Application
         bool _stPresent           = false;
         bool _etPresent           = false;
         bool _dayPresent          = false;
-        bool _durationPresent     = false;
+        bool _inhibitDurationPresent = false;
+        bool _onDurationPresent      = false;
+        bool _offDurationPresent     = false;
+        bool _zoneSeqPresent         = false;
 
         std::string _hostStr;
         std::string _nameStr;
@@ -86,8 +92,12 @@ class HNIrrigationClient: public Application
         std::string _startTimeStr;
         std::string _endTimeStr;
         std::string _dayStr;
-        std::string _durationStr;
+        std::string _inhibitDurationStr;
         std::string _schstateNewState;
+        std::string _zonectlCmd;
+        std::string _onDurationStr;
+        std::string _offDurationStr;
+        std::string _zoneSeqStr;
 
         uint _spwInt;
         uint _cpdInt;
@@ -150,15 +160,17 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("delete-zone", "", "Delete an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("event-list", "", "Get a list of defined Static Schedule Events.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("criteria-list", "", "Get a list of defined scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("create-event", "", "Create a new Static Schedule Event. Types: everyday-keepout, single-keepout, everyday-zone, single-zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("create-criteria", "", "Create a new scheduling criteria. Types: everyday-keepout, single-keepout, everyday-zone, single-zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("event-info", "", "Get info for a single Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("criteria-info", "", "Get info for a single scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("update-event", "", "Update an existing Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("update-criteria", "", "Update an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("delete-event", "", "Delete an existing Static Schedule Event.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("delete-criteria", "", "Delete an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("zonectl", "", "Send a zone control command. Possible commands: .").required(false).repeatable(false).argument("command").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("host", "u", "Host URL").required(false).repeatable(false).argument("<host>:<port>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -184,7 +196,14 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("day", "", "Specify a day name parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("duration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("inhibitDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("onDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("offDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("zoneSeq", "", "A list of one or more zone ids.  Multi-entry lists must be in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
         }
 	
         void handleHelp(const std::string& name, const std::string& value)
@@ -210,16 +229,16 @@ class HNIrrigationClient: public Application
                 _updateZoneRequested = true;
             else if( "delete-zone" == name )
                 _deleteZoneRequested = true;
-            else if( "event-list" == name )
-                _staticEventListRequested = true;
-            else if( "create-event" == name )
-                _createStaticEventRequested = true;
-            else if( "event-info" == name )
-                _staticEventInfoRequested = true;
-            else if( "update-event" == name )
-                _updateStaticEventRequested = true;
-            else if( "delete-event" == name )
-                _deleteStaticEventRequested = true;
+            else if( "criteria-list" == name )
+                _listCriteriaRequested = true;
+            else if( "create-criteria" == name )
+                _createCriteriaRequested = true;
+            else if( "criteria-info" == name )
+                _infoCriteriaRequested = true;
+            else if( "update-criteria" == name )
+                _updateCriteriaRequested = true;
+            else if( "delete-criteria" == name )
+                _deleteCriteriaRequested = true;
             else if( "switch-list" == name )
                 _switchListRequested = true;
             else if( "schedule" == name )
@@ -229,12 +248,11 @@ class HNIrrigationClient: public Application
                 _schstateRequested = true;
                 _schstateNewState  = value;
             }
-            else if( "duration" == name )
+            else if( "zonectl" == name )
             {
-                _durationPresent = true;
-                _durationStr     = value;
+                _zonectlRequested = true;
+                _zonectlCmd       = value;
             }
-
             else if( "host" == name )
             {
                 _hostPresent = true;
@@ -294,6 +312,26 @@ class HNIrrigationClient: public Application
             {
                 _dayPresent = true;
                 _dayStr     = value;
+            }
+            else if( "inhibitDuration" == name )
+            {
+                _inhibitDurationPresent = true;
+                _inhibitDurationStr     = value;
+            }
+            else if( "onDuration" == name )
+            {
+                _onDurationPresent = true;
+                _onDurationStr     = value;
+            }
+            else if( "offDuration" == name )
+            {
+                _offDurationPresent = true;
+                _offDurationStr     = value;
+            }
+            else if( "zoneSeq" == name )
+            {
+                _zoneSeqPresent = true;
+                _zoneSeqStr     = value;
             }
 
         }
@@ -990,13 +1028,13 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getStaticEventList()
+        void getCriteriaList()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/schedule/static-events" );
+            uri.setPath( "/hnode2/irrigation/criteria" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1017,14 +1055,14 @@ class HNIrrigationClient: public Application
         }
 
 
-        void createStaticEventRequest()
+        void createCriteriaRequest()
         {
             Poco::URI uri;
 
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/schedule/static-events" );
+            uri.setPath( "/hnode2/irrigation/criteria" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1066,14 +1104,14 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getStaticEventInfo()
+        void getCriteriaInfo()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events/" );
+            std::string path( "/hnode2/irrigation/criteria/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1096,7 +1134,7 @@ class HNIrrigationClient: public Application
             std::cout << body << std::endl;
         }
 
-        void updateStaticEventRequest()
+        void updateCriteriaRequest()
         {
             Poco::URI uri;
 
@@ -1104,7 +1142,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events/" );
+            std::string path( "/hnode2/irrigation/criteria/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1139,14 +1177,14 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void deleteStaticEventRequest()
+        void deleteCriteriaRequest()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/schedule/static-events/" );
+            std::string path( "/hnode2/irrigation/criteria/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1201,9 +1239,9 @@ class HNIrrigationClient: public Application
                 return;
             }
 
-            if( ( _schstateNewState == "inhibit" ) && ( _durationPresent == false ) )
+            if( ( _schstateNewState == "inhibit" ) && ( _inhibitDurationPresent == false ) )
             {
-                std::cout << "ERROR: When requesting the inhibit state a duration must be provided: " << _durationStr << std::endl;
+                std::cout << "ERROR: When requesting the inhibit state a duration must be provided: " << _inhibitDurationStr << std::endl;
                 return;
             }
           
@@ -1232,11 +1270,111 @@ class HNIrrigationClient: public Application
             jsRoot.set( "state", _schstateNewState );
 
             // Add the current date
+            if( _inhibitDurationPresent )
+                jsRoot.set( "inhibitDuration", _inhibitDurationStr );
+            else
+                jsRoot.set( "inhibitDuration", "00:00:00" );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( ... )
+            {
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void sendZoneControl()
+        {
+            std::string cmdStr;
+            std::stringstream msg;
+
+            // Error check the provided parameters
+            if(   ( _zonectlCmd != "start-sequence" )
+               && ( _zonectlCmd != "cancel-sequence" ))
+            {
+                std::cout << "ERROR: Zone Control Request command is not supported: " << _zonectlCmd << std::endl;
+                return;
+            }
+
+            // Allow massage of command string in future
+            cmdStr = _zonectlCmd;
+
+#if 0
+            if( ( _schstateNewState == "inhibit" ) && ( _durationPresent == false ) )
+            {
+                std::cout << "ERROR: When requesting the inhibit state a duration must be provided: " << _durationStr << std::endl;
+                return;
+            }
+#endif          
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/zonectl" );
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_PUT, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add the timezone setting
+            jsRoot.set( "command", cmdStr );
+
+            if( "start-sequence" == cmdStr )
+            {
+                if( ( _onDurationPresent == false ) || ( _offDurationPresent == false ) || ( _zoneSeqPresent == false ) )
+                {
+                    std::cout << "ERROR: Starting a zone sequence requires onDuration, offDuration, and zoneSequence parameters" << std::endl;
+                    return;
+                }
+
+                // Add the on duration
+                jsRoot.set( "onDuration", _onDurationStr );
+
+                // Add the off duration
+                jsRoot.set( "offDuration", _offDurationStr );
+
+                // Add sequence zone array
+                const std::regex ws_re("\\s+"); // whitespace
+                pjs::Array  jsSeqList;
+
+                // Walk the switch List string
+                std::sregex_token_iterator it( _zoneSeqStr.begin(), _zoneSeqStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::cout << "ZoneID: " << *it << std::endl;
+                    jsSeqList.add( *it );
+                    it++;
+                }
+
+                // Add Switch List field
+                jsRoot.set( "zoneSequence", jsSeqList );
+            }
+#if 0
+            // Add the current date
             if( _durationPresent )
                 jsRoot.set( "inhibitDuration", _durationStr );
             else
                 jsRoot.set( "inhibitDuration", "00:00:00" );
-
+#endif
             // Render into a json string.
             try
             {
@@ -1300,30 +1438,35 @@ class HNIrrigationClient: public Application
             {
                 deleteZoneRequest();
             }
-            else if( _staticEventListRequested == true )
+            else if( _listCriteriaRequested == true )
             {
-                getStaticEventList();
+                getCriteriaList();
             }
-            else if( _createStaticEventRequested == true )
+            else if( _createCriteriaRequested == true )
             {
-                createStaticEventRequest();
+                createCriteriaRequest();
             }
-            else if( _staticEventInfoRequested == true )
+            else if( _infoCriteriaRequested == true )
             {
-                getStaticEventInfo();
+                getCriteriaInfo();
             }
-            else if( _updateStaticEventRequested == true )
+            else if( _updateCriteriaRequested == true )
             {
-                updateStaticEventRequest();
+                updateCriteriaRequest();
             }
-            else if( _deleteStaticEventRequested == true )
+            else if( _deleteCriteriaRequested == true )
             {
-                deleteStaticEventRequest();
+                deleteCriteriaRequest();
             }
             else if( _switchListRequested == true )
             {
                 getSwitchList();
             }
+            else if( _zonectlRequested == true )
+            {
+                sendZoneControl();
+            }
+
 
 #if 0
             // Establish the connection.
