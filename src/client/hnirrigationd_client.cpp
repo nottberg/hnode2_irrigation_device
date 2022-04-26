@@ -13,6 +13,8 @@
 #include <Poco/Path.h>
 #include <Poco/File.h>
 #include <Poco/StreamCopier.h>
+#include <Poco/String.h>
+#include <Poco/StringTokenizer.h>
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
@@ -1394,9 +1396,35 @@ class HNIrrigationClient: public Application
         {
             uint sockfd = 0;
 
-            // Default the host
-            m_host = "localhost";
-            m_port = 8080;
+            // Check if non-default host
+            if( _hostPresent == true )
+            {
+                // Host string provided, break into constiuent parts.
+               Poco::StringTokenizer tk(_hostStr, ":", Poco::StringTokenizer::TOK_TRIM | Poco::StringTokenizer::TOK_IGNORE_EMPTY);
+                switch( tk.count() )
+                {
+                   case 0:
+                       m_host = "localhost";
+                       m_port = 8080;
+                   break;
+
+                   case 1:
+                       m_host = tk[0];
+                       m_port = 8080;
+                   break;
+
+                   default:
+                       m_host = tk[0];
+                       m_port = strtol(tk[1].c_str(), NULL, 0);
+                   break;
+                }
+            }
+            else
+            {
+               // Default the host
+               m_host = "localhost";
+               m_port = 8080;
+            }
 
             // Bailout if help was requested.
             if( _helpRequested == true )

@@ -167,20 +167,22 @@ HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones
 
     try
     {
-        std::stringstream rStr;
-        pjs::Stringifier::stringify( jsRoot, rStr, 1 );
-        std::cout << rStr.str() << std::endl;
-
         // Write out the generated json
         pjs::Stringifier::stringify( jsRoot, ostr, 1 );
     }
-    catch( Poco::Exception ex )
+    catch( Poco::Exception& ex )
     {
-        std::cout << "Stringify Exception: " << ex.displayText() << std::endl;
+        std::cerr << "Stringify Exception: " << ex.displayText() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "Standard Exception: " << ex.what() << std::endl;
         return HNIS_RESULT_FAILURE;
     }
     catch( ... )
     {
+        std::cerr << "Stringify Exception: Uncaught Type" << std::endl;
         return HNIS_RESULT_FAILURE;
     }
 
