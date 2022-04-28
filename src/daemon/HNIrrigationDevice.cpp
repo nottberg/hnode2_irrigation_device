@@ -872,8 +872,8 @@ HNIrrigationDevice::loopIteration()
 void 
 HNIrrigationDevice::timeoutEvent()
 {
-//    std::cout << "EV Timeout Handler" << std::endl;
-
+    //std::cout << "EV Timeout Handler" << std::endl;
+    //std::cout << "Posted Count: " << m_actionQueue.getPostedCnt() << std::endl;
 }
 
 bool 
