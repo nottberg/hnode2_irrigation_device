@@ -900,7 +900,22 @@ class HNIrrigationClient: public Application
                 jsRoot.set( "secondsMinCycle", _smcInt );
 
             if( _swidPresent )
-                jsRoot.set( "swidList", _swidStr );
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+                pjs::Array  jsSwList;
+
+                // Walk the switch List string
+                std::sregex_token_iterator it( _swidStr.begin(), _swidStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::cout << "SwitchID: " << *it << std::endl;
+                    jsSwList.add( *it );
+                    it++;
+                }
+                jsRoot.set( "swidList", jsSwList );
+            }
 
             // Render into a json string.
             try
@@ -988,7 +1003,22 @@ class HNIrrigationClient: public Application
                 jsRoot.set( "secondsMinCycle", _smcInt );
 
             if( _swidPresent )
-                jsRoot.set( "swidList", _swidStr );
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+                pjs::Array  jsSwList;
+
+                // Walk the switch List string
+                std::sregex_token_iterator it( _swidStr.begin(), _swidStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::cout << "SwitchID: " << *it << std::endl;
+                    jsSwList.add( *it );
+                    it++;
+                }
+                jsRoot.set( "swidList", jsSwList );
+            }
 
             // Render into a json string.
             try
