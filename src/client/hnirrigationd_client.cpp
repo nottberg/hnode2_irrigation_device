@@ -884,6 +884,7 @@ class HNIrrigationClient: public Application
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
+            pjs::Array  jsSwList;
 
             // Add request data fields
             if( _namePresent )
@@ -904,7 +905,6 @@ class HNIrrigationClient: public Application
             if( _swidPresent )
             {
                 const std::regex ws_re("\\s+"); // whitespace
-                pjs::Array  jsSwList;
 
                 // Walk the switch List string
                 std::sregex_token_iterator it( _swidStr.begin(), _swidStr.end(), ws_re, -1 );
@@ -912,8 +912,9 @@ class HNIrrigationClient: public Application
                 while( it != end )
                 {
                     // Add a new switch id.
-                    std::cout << "SwitchID: " << *it << std::endl;
-                    jsSwList.add( *it );
+                    std::string swid = *it;
+                    std::cout << "SwitchID: " << swid << std::endl;
+                    jsSwList.add( swid );
                     it++;
                 }
                 jsRoot.set( "swidList", jsSwList );
@@ -924,8 +925,13 @@ class HNIrrigationClient: public Application
             {
                 pjs::Stringifier::stringify( jsRoot, os );
             }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+            }
             catch( ... )
             {
+                std::cerr << "Unknown exception" << std::endl;
                 return;
             }
 
@@ -987,6 +993,7 @@ class HNIrrigationClient: public Application
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
+            pjs::Array  jsSwList;
 
             // Add request data fields
             if( _namePresent )
@@ -1007,7 +1014,6 @@ class HNIrrigationClient: public Application
             if( _swidPresent )
             {
                 const std::regex ws_re("\\s+"); // whitespace
-                pjs::Array  jsSwList;
 
                 // Walk the switch List string
                 std::sregex_token_iterator it( _swidStr.begin(), _swidStr.end(), ws_re, -1 );
@@ -1015,8 +1021,9 @@ class HNIrrigationClient: public Application
                 while( it != end )
                 {
                     // Add a new switch id.
-                    std::cout << "SwitchID: " << *it << std::endl;
-                    jsSwList.add( *it );
+                    std::string swid = *it;
+                    std::cout << "SwitchID: " << swid << std::endl;
+                    jsSwList.add( swid );
                     it++;
                 }
                 jsRoot.set( "swidList", jsSwList );
@@ -1027,8 +1034,13 @@ class HNIrrigationClient: public Application
             {
                 pjs::Stringifier::stringify( jsRoot, os );
             }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+            }
             catch( ... )
             {
+                std::cout << "Stringfy exception" << std::endl;
                 return;
             }
 
@@ -1392,8 +1404,9 @@ class HNIrrigationClient: public Application
                 while( it != end )
                 {
                     // Add a new switch id.
-                    std::cout << "ZoneID: " << *it << std::endl;
-                    jsSeqList.add( *it );
+                    std::string zid = *it;
+                    std::cout << "ZoneID: " << zid << std::endl;
+                    jsSeqList.add( zid );
                     it++;
                 }
 
