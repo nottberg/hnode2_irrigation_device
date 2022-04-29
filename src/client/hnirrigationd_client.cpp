@@ -206,7 +206,7 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("swid-list", "", "A list of switch IDs. Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("zone-list", "", "A list of one or more zone ids.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("zoneid-list", "", "A list of one or more zone ids.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("day-list", "", "A list of day names.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -329,7 +329,7 @@ class HNIrrigationClient: public Application
                 _swidPresent = true;
                 _swidStr     = value;
             }            
-            else if( "zone-list" == name )
+            else if( "zoneid-list" == name )
             {
                 _zoneidPresent = true;
                 _zoneidStr     = value;
