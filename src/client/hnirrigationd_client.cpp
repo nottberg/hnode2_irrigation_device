@@ -73,37 +73,41 @@ class HNIrrigationClient: public Application
         bool _spwPresent          = false;
         bool _cpdPresent          = false;
         bool _smcPresent          = false;
-        bool _swidPresent         = false;
         bool _idPresent           = false;
 
-        bool _typePresent         = false;
         bool _stPresent           = false;
         bool _etPresent           = false;
-        bool _dayPresent          = false;
+        bool _rankPresent         = false;
+
         bool _inhibitDurationPresent = false;
         bool _onDurationPresent      = false;
         bool _offDurationPresent     = false;
-        bool _zoneSeqPresent         = false;
+        
+        bool _swidPresent         = false;        
+        bool _zoneidPresent       = false;
+        bool _dayListPresent      = false;
+        
 
         std::string _hostStr;
         std::string _nameStr;
         std::string _descStr;
-        std::string _swidStr;
         std::string _idStr;
-        std::string _typeStr;
         std::string _startTimeStr;
         std::string _endTimeStr;
-        std::string _dayStr;
         std::string _inhibitDurationStr;
         std::string _schstateNewState;
         std::string _zonectlCmd;
         std::string _onDurationStr;
         std::string _offDurationStr;
-        std::string _zoneSeqStr;
-
+        
+        std::string _swidStr;        
+        std::string _zoneidStr;
+        std::string _dayListStr;
+        
         uint _spwInt;
         uint _cpdInt;
         uint _smcInt;
+        uint _rankInt;
 
         std::string m_host;
         uint16_t    m_port;
@@ -164,7 +168,7 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("criteria-list", "", "Get a list of defined scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("create-criteria", "", "Create a new scheduling criteria. Types: everyday-keepout, single-keepout, everyday-zone, single-zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("create-criteria", "", "Create a new scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("criteria-info", "", "Get info for a single scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -186,17 +190,13 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("sec-min-cycle", "", "The minimum seconds per cycle parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("swid-list", "", "A space seperated list of switch IDs").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
-
             options.addOption( Option("id", "", "Specify an object identifier").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
-
-            options.addOption( Option("type", "", "Specify a type parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("start-time", "", "Specify a start time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("end-time", "", "Specify an end time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("day", "", "Specify a day name parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("rank", "", "Specify the rank integer for a criteria.  Criteria with the lowest rank will be utilized first.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("inhibitDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -204,7 +204,11 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("offDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("zoneSeq", "", "A list of one or more zone ids.  Multi-entry lists must be in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("swid-list", "", "A list of switch IDs. Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("zone-list", "", "A list of one or more zone ids.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("day-list", "", "A list of day names.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
         }
 	
@@ -285,20 +289,10 @@ class HNIrrigationClient: public Application
                 _smcPresent = true;
                 _smcInt     = strtol( value.c_str(), NULL, 0 );
             }
-            else if( "swid-list" == name )
-            {
-                _swidPresent = true;
-                _swidStr     = value;
-            }
             else if( "id" == name )
             {
                 _idPresent = true;
                 _idStr     = value;
-            }
-            else if( "type" == name )
-            {
-                _typePresent = true;
-                _typeStr     = value;
             }
             else if( "start-time" == name )
             {
@@ -310,10 +304,10 @@ class HNIrrigationClient: public Application
                 _etPresent  = true;
                 _endTimeStr = value;
             }
-            else if( "day" == name )
+            else if( "rank" == name )
             {
-                _dayPresent = true;
-                _dayStr     = value;
+                _rankPresent = true;
+                _rankInt     = strtol( value.c_str(), NULL, 0 );
             }
             else if( "inhibitDuration" == name )
             {
@@ -330,10 +324,20 @@ class HNIrrigationClient: public Application
                 _offDurationPresent = true;
                 _offDurationStr     = value;
             }
-            else if( "zoneSeq" == name )
+            else if( "swid-list" == name )
             {
-                _zoneSeqPresent = true;
-                _zoneSeqStr     = value;
+                _swidPresent = true;
+                _swidStr     = value;
+            }            
+            else if( "zone-list" == name )
+            {
+                _zoneidPresent = true;
+                _zoneidStr     = value;
+            }
+            else if( "day-list" == name )
+            {
+                _dayListPresent = true;
+                _dayListStr     = value;
             }
 
         }
@@ -1119,10 +1123,15 @@ class HNIrrigationClient: public Application
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
-
+            pjs::Array  jsZoneList;
+            pjs::Array  jsDayList;
+            
             // Add request data fields
-            if( _typePresent )
-                jsRoot.set( "type", _typeStr );
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
 
             if( _stPresent )
                 jsRoot.set( "startTime", _startTimeStr );
@@ -1130,8 +1139,44 @@ class HNIrrigationClient: public Application
             if( _etPresent )
                 jsRoot.set( "endTime", _endTimeStr );
 
-            if( _dayPresent )
-                jsRoot.set( "dayName", _dayStr );
+            if( _rankPresent )
+                jsRoot.set( "rank", _rankInt );
+
+            if( _zoneidPresent )
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+
+                // Walk the zone id List string
+                std::sregex_token_iterator it( _zoneidStr.begin(), _zoneidStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::string zid = *it;
+                    std::cout << "ZoneID: " << zid << std::endl;
+                    jsZoneList.add( zid );
+                    it++;
+                }
+                jsRoot.set( "zoneList", jsZoneList );
+            }
+            
+            if( _dayListPresent )
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+
+                // Walk the zone id List string
+                std::sregex_token_iterator it( _dayListStr.begin(), _dayListStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::string dayName = *it;
+                    std::cout << "Day: " << dayName << std::endl;
+                    jsDayList.add( dayName );
+                    it++;
+                }
+                jsRoot.set( "dayList", jsDayList );
+            }
 
             // Render into a json string.
             try
@@ -1202,19 +1247,60 @@ class HNIrrigationClient: public Application
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
-
+            pjs::Array  jsZoneList;
+            pjs::Array  jsDayList;
+            
             // Add request data fields
-            if( _typePresent )
-                jsRoot.set( "type", _typeStr );
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
 
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+            
             if( _stPresent )
                 jsRoot.set( "startTime", _startTimeStr );
 
             if( _etPresent )
                 jsRoot.set( "endTime", _endTimeStr );
 
-            if( _dayPresent )
-                jsRoot.set( "dayName", _dayStr );
+            if( _rankPresent )
+                jsRoot.set( "rank", _rankInt );
+
+            if( _zoneidPresent )
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+
+                // Walk the zone id List string
+                std::sregex_token_iterator it( _zoneidStr.begin(), _zoneidStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::string zid = *it;
+                    std::cout << "ZoneID: " << zid << std::endl;
+                    jsZoneList.add( zid );
+                    it++;
+                }
+                jsRoot.set( "zoneList", jsZoneList );
+            }
+            
+            if( _dayListPresent )
+            {
+                const std::regex ws_re("\\s+"); // whitespace
+
+                // Walk the zone id List string
+                std::sregex_token_iterator it( _dayListStr.begin(), _dayListStr.end(), ws_re, -1 );
+                const std::sregex_token_iterator end;
+                while( it != end )
+                {
+                    // Add a new switch id.
+                    std::string dayName = *it;
+                    std::cout << "Day: " << dayName << std::endl;
+                    jsDayList.add( dayName );
+                    it++;
+                }
+                jsRoot.set( "dayList", jsDayList );
+            }
 
             // Wait for the response
             std::istream& rs = session.receiveResponse( response );
@@ -1376,15 +1462,16 @@ class HNIrrigationClient: public Application
             // Build the payload message
             // Create a json root object
             pjs::Object jsRoot;
+            pjs::Array  jsSeqList;
 
             // Add the timezone setting
             jsRoot.set( "command", cmdStr );
 
             if( "start-sequence" == cmdStr )
             {
-                if( ( _onDurationPresent == false ) || ( _offDurationPresent == false ) || ( _zoneSeqPresent == false ) )
+                if( ( _onDurationPresent == false ) || ( _offDurationPresent == false ) || ( _zoneidPresent == false ) )
                 {
-                    std::cout << "ERROR: Starting a zone sequence requires onDuration, offDuration, and zoneSequence parameters" << std::endl;
+                    std::cout << "ERROR: Starting a zone sequence requires onDuration, offDuration, and zone-list parameters" << std::endl;
                     return;
                 }
 
@@ -1396,14 +1483,13 @@ class HNIrrigationClient: public Application
 
                 // Add sequence zone array
                 const std::regex ws_re("\\s+"); // whitespace
-                pjs::Array  jsSeqList;
 
-                // Walk the switch List string
-                std::sregex_token_iterator it( _zoneSeqStr.begin(), _zoneSeqStr.end(), ws_re, -1 );
+                // Walk the zone id List string
+                std::sregex_token_iterator it( _zoneidStr.begin(), _zoneidStr.end(), ws_re, -1 );
                 const std::sregex_token_iterator end;
                 while( it != end )
                 {
-                    // Add a new switch id.
+                    // Add a new zone id.
                     std::string zid = *it;
                     std::cout << "ZoneID: " << zid << std::endl;
                     jsSeqList.add( zid );
