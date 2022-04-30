@@ -279,7 +279,7 @@ class HNIrrigationClient: public Application
                 _spwPresent = true;
                 _spwInt     = strtol( value.c_str(), NULL, 0 );
             }
-            else if( "seconds-max-cycle" == name )
+            else if( "sec-max-cycle" == name )
             {
                 _sxcPresent = true;
                 _sxcInt     = strtol( value.c_str(), NULL, 0 );
