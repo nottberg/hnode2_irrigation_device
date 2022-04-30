@@ -1183,8 +1183,13 @@ class HNIrrigationClient: public Application
             {
                 pjs::Stringifier::stringify( jsRoot, os );
             }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+            }
             catch( ... )
             {
+                std::cerr << "Unknown exception" << std::endl;
                 return;
             }
 
@@ -1300,6 +1305,22 @@ class HNIrrigationClient: public Application
                     it++;
                 }
                 jsRoot.set( "dayList", jsDayList );
+            }
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+                return;
+            }
+            catch( ... )
+            {
+                std::cerr << "Unknown exception" << std::endl;
+                return;
             }
 
             // Wait for the response
