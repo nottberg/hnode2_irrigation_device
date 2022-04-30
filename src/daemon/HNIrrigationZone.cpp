@@ -8,8 +8,8 @@
 HNIrrigationZone::HNIrrigationZone()
 {
     m_weeklySec   = (((5 * 60) * 2) * 7);
-    m_minCycleSec = (2 * 60);
-    m_maxCycleSec = (2 * 10);
+    m_maxCycleSec = (2 * 60);
+    m_minCycleSec = (2 * 10);
 }
 
 HNIrrigationZone::~HNIrrigationZone()

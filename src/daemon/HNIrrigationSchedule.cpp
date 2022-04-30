@@ -658,6 +658,8 @@ HNISDay::addPeriod( HNISPeriod value )
     std::cout << "addPeriod: " << value.getID() << std::endl;
 
     m_periodList.push_back( value );
+    
+    return HNIS_RESULT_SUCCESS;
 }
 
 void 
@@ -929,17 +931,22 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
                 std::cout << "js continue" << std::endl;                
                 continue;
             }
+            
+            for( std::set< std::string >::iterator zsit = it->getZoneSetRef().begin(); zsit != it->getZoneSetRef().end(); zsit++ )
+            {
+                std::string zoneid = *zsit;
+                
+                jsSWAction.set( "action", "on" );
+                jsSWAction.set( "startTime", it->getStartTimeStr() );
+                jsSWAction.set( "endTime", it->getEndTimeStr() );
+                jsSWAction.set( "zoneid", zoneid );
 
-            jsSWAction.set( "action", "on" );
-            jsSWAction.set( "startTime", it->getStartTimeStr() );
-            jsSWAction.set( "endTime", it->getEndTimeStr() );
-            jsSWAction.set( "zoneid", it->getID() );
+                std::string zName;
+                m_zones->getZoneName( zoneid, zName );
+                jsSWAction.set( "name", zName );
 
-            std::string zName;
-            m_zones->getZoneName( it->getID(), zName );
-            jsSWAction.set( "name", zName );
-
-            jsActions.add( jsSWAction );
+                jsActions.add( jsSWAction );
+            }
         }
         
         jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );

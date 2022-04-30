@@ -76,7 +76,7 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
         m_schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
 
         m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
-        m_schCRC32 = strtol( m_schCRC32Str.c_str(), NULL, 0 );
+        m_schCRC32 = strtoul( m_schCRC32Str.c_str(), NULL, 0 );
 
         pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
                             
@@ -167,15 +167,22 @@ HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones
 
     try
     {
-        std::stringstream rStr;
-        pjs::Stringifier::stringify( jsRoot, rStr, 1 );
-        std::cout << rStr.str() << std::endl;
-
         // Write out the generated json
         pjs::Stringifier::stringify( jsRoot, ostr, 1 );
     }
+    catch( Poco::Exception& ex )
+    {
+        std::cerr << "Stringify Exception: " << ex.displayText() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "Standard Exception: " << ex.what() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
     catch( ... )
     {
+        std::cerr << "Stringify Exception: Uncaught Type" << std::endl;
         return HNIS_RESULT_FAILURE;
     }
 

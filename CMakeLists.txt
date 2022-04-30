@@ -2,13 +2,13 @@ CMAKE_MINIMUM_REQUIRED( VERSION 2.8 )
 PROJECT( hnode2-irrigation-device ) 
 
 SET( MAJOR_VERSION 2 )
-SET( MINOR_VERSION 1 )
+SET( MINOR_VERSION 2 )
 SET( PATCH_VERSION 0 )
 SET( RELEASE_VERSION 0 )
 
 SET( DAEMON_NAME hnirrigationd )
 
-#SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake) 
 
 # Default the install prefix to just /usr
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -38,17 +38,30 @@ SET( HNIRRIGATIOND_CLIENT_SRC
 
 SET(CMAKE_BUILD_TYPE Debug)
 
-FIND_PACKAGE( Poco REQUIRED Foundation Net NetSSL JSON )
+FIND_PACKAGE( Poco REQUIRED Util Foundation Net NetSSL JSON )
+FIND_PACKAGE( HNode2 REQUIRED )
 
 INCLUDE_DIRECTORIES( ${CMAKE_SOURCE_DIR}/src/include )
 
 ADD_EXECUTABLE( hnirrigationd ${HNIRRIGATIOND_SRC} )
-TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::JSON )
-TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE "-lhnode2" )
+TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE
+    ${Poco_Util_LIBRARY}
+    ${Poco_Foundation_LIBRARY}
+    ${Poco_Net_LIBRARY}
+    ${Poco_NetSSL_LIBRARY}
+    ${Poco_JSON_LIBRARY}
+)
+TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE HNode2::common )
 
 ADD_EXECUTABLE( hnirrigationd_client ${HNIRRIGATIOND_CLIENT_SRC} )
-TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::JSON )
-TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE "-lhnode2" )
+TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE
+    ${Poco_Util_LIBRARY}
+    ${Poco_Foundation_LIBRARY}
+    ${Poco_Net_LIBRARY}
+    ${Poco_NetSSL_LIBRARY}
+    ${Poco_JSON_LIBRARY}
+)
+TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE HNode2::common )
 
 INSTALL( TARGETS hnirrigationd DESTINATION ${CMAKE_INSTALL_PREFIX}/sbin COMPONENT daemon )
 
