@@ -71,7 +71,7 @@ class HNIrrigationClient: public Application
         bool _namePresent         = false;
         bool _descPresent         = false;
         bool _spwPresent          = false;
-        bool _cpdPresent          = false;
+        bool _sxcPresent          = false;
         bool _smcPresent          = false;
         bool _idPresent           = false;
 
@@ -105,7 +105,7 @@ class HNIrrigationClient: public Application
         std::string _dayListStr;
         
         uint _spwInt;
-        uint _cpdInt;
+        uint _sxcInt;
         uint _smcInt;
         uint _rankInt;
 
@@ -186,7 +186,7 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("sec-per-week", "", "The seconds per week parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("cycle-per-day", "", "The cycles per day parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("sec-max-cycle", "", "The maximum seconds per cycle parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("sec-min-cycle", "", "The minimum seconds per cycle parameter").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -279,10 +279,10 @@ class HNIrrigationClient: public Application
                 _spwPresent = true;
                 _spwInt     = strtol( value.c_str(), NULL, 0 );
             }
-            else if( "cycle-per-day" == name )
+            else if( "seconds-max-cycle" == name )
             {
-                _cpdPresent = true;
-                _cpdInt     = strtol( value.c_str(), NULL, 0 );
+                _sxcPresent = true;
+                _sxcInt     = strtol( value.c_str(), NULL, 0 );
             }
             else if( "sec-min-cycle" == name )
             {
@@ -900,8 +900,8 @@ class HNIrrigationClient: public Application
             if( _spwPresent )
                 jsRoot.set( "secondsPerWeek", _spwInt );
 
-            if( _cpdPresent )
-                jsRoot.set( "cyclesPerDay", _cpdInt );
+            if( _sxcPresent )
+                jsRoot.set( "secondsMaxCycle", _sxcInt );
 
             if( _smcPresent )
                 jsRoot.set( "secondsMinCycle", _smcInt );
@@ -1009,8 +1009,8 @@ class HNIrrigationClient: public Application
             if( _spwPresent )
                 jsRoot.set( "secondsPerWeek", _spwInt );
 
-            if( _cpdPresent )
-                jsRoot.set( "cyclesPerDay", _cpdInt );
+            if( _sxcPresent )
+                jsRoot.set( "secondsMaxCycle", _sxcInt );
 
             if( _smcPresent )
                 jsRoot.set( "secondsMinCycle", _smcInt );
