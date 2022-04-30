@@ -40,18 +40,24 @@ HNIrrigationCriteria::setTimesFromStr( std::string startTime, std::string endTim
     std::cout << "mst: " << m_startTime.getHMSStr() << std::endl;
 
     m_endTime.parseTime( endTime );
+    
+    return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
 HNIrrigationCriteria::setStartTime( std::string startTime )
 {
     m_startTime.parseTime( startTime );
+    
+    return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
 HNIrrigationCriteria::setEndTime( std::string endTime )
 {
     m_endTime.parseTime( endTime );
+    
+    return HNIS_RESULT_SUCCESS;
 }
 
 void 

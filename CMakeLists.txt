@@ -32,6 +32,14 @@ SET( HNIRRIGATIOND_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationTypes.cpp
 )
 
+SET( HNI_TEST_SCHEDULER_SRC
+     ${CMAKE_SOURCE_DIR}/src/daemon/hni_test_scheduler.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationSchedule.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationZone.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationCriteria.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationTypes.cpp
+)
+
 SET( HNIRRIGATIOND_CLIENT_SRC
      ${CMAKE_SOURCE_DIR}/src/client/hnirrigationd_client.cpp
 )
@@ -52,6 +60,16 @@ TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE
     ${Poco_JSON_LIBRARY}
 )
 TARGET_LINK_LIBRARIES( hnirrigationd PRIVATE HNode2::common )
+
+ADD_EXECUTABLE( hni_test_scheduler ${HNI_TEST_SCHEDULER_SRC} )
+TARGET_LINK_LIBRARIES( hni_test_scheduler PRIVATE
+    ${Poco_Util_LIBRARY}
+    ${Poco_Foundation_LIBRARY}
+    ${Poco_Net_LIBRARY}
+    ${Poco_NetSSL_LIBRARY}
+    ${Poco_JSON_LIBRARY}
+)
+TARGET_LINK_LIBRARIES( hni_test_scheduler PRIVATE HNode2::common )
 
 ADD_EXECUTABLE( hnirrigationd_client ${HNIRRIGATIOND_CLIENT_SRC} )
 TARGET_LINK_LIBRARIES( hnirrigationd_client PRIVATE
