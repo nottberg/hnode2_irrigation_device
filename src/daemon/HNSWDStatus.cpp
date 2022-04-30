@@ -76,7 +76,7 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
         m_schUIStr    = jsRoot->optValue( "scheduleUpdateIndex", empty );
 
         m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
-        m_schCRC32 = strtol( m_schCRC32Str.c_str(), NULL, 0 );
+        m_schCRC32 = strtoul( m_schCRC32Str.c_str(), NULL, 0 );
 
         pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
                             
