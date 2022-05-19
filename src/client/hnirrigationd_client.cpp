@@ -57,11 +57,11 @@ class HNIrrigationClient: public Application
         bool _updateZoneRequested  = false;
         bool _deleteZoneRequested  = false;
 
-        bool _listCriteriaRequested   = false;
-        bool _createCriteriaRequested = false;
-        bool _infoCriteriaRequested   = false;
-        bool _updateCriteriaRequested = false;
-        bool _deleteCriteriaRequested = false;
+        bool _listPlacementsRequested   = false;
+        bool _createPlacementRequested = false;
+        bool _infoPlacementRequested   = false;
+        bool _updatePlacementRequested = false;
+        bool _deletePlacementRequested = false;
 
         bool _switchListRequested = false;
 
@@ -166,15 +166,15 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("delete-zone", "", "Delete an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("criteria-list", "", "Get a list of defined scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("placements-list", "", "Get a list of defined scheduling placements.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("create-criteria", "", "Create a new scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("create-placement", "", "Create a new scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("criteria-info", "", "Get info for a single scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("placement-info", "", "Get info for a single scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("update-criteria", "", "Update an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("update-placement", "", "Update an existing scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("delete-criteria", "", "Delete an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("delete-placement", "", "Delete an existing scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("zonectl", "", "Send a zone control command. Possible commands: .").required(false).repeatable(false).argument("command").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -196,7 +196,7 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("end-time", "", "Specify an end time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("rank", "", "Specify the rank integer for a criteria.  Criteria with the lowest rank will be utilized first.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("rank", "", "Specify the rank integer for a placement.  Placement with the lowest rank will be utilized first.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("inhibitDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -235,16 +235,16 @@ class HNIrrigationClient: public Application
                 _updateZoneRequested = true;
             else if( "delete-zone" == name )
                 _deleteZoneRequested = true;
-            else if( "criteria-list" == name )
-                _listCriteriaRequested = true;
-            else if( "create-criteria" == name )
-                _createCriteriaRequested = true;
-            else if( "criteria-info" == name )
-                _infoCriteriaRequested = true;
-            else if( "update-criteria" == name )
-                _updateCriteriaRequested = true;
-            else if( "delete-criteria" == name )
-                _deleteCriteriaRequested = true;
+            else if( "placements-list" == name )
+                _listPlacementsRequested = true;
+            else if( "create-placement" == name )
+                _createPlacementRequested = true;
+            else if( "placement-info" == name )
+                _infoPlacementRequested = true;
+            else if( "update-placement" == name )
+                _updatePlacementRequested = true;
+            else if( "delete-placement" == name )
+                _deletePlacementRequested = true;
             else if( "switch-list" == name )
                 _switchListRequested = true;
             else if( "schedule" == name )
@@ -1076,13 +1076,13 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getCriteriaList()
+        void getPlacementsList()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/criteria" );
+            uri.setPath( "/hnode2/irrigation/placement" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1103,14 +1103,14 @@ class HNIrrigationClient: public Application
         }
 
 
-        void createCriteriaRequest()
+        void createPlacementRequest()
         {
             Poco::URI uri;
 
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/criteria" );
+            uri.setPath( "/hnode2/irrigation/placement" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1198,14 +1198,14 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getCriteriaInfo()
+        void getPlacementInfo()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1228,7 +1228,7 @@ class HNIrrigationClient: public Application
             std::cout << body << std::endl;
         }
 
-        void updateCriteriaRequest()
+        void updatePlacementRequest()
         {
             Poco::URI uri;
 
@@ -1236,7 +1236,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1328,14 +1328,14 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void deleteCriteriaRequest()
+        void deletePlacementRequest()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1616,25 +1616,25 @@ class HNIrrigationClient: public Application
             {
                 deleteZoneRequest();
             }
-            else if( _listCriteriaRequested == true )
+            else if( _listPlacementsRequested == true )
             {
-                getCriteriaList();
+                getPlacementsList();
             }
-            else if( _createCriteriaRequested == true )
+            else if( _createPlacementRequested == true )
             {
-                createCriteriaRequest();
+                createPlacementRequest();
             }
-            else if( _infoCriteriaRequested == true )
+            else if( _infoPlacementRequested == true )
             {
-                getCriteriaInfo();
+                getPlacementInfo();
             }
-            else if( _updateCriteriaRequested == true )
+            else if( _updatePlacementRequested == true )
             {
-                updateCriteriaRequest();
+                updatePlacementRequest();
             }
-            else if( _deleteCriteriaRequested == true )
+            else if( _deletePlacementRequested == true )
             {
-                deleteCriteriaRequest();
+                deletePlacementRequest();
             }
             else if( _switchListRequested == true )
             {

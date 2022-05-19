@@ -31,9 +31,9 @@ HNIDActionRequest::setZoneID( std::string value )
 }
 
 void 
-HNIDActionRequest::setCriteriaID( std::string value )
+HNIDActionRequest::setPlacementID( std::string value )
 {
-    m_criteriaID = value;
+    m_placementID = value;
 }
 
 void 
@@ -79,9 +79,9 @@ HNIDActionRequest::getZoneID()
 }
 
 std::string 
-HNIDActionRequest::getCriteriaID()
+HNIDActionRequest::getPlacementID()
 {
-    return m_criteriaID;
+    return m_placementID;
 }
 
 HNID_SSR_T 
@@ -233,13 +233,13 @@ HNIDActionRequest::applyZoneUpdate( HNIrrigationZone *tgtZone )
 
 
 bool
-HNIDActionRequest::decodeCriteriaUpdate( std::istream& bodyStream )
+HNIDActionRequest::decodePlacementUpdate( std::istream& bodyStream )
 {
     std::string rstStr;
-    HNIrrigationCriteria criteria;
+    HNIrrigationPlacement placement;
 
     // Clear the update mask
-    m_criteriaUpdateMask = HNID_CU_FLDMASK_CLEAR;
+    m_placementUpdateMask = HNID_PU_FLDMASK_CLEAR;
 
     // Parse the json body of the request
     try
@@ -251,73 +251,73 @@ HNIDActionRequest::decodeCriteriaUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNIrrigationCriteria *event = m_schedule.updateCriteria( criteriaID );
+        //HNIrrigationPlacement *event = m_schedule.updatePlacement( placementID );
 
         if( jsRoot->has( "name" ) )
         {
-            criteria.setName( jsRoot->getValue<std::string>( "name" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_NAME;
+            placement.setName( jsRoot->getValue<std::string>( "name" ) );
+            m_placementUpdateMask |= HNID_PU_FLDMASK_NAME;
         }
 
         if( jsRoot->has( "description" ) )
         {
-            criteria.setDesc( jsRoot->getValue<std::string>( "description" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DESC;
+            placement.setDesc( jsRoot->getValue<std::string>( "description" ) );
+            m_placementUpdateMask |= HNID_PU_FLDMASK_DESC;
         }
 
         if( jsRoot->has( "startTime" ) )
         {
-            criteria.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_START;
+            placement.setStartTime( jsRoot->getValue<std::string>( "startTime" ) );
+            m_placementUpdateMask |= HNID_PU_FLDMASK_START;
         }
 
         if( jsRoot->has( "endTime" ) )
         {
-            criteria.setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_END;
+            placement.setEndTime( jsRoot->getValue<std::string>( "endTime" ) );
+            m_placementUpdateMask |= HNID_PU_FLDMASK_END;
         }
 
         if( jsRoot->has( "rank" ) )
         {
             int value = jsRoot->getValue<int>( "rank" );
-            criteria.setRank( value );
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_RANK;
+            placement.setRank( value );
+            m_placementUpdateMask |= HNID_PU_FLDMASK_RANK;
         }
 
         if( jsRoot->has( "dayList" ) )
         {
             pjs::Array::Ptr jsDayList = jsRoot->getArray( "dayList" );
 
-            criteria.clearDayBits();
+            placement.clearDayBits();
             
             for( uint index = 0; index < jsDayList->size(); index++ )
             {
                 std::string value = jsDayList->getElement<std::string>(index);
                 std::cout << "DayName: " << value << std::endl; 
-                criteria.addDayByName( value );
+                placement.addDayByName( value );
             }
             
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_DAYBITS;
+            m_placementUpdateMask |= HNID_PU_FLDMASK_DAYBITS;
         }
      
         if( jsRoot->has( "zoneList" ) )
         {
             pjs::Array::Ptr jsZoneList = jsRoot->getArray( "zoneList" );
 
-            criteria.clearZones();
+            placement.clearZones();
             
             for( uint index = 0; index < jsZoneList->size(); index++ )
             {
                 std::string value = jsZoneList->getElement<std::string>(index);
-                criteria.addZone( value );
+                placement.addZone( value );
             }
             
-            m_criteriaUpdateMask |= HNID_CU_FLDMASK_ZONELIST;
+            m_placementUpdateMask |= HNID_PU_FLDMASK_ZONELIST;
         }
    
-        if( criteria.validateSettings() != HNIS_RESULT_SUCCESS )
+        if( placement.validateSettings() != HNIS_RESULT_SUCCESS )
         {
-            std::cout << "updateCriteria validate failed" << std::endl;
+            std::cout << "updatePlacement validate failed" << std::endl;
             // zoneid parameter is required
             //return HNID_RESULT_BAD_REQUEST;
             return true;
@@ -325,45 +325,45 @@ HNIDActionRequest::decodeCriteriaUpdate( std::istream& bodyStream )
     }
     catch( Poco::Exception ex )
     {
-        std::cout << "updateCriteria exception: " << ex.displayText() << std::endl;
+        std::cout << "updatePlacement exception: " << ex.displayText() << std::endl;
         // Request body was not understood
         //return HNID_RESULT_BAD_REQUEST;
         return true;
     }
 
     // Add the zone info to the list
-    m_criteriaList.push_back( criteria );
+    m_placementsList.push_back( placement );
 
     return false;
 }
 
 void 
-HNIDActionRequest::applyCriteriaUpdate( HNIrrigationCriteria *tgtCriteria )
+HNIDActionRequest::applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement )
 {
-    HNIrrigationCriteria *srcCriteria = &m_criteriaList[0];
+    HNIrrigationPlacement *srcPlacement = &m_placementsList[0];
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_NAME )
-        tgtCriteria->setName( srcCriteria->getName() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_NAME )
+        tgtPlacement->setName( srcPlacement->getName() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DESC )
-        tgtCriteria->setDesc( srcCriteria->getDesc() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_DESC )
+        tgtPlacement->setDesc( srcPlacement->getDesc() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_START )
-        tgtCriteria->setStartTime( srcCriteria->getStartTime().getHMSStr() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_START )
+        tgtPlacement->setStartTime( srcPlacement->getStartTime().getHMSStr() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_END )
-        tgtCriteria->setEndTime( srcCriteria->getEndTime().getHMSStr() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_END )
+        tgtPlacement->setEndTime( srcPlacement->getEndTime().getHMSStr() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_RANK )
-        tgtCriteria->setRank( srcCriteria->getRank() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_RANK )
+        tgtPlacement->setRank( srcPlacement->getRank() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_DAYBITS )
-        tgtCriteria->setDayBits( srcCriteria->getDayBits() );
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_DAYBITS )
+        tgtPlacement->setDayBits( srcPlacement->getDayBits() );
 
-    if( m_criteriaUpdateMask & HNID_CU_FLDMASK_ZONELIST )
+    if( m_placementUpdateMask & HNID_PU_FLDMASK_ZONELIST )
     {
-        tgtCriteria->clearZones();
-        tgtCriteria->addZoneSet( srcCriteria->getZoneSetRef() );
+        tgtPlacement->clearZones();
+        tgtPlacement->addZoneSet( srcPlacement->getZoneSetRef() );
     }
 }
 
@@ -489,8 +489,8 @@ HNIDActionRequest::hasRspContent( std::string &contentType )
         case HNID_AR_TYPE_ZONELIST:
         case HNID_AR_TYPE_ZONEINFO:
         case HNID_AR_TYPE_SCHINFO: 
-        case HNID_AR_TYPE_CRITLIST:
-        case HNID_AR_TYPE_CRITINFO:
+        case HNID_AR_TYPE_PLACELIST:
+        case HNID_AR_TYPE_PLACEINFO:
         case HNID_AR_TYPE_IRRSTATUS:
             contentType = "application/json";
             return true;
@@ -513,8 +513,8 @@ HNIDActionRequest::hasNewObject( std::string &newID )
             newID = getZoneID();
             return true;
 
-        case HNID_AR_TYPE_CRITCREATE:
-            newID = getCriteriaID();
+        case HNID_AR_TYPE_PLACECREATE:
+            newID = getPlacementID();
             return true;
 
         default:
@@ -609,18 +609,18 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
-        case HNID_AR_TYPE_CRITLIST:
+        case HNID_AR_TYPE_PLACELIST:
         {
             // Create a json root object
             pjs::Array jsRoot;
 
-            for( std::vector< HNIrrigationCriteria >::iterator cit = refCriteriaList().begin(); cit != refCriteriaList().end(); cit++ )
+            for( std::vector< HNIrrigationPlacement >::iterator cit = refPlacementsList().begin(); cit != refPlacementsList().end(); cit++ )
             { 
                 pjs::Object cObj;
                 pjs::Array dayList;
                 pjs::Array zoneList;
 
-                cObj.set( "criteriaid", cit->getID() );
+                cObj.set( "placementid", cit->getID() );
                 cObj.set( "name", cit->getName() );
                 cObj.set( "description", cit->getDesc() );
                 cObj.set( "startTime", cit->getStartTime().getHMSStr() );
@@ -657,7 +657,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 // Add Zonelist field
                 cObj.set( "zoneList", zoneList );
                 
-                // Add new criteria object to return list
+                // Add new placement object to return list
                 jsRoot.add( cObj );
             }
 
@@ -665,24 +665,24 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
-        case HNID_AR_TYPE_CRITINFO:
+        case HNID_AR_TYPE_PLACEINFO:
         {
             // Create a json root object
             pjs::Object      jsRoot;
             pjs::Array dayList;
             pjs::Array zoneList;
 
-            std::vector< HNIrrigationCriteria >::iterator criteria = refCriteriaList().begin();
+            std::vector< HNIrrigationPlacement >::iterator placement = refPlacementsList().begin();
 
-            jsRoot.set( "criteriaid", criteria->getID() );
-            jsRoot.set( "name", criteria->getName() );
-            jsRoot.set( "description", criteria->getDesc() );
-            jsRoot.set( "startTime", criteria->getStartTime().getHMSStr() );
-            jsRoot.set( "endTime", criteria->getEndTime().getHMSStr() );
-            jsRoot.set( "rank", criteria->getRank() );
+            jsRoot.set( "placementid", placement->getID() );
+            jsRoot.set( "name", placement->getName() );
+            jsRoot.set( "description", placement->getDesc() );
+            jsRoot.set( "startTime", placement->getStartTime().getHMSStr() );
+            jsRoot.set( "endTime", placement->getEndTime().getHMSStr() );
+            jsRoot.set( "rank", placement->getRank() );
 
             // Compose Day List, Empty equals everyday
-            uint dayBits = criteria->getDayBits();
+            uint dayBits = placement->getDayBits();
  
             if( dayBits & HNSC_DBITS_SUNDAY )
                 dayList.add( "Sunday" );
@@ -703,7 +703,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "dayList", dayList );
 
             // Compose Zone List
-            for( std::set< std::string >::iterator zit = criteria->getZoneSetRef().begin(); zit != criteria->getZoneSetRef().end(); zit++ )
+            for( std::set< std::string >::iterator zit = placement->getZoneSetRef().begin(); zit != placement->getZoneSetRef().end(); zit++ )
             {
                 zoneList.add( *zit );
             }
@@ -731,10 +731,10 @@ HNIDActionRequest::refZoneList()
     return m_zoneList;
 }
 
-std::vector< HNIrrigationCriteria >&
-HNIDActionRequest::refCriteriaList()
+std::vector< HNIrrigationPlacement >&
+HNIDActionRequest::refPlacementsList()
 {
-    return m_criteriaList;
+    return m_placementsList;
 }
 
 std::vector< HNSWDSwitchInfo >&

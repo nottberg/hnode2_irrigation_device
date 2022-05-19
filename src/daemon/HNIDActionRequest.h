@@ -25,11 +25,11 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_SCHINFO        = 7,
     HNID_AR_TYPE_GETSCHSTATE    = 8,
     HNID_AR_TYPE_SETSCHSTATE    = 9,
-    HNID_AR_TYPE_CRITLIST       = 10,
-    HNID_AR_TYPE_CRITINFO       = 11,
-    HNID_AR_TYPE_CRITCREATE     = 12,
-    HNID_AR_TYPE_CRITUPDATE     = 13,
-    HNID_AR_TYPE_CRITDELETE     = 14,
+    HNID_AR_TYPE_PLACELIST      = 10,
+    HNID_AR_TYPE_PLACEINFO      = 11,
+    HNID_AR_TYPE_PLACECREATE    = 12,
+    HNID_AR_TYPE_PLACEUPDATE    = 13,
+    HNID_AR_TYPE_PLACEDELETE    = 14,
     HNID_AR_TYPE_IRRSTATUS      = 15,
     HNID_AR_TYPE_ZONECTL        = 16
 }HNID_AR_TYPE_T;
@@ -65,18 +65,18 @@ typedef enum HNIDActionZoneUpdateMaskEnum
     HNID_ZU_FLDMASK_SWLST  = 0x00000020
 }HNID_ZU_FLDMASK_T;
 
-typedef enum HNIDActionCriteriaUpdateMaskEnum
+typedef enum HNIDActionPlacementUpdateMaskEnum
 {
-    HNID_CU_FLDMASK_CLEAR    = 0x00000000,
-    HNID_CU_FLDMASK_NAME     = 0x00000001,
-    HNID_CU_FLDMASK_DESC     = 0x00000002,
-    HNID_CU_FLDMASK_TYPE     = 0x00000004,
-    HNID_CU_FLDMASK_START    = 0x00000008,
-    HNID_CU_FLDMASK_END      = 0x00000010,
-    HNID_CU_FLDMASK_RANK     = 0x00000020,
-    HNID_CU_FLDMASK_DAYBITS  = 0x00000040,
-    HNID_CU_FLDMASK_ZONELIST = 0x00000080
-}HNID_CU_FLDMASK_T;
+    HNID_PU_FLDMASK_CLEAR    = 0x00000000,
+    HNID_PU_FLDMASK_NAME     = 0x00000001,
+    HNID_PU_FLDMASK_DESC     = 0x00000002,
+    HNID_PU_FLDMASK_TYPE     = 0x00000004,
+    HNID_PU_FLDMASK_START    = 0x00000008,
+    HNID_PU_FLDMASK_END      = 0x00000010,
+    HNID_PU_FLDMASK_RANK     = 0x00000020,
+    HNID_PU_FLDMASK_DAYBITS  = 0x00000040,
+    HNID_PU_FLDMASK_ZONELIST = 0x00000080
+}HNID_PU_FLDMASK_T;
 
 typedef enum HNIDActionRequestResult
 {
@@ -91,14 +91,14 @@ class HNIDActionRequest : public HNReqWaitAction
 
         std::string m_zoneID;
 
-        std::string m_criteriaID;
+        std::string m_placementID;
 
         std::vector< HNIrrigationZone > m_zoneList;
-        std::vector< HNIrrigationCriteria > m_criteriaList;
+        std::vector< HNIrrigationPlacement > m_placementsList;
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
-        uint m_criteriaUpdateMask;
+        uint m_placementUpdateMask;
 
         std::stringstream m_rspStream;
 
@@ -116,10 +116,10 @@ class HNIDActionRequest : public HNReqWaitAction
 
         void setType( HNID_AR_TYPE_T type );
         void setZoneID( std::string value );
-        void setCriteriaID( std::string value );
+        void setPlacementID( std::string value );
 
         bool decodeZoneUpdate( std::istream& bodyStream );
-        bool decodeCriteriaUpdate( std::istream& bodyStream );
+        bool decodePlacementUpdate( std::istream& bodyStream );
         bool decodeSchedulerState( std::istream& bodyStream );
         bool decodeZoneCtrl( std::istream& bodyStream );
 
@@ -132,7 +132,7 @@ class HNIDActionRequest : public HNReqWaitAction
 
         HNID_AR_TYPE_T getType();
         std::string getZoneID();
-        std::string getCriteriaID();
+        std::string getPlacementID();
 
         HNID_SSR_T getScheduleStateRequestType();
         HNID_ZCR_T getZoneControlRequestType();
@@ -142,10 +142,10 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string getOffDuration();
 
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
-        void applyCriteriaUpdate( HNIrrigationCriteria *tgtCriteria );
+        void applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement );
 
         std::vector< HNIrrigationZone > &refZoneList();
-        std::vector< HNIrrigationCriteria > &refCriteriaList();
+        std::vector< HNIrrigationPlacement > &refPlacementsList();
         std::vector< HNSWDSwitchInfo > &refSwitchList();
 
         std::stringstream &refRspStream();

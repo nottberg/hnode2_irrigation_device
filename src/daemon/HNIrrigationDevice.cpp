@@ -253,10 +253,10 @@ const std::string g_HNode2IrrigationRest = R"(
       },
 
 
-      "/hnode2/irrigation/criteria": {
+      "/hnode2/irrigation/placement": {
         "get": {
-          "summary": "Get list of schedule criteria.",
-          "operationId": "getCriteriaList",
+          "summary": "Get list of schedule placement.",
+          "operationId": "getPlacementList",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -275,8 +275,8 @@ const std::string g_HNode2IrrigationRest = R"(
         },
 
         "post": {
-          "summary": "Create a new schedule criteria.",
-          "operationId": "createCriteria",
+          "summary": "Create a new schedule placement.",
+          "operationId": "createPlacement",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -295,10 +295,10 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
-      "/hnode2/irrigation/criteria/{criteriaid}": {
+      "/hnode2/irrigation/placement/{placementid}": {
         "get": {
-          "summary": "Get information about a specific schedule criteria.",
-          "operationId": "getCriteria",
+          "summary": "Get information about a specific schedule placement.",
+          "operationId": "getPlacement",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -316,8 +316,8 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         },
         "put": {
-          "summary": "Update an existing criteria.",
-          "operationId": "updateCriteria",
+          "summary": "Update an existing placement.",
+          "operationId": "updatePlacement",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -335,8 +335,8 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         },
         "delete": {
-          "summary": "Delete an existing criteria.",
-          "operationId": "deleteCriteria",
+          "summary": "Delete an existing placement.",
+          "operationId": "deletePlacement",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -457,7 +457,7 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     m_hnodeDev.addEndpoint( hndEP );
 
-    m_schedule.init( &m_criteria, &m_zones );
+    m_schedule.init( &m_placements, &m_zones );
 
     std::cout << "Looking for config file" << std::endl;
     
@@ -894,7 +894,7 @@ HNIrrigationDevice::initConfig()
 
     m_zones.initZoneListSection( cfg );
 
-    m_criteria.initCriteriaListSection( cfg );
+    m_placements.initPlacementsListSection( cfg );
 
     //m_schedule.initConfigSections( cfg );
 
@@ -934,7 +934,7 @@ HNIrrigationDevice::readConfig()
     m_zones.readZoneListSection( cfg );
 
     std::cout << "cl3" << std::endl;
-    m_criteria.readCriteriaListSection( cfg );
+    m_placements.readPlacementsListSection( cfg );
 
     //std::cout << "cl4" << std::endl;
     //m_schedule.readConfigSections( cfg );
@@ -954,7 +954,7 @@ HNIrrigationDevice::updateConfig()
 
     m_zones.updateZoneListSection( cfg );
 
-    m_criteria.updateCriteriaListSection( cfg );
+    m_placements.updatePlacementsListSection( cfg );
 
     //m_schedule.updateConfigSections( cfg );
 
@@ -995,7 +995,7 @@ HNIrrigationDevice::getUniqueZoneID( HNIDActionRequest *action )
 }
 
 bool
-HNIrrigationDevice::getUniqueCriteriaID( HNIDActionRequest *action )
+HNIrrigationDevice::getUniquePlacementID( HNIDActionRequest *action )
 {
     char tmpID[ 64 ];
     uint idNum = 1;
@@ -1004,9 +1004,9 @@ HNIrrigationDevice::getUniqueCriteriaID( HNIDActionRequest *action )
     {
         sprintf( tmpID, "e%d", idNum );
 
-        if( m_criteria.hasID( tmpID ) == false )
+        if( m_placements.hasID( tmpID ) == false )
         {
-            action->setCriteriaID( tmpID );
+            action->setPlacementID( tmpID );
             return true;
         }
 
@@ -1164,19 +1164,19 @@ HNIrrigationDevice::startAction()
         }
         break;
 
-        case HNID_AR_TYPE_CRITLIST:
+        case HNID_AR_TYPE_PLACELIST:
             // Populate the event list in the action
-            m_criteria.getCriteriaList( m_curAction->refCriteriaList() );
+            m_placements.getPlacementsList( m_curAction->refPlacementsList() );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         break;
 
-        case HNID_AR_TYPE_CRITINFO:
+        case HNID_AR_TYPE_PLACEINFO:
         {
-            HNIrrigationCriteria event;
+            HNIrrigationPlacement event;
 
-            if( m_criteria.getCriteria( m_curAction->getCriteriaID(), event ) != HNIS_RESULT_SUCCESS )
+            if( m_placements.getPlacement( m_curAction->getPlacementID(), event ) != HNIS_RESULT_SUCCESS )
             {
                 //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
                 actBits = HNID_ACTBIT_ERROR;
@@ -1184,17 +1184,17 @@ HNIrrigationDevice::startAction()
             }
 
             // Populate the zone list in the action
-            m_curAction->refCriteriaList().push_back( event );
+            m_curAction->refPlacementsList().push_back( event );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         }
         break;
 
-        case HNID_AR_TYPE_CRITCREATE:
+        case HNID_AR_TYPE_PLACECREATE:
         {
             // Allocate a unique zone identifier
-            if( getUniqueCriteriaID( m_curAction ) == false )
+            if( getUniquePlacementID( m_curAction ) == false )
             {
                 // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
                 actBits = HNID_ACTBIT_ERROR;
@@ -1202,18 +1202,18 @@ HNIrrigationDevice::startAction()
             }
 
             // Create the zone record
-            HNIrrigationCriteria *event = m_criteria.updateCriteria( m_curAction->getCriteriaID() );
+            HNIrrigationPlacement *event = m_placements.updatePlacement( m_curAction->getPlacementID() );
 
             // Update the fields of the zone record.
-            m_curAction->applyCriteriaUpdate( event );
+            m_curAction->applyPlacementUpdate( event );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
         break;
 
-        case HNID_AR_TYPE_CRITUPDATE:
+        case HNID_AR_TYPE_PLACEUPDATE:
         {
-            if( m_criteria.hasID( m_curAction->getCriteriaID() ) == false )
+            if( m_placements.hasID( m_curAction->getPlacementID() ) == false )
             {
                 // Zone doesn't exist, return error
                 // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
@@ -1222,19 +1222,19 @@ HNIrrigationDevice::startAction()
             }
 
             // Get a point to zone record
-            HNIrrigationCriteria *event = m_criteria.updateCriteria( m_curAction->getCriteriaID() );
+            HNIrrigationPlacement *event = m_placements.updatePlacement( m_curAction->getPlacementID() );
 
             // Update the fields of the zone record.
-            m_curAction->applyCriteriaUpdate( event );
+            m_curAction->applyPlacementUpdate( event );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
         break;
 
-        case HNID_AR_TYPE_CRITDELETE:
+        case HNID_AR_TYPE_PLACEDELETE:
         {
             // Remove the zone record
-            m_criteria.deleteCriteria( m_curAction->getCriteriaID() );
+            m_placements.deletePlacement( m_curAction->getPlacementID() );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
@@ -1575,37 +1575,37 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         action.setType( HNID_AR_TYPE_ZONEDELETE );
         action.setZoneID( zoneID );
     }
-    else if( "getCriteriaList" == opID )
+    else if( "getPlacementList" == opID )
     {
-        action.setType( HNID_AR_TYPE_CRITLIST );
+        action.setType( HNID_AR_TYPE_PLACELIST );
     }
-    else if( "createCriteria" == opID )
+    else if( "createPlacement" == opID )
     {
-        action.setType( HNID_AR_TYPE_CRITCREATE );
+        action.setType( HNID_AR_TYPE_PLACECREATE );
 
         std::istream& bodyStream = opData->requestBody();
-        action.decodeCriteriaUpdate( bodyStream );
+        action.decodePlacementUpdate( bodyStream );
     }
-    else if( "getCriteria" == opID )
+    else if( "getPlacement" == opID )
     {
-        std::string criteriaID;
+        std::string placementID;
 
-        if( opData->getParam( "criteriaid", criteriaID ) == true )
+        if( opData->getParam( "placementid", placementID ) == true )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_CRITINFO );
-        action.setCriteriaID( criteriaID );
+        action.setType( HNID_AR_TYPE_PLACEINFO );
+        action.setPlacementID( placementID );
     }
-    else if( "updateCriteria" == opID )
+    else if( "updatePlacement" == opID )
     {
-        std::string criteriaID;
+        std::string placementID;
 
         // Make sure zoneid was provided
-        if( opData->getParam( "criteriaid", criteriaID ) == true )
+        if( opData->getParam( "placementid", placementID ) == true )
         {
             // zoneid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
@@ -1613,18 +1613,18 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_CRITUPDATE );
-        action.setCriteriaID( criteriaID );
+        action.setType( HNID_AR_TYPE_PLACEUPDATE );
+        action.setPlacementID( placementID );
 
         std::istream& bodyStream = opData->requestBody();
-        action.decodeCriteriaUpdate( bodyStream );
+        action.decodePlacementUpdate( bodyStream );
     }
-    else if( "deleteCriteria" == opID )
+    else if( "deletePlacement" == opID )
     {
-        std::string criteriaID;
+        std::string placementID;
 
         // Make sure zoneid was provided
-        if( opData->getParam( "criteriaid", criteriaID ) == true )
+        if( opData->getParam( "placementid", placementID ) == true )
         {
             // eventid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
@@ -1632,8 +1632,8 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
             return; 
         }
 
-        action.setType( HNID_AR_TYPE_CRITDELETE );
-        action.setCriteriaID( criteriaID );
+        action.setType( HNID_AR_TYPE_PLACEDELETE );
+        action.setPlacementID( placementID );
     }
     else if( "getScheduleInfo" == opID )
     {

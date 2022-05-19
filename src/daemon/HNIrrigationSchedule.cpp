@@ -309,7 +309,7 @@ class HNISPlacerDay
       
       HNISPlacementTracker* findAvail( uint rank, uint rrIndx );
     
-      HNIS_RESULT_T mapPlacementSpecs( std::vector< HNIrrigationCriteria > &placementList );
+      HNIS_RESULT_T mapPlacementSpecs( std::vector< HNIrrigationPlacement > &placementList );
       HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIrrigationZoneSet *zones );
       HNIS_RESULT_T generateTimeSlots();
       HNIS_RESULT_T placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISchedule &tgtSched );
@@ -362,7 +362,7 @@ HNISPlacerDay::findAvail( uint rank, uint rrIndx )
 }
 
 HNIS_RESULT_T
-HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationCriteria > &placementList )
+HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationPlacement > &placementList )
 {
     uint rank = 0;
     uint maxRank = 0;
@@ -372,8 +372,8 @@ HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationCriteria > &placement
         // Start Round Robin at zero for each rank level
         uint roundRobinIndex = 0;
         
-        // Accumulate the available time blocks from criteria with current rank.
-        for( std::vector< HNIrrigationCriteria >::iterator pit = placementList.begin(); pit != placementList.end(); pit++ )
+        // Accumulate the available time blocks from placements with current rank.
+        for( std::vector< HNIrrigationPlacement >::iterator pit = placementList.begin(); pit != placementList.end(); pit++ )
         {
             if( ( pit->isForDay(m_dayIndx) == true ) && ( pit->getRank() == rank ) )
             {
@@ -613,7 +613,7 @@ class HNISPlacer
       HNISPlacer();
      ~HNISPlacer();    
     
-      HNIS_RESULT_T mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationCriteria > &placementList );
+      HNIS_RESULT_T mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationPlacement > &placementList );
       HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIS_DAY_INDX_T dayIndex, HNIrrigationZoneSet *zones );
       HNIS_RESULT_T generateTimeSlots( HNIS_DAY_INDX_T dayIndex );
 
@@ -643,7 +643,7 @@ HNISPlacer::~HNISPlacer()
 }
 
 HNIS_RESULT_T 
-HNISPlacer::mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationCriteria > &placementList )
+HNISPlacer::mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationPlacement > &placementList )
 {
     return m_dayArr[ dayIndex ].mapPlacementSpecs( placementList );
 }
@@ -712,7 +712,6 @@ HNISPlacer::placeZones( HNISchedule &tgtSched )
 HNISPeriod::HNISPeriod()
 {
     m_type = HNIS_PERIOD_TYPE_NOTSET;
-    m_rank = 0;
 }
 
 HNISPeriod::~HNISPeriod()
@@ -761,12 +760,6 @@ HNISPeriod::setTimesFromStr( std::string startTime, std::string endTime )
 {
     m_startTime.parseTime( startTime );
     m_endTime.parseTime( endTime );
-}
-
-void 
-HNISPeriod::setRank( uint value )
-{
-    m_rank = value;
 }
 
 std::string
@@ -1100,11 +1093,11 @@ HNIrrigationSchedule::~HNIrrigationSchedule()
 }
 
 void
-HNIrrigationSchedule::init( HNIrrigationCriteriaSet *criteria, HNIrrigationZoneSet *zones )
+HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones )
 {
     std::cout << "HNIrrigationSchedule -- init" << std::endl;
 
-    m_criteria = criteria;
+    m_placements = placements;
     m_zones = zones;
 }
 
@@ -1141,20 +1134,20 @@ HNIrrigationSchedule::buildSchedule()
     uint rank = 0;
     uint roundRobinIndex = 0;
     uint maxRank = 0;
-    bool processCriteria = true;
+    //bool processPlacements = true;
 
     HNISPlacer src;
         
     std::cout << "buildSchedule - start" << std::endl;
 
-    // Get criteriaList for later usage.
-    std::vector< HNIrrigationCriteria > criteriaList;
-    m_criteria->getCriteriaList( criteriaList );
+    // Get placementList for later usage.
+    std::vector< HNIrrigationPlacement > placementsList;
+    m_placements->getPlacementsList( placementsList );
 
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
-        // Accumulate the available time blocks from criteria with current rank.
-        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, criteriaList );
+        // Accumulate the available time blocks from placements with current rank.
+        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, placementsList );
         
         // Handle any overlapping placement segments
         //FIXME

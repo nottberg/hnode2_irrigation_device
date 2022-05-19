@@ -34,8 +34,6 @@ class HNISPeriod
         HNI24HTime m_startTime;
         HNI24HTime m_endTime;
 
-        uint m_rank;
-
         std::set< std::string > m_zoneSet;
 
     public:
@@ -45,8 +43,6 @@ class HNISPeriod
         void setID( std::string id );
         void setType( HNIS_PERIOD_TYPE_T value );
 
-        void setSlideLater( bool value );
-
         void setDayIndex( HNIS_DAY_INDX_T dindx );
         void setStartTime( HNI24HTime &time );
         void setStartTimeSeconds( uint seconds );
@@ -55,8 +51,6 @@ class HNISPeriod
         void setEndTimeSeconds( uint seconds );
 
         void setTimesFromStr( std::string startTime, std::string endTime ); 
-
-        void setRank( uint value );
 
         std::string getID();
         HNIS_PERIOD_TYPE_T getType();
@@ -79,36 +73,7 @@ class HNISPeriod
         void addZoneSet( std::set<std::string> &srcSet );
 
         std::string getZoneSetAsStr();
-        
-        uint getRank();
-
-        void moveStartToSecond( uint seconds );
-        void moveEndToSecond( uint seconds );
-
-        static bool rankCompare( const HNISPeriod& first, const HNISPeriod& second );
-
 };
-
-
-// Enumerate the possible overlap cases
-typedef enum OverlapScenarioEnumeration
-{
-    OVLP_TYPE_CRIT_NOTSET = 0xFF, // Init value since 0 is meaningful
-    OVLP_TYPE_CRIT_BEFORE = 0xF,  // The criteria is completely before the period
-    OVLP_TYPE_CRIT_AFTER  = 0x0,  // The criteria is completely after the period
-    OVLP_TYPE_CRIT_FRONT  = 0xD,  // The criteria overlap the start of the period
-    OVLP_TYPE_CRIT_AROUND = 0x5,  // The criteria encapsulates the period
-    OVLP_TYPE_CRIT_WITHIN = 0xC,  // The criteria is encapsulated by the period
-    OVLP_TYPE_CRIT_BACK   = 0x4   // The criteria overlaps the end of the period
-}OVLP_TYPE_T;
-
-typedef enum HNISDayCollisionAssessResultEnum
-{
-    HNIS_CAR_CONTAINED,
-    HNIS_CAR_BEFORE,
-    HNIS_CAR_AFTER,
-    HNIS_CAR_NONE
-}HNIS_CAR_T;
 
 class HNISDay
 {
@@ -116,13 +81,6 @@ class HNISDay
         HNIS_DAY_INDX_T m_dayIndex;
   
         std::list< HNISPeriod > m_periodList;
-
-        void applyZoneSet( std::string periodID, std::set< std::string > &zoneSet );
-        std::string addAvailablePeriod( uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
-        std::string insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
-        std::string insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet );
-
-        OVLP_TYPE_T compareOverlap( uint cs, uint ce, HNISPeriod &period );
 
     public:
         HNISDay();
@@ -132,20 +90,13 @@ class HNISDay
 
         void clear();
 
-        void coalesce();
-
-        HNIS_RESULT_T applyCriteria( HNIrrigationCriteria &criteria );
-
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
-        //void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
         HNIS_RESULT_T addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec );
         
         std::string getDayName();
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
-
-        HNIS_RESULT_T getAvailableSlotsForZone( std::string zoneID, std::vector< HNISPeriod > &slotList );
 
         void debugPrint();
 };
@@ -195,7 +146,7 @@ class HNIrrigationSchedule
 //        HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
         HNISchedule m_schedule;
 
-        HNIrrigationCriteriaSet *m_criteria;
+        HNIrrigationPlacementSet *m_placements;
         HNIrrigationZoneSet     *m_zones;
 
 //        void calculateSMCRC32();
@@ -205,7 +156,7 @@ class HNIrrigationSchedule
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
 
-        void init( HNIrrigationCriteriaSet *criteria, HNIrrigationZoneSet *zones );
+        void init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones );
 
         std::string getTimezoneStr();
 

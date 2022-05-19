@@ -7,7 +7,7 @@
 class HNIrrigationTest
 {
     public:
-        HNIrrigationCriteriaSet m_criteria;
+        HNIrrigationPlacementSet m_placements;
         HNIrrigationZoneSet     m_zones;
         HNIrrigationSchedule    m_schedule;
 
@@ -19,7 +19,7 @@ class HNIrrigationTest
 void
 HNIrrigationTest::init()
 {
-    m_schedule.init( &m_criteria, &m_zones );
+    m_schedule.init( &m_placements, &m_zones );
 }
 
 void
@@ -64,16 +64,16 @@ HNIrrigationTest::test1()
     zone->clearSWIDSet();
     zone->addSWID( "s3" );
 
-    // Create a criteria record
-    HNIrrigationCriteria *crit = m_criteria.updateCriteria( "e1" );
+    // Create a placement record
+    HNIrrigationPlacement *place = m_placements.updatePlacement( "e1" );
 
     // Fill in zone record fields.
-    crit->setName( "Daily1" );
-    crit->setDesc( "" );
-    crit->setStartTime( "19:00:00" );
-    crit->setEndTime( "22:00:00" );
-    crit->setRank( 2 );
-    crit->setDayBits(( HNSC_DBITS_SUNDAY |
+    place->setName( "Daily1" );
+    place->setDesc( "" );
+    place->setStartTime( "19:00:00" );
+    place->setEndTime( "22:00:00" );
+    place->setRank( 2 );
+    place->setDayBits(( HNSC_DBITS_SUNDAY |
                        HNSC_DBITS_MONDAY |
                        HNSC_DBITS_TUESDAY |
                        HNSC_DBITS_WEDNESDAY |
@@ -81,52 +81,52 @@ HNIrrigationTest::test1()
                        HNSC_DBITS_FRIDAY |
                        HNSC_DBITS_SATURDAY ));
 
-    crit->clearZones();
-    crit->addZone( "z1" );
-    crit->addZone( "z2" );
-    crit->addZone( "z3" );
+    place->clearZones();
+    place->addZone( "z1" );
+    place->addZone( "z2" );
+    place->addZone( "z3" );
     
-    // Create a criteria record
-    crit = m_criteria.updateCriteria( "e2" );
+    // Create a placement record
+    place = m_placements.updatePlacement( "e2" );
 
     // Fill in zone record fields.
-    crit->setName( "Daily2" );
-    crit->setDesc( "" );
-    crit->setStartTime( "08:00:00" );
-    crit->setEndTime( "09:00:00" );
-    crit->setRank( 2 );
-    crit->setDayBits(( HNSC_DBITS_SUNDAY |
+    place->setName( "Daily2" );
+    place->setDesc( "" );
+    place->setStartTime( "08:00:00" );
+    place->setEndTime( "09:00:00" );
+    place->setRank( 2 );
+    place->setDayBits(( HNSC_DBITS_SUNDAY |
                        HNSC_DBITS_MONDAY |
                        HNSC_DBITS_TUESDAY |
                        HNSC_DBITS_WEDNESDAY |
                        HNSC_DBITS_THURSDAY |
                        HNSC_DBITS_FRIDAY ));
 
-    crit->clearZones();
-    crit->addZone( "z1" );
-    crit->addZone( "z2" );
-    crit->addZone( "z3" );
+    place->clearZones();
+    place->addZone( "z1" );
+    place->addZone( "z2" );
+    place->addZone( "z3" );
     
-    // Create a criteria record
-    crit = m_criteria.updateCriteria( "e3" );
+    // Create a placement record
+    place = m_placements.updatePlacement( "e3" );
 
     // Fill in zone record fields.
-    crit->setName( "Daily3" );
-    crit->setDesc( "" );
-    crit->setStartTime( "11:00:00" );
-    crit->setEndTime( "13:00:00" );
-    crit->setRank( 3 );
-    crit->setDayBits(( HNSC_DBITS_SUNDAY |
+    place->setName( "Daily3" );
+    place->setDesc( "" );
+    place->setStartTime( "11:00:00" );
+    place->setEndTime( "13:00:00" );
+    place->setRank( 3 );
+    place->setDayBits(( HNSC_DBITS_SUNDAY |
                        HNSC_DBITS_MONDAY |
                        HNSC_DBITS_TUESDAY |
                        HNSC_DBITS_WEDNESDAY |
                        HNSC_DBITS_THURSDAY |
                        HNSC_DBITS_FRIDAY ));
 
-    crit->clearZones();
-    crit->addZone( "z1" );
-    crit->addZone( "z2" );
-    crit->addZone( "z3" );
+    place->clearZones();
+    place->addZone( "z1" );
+    place->addZone( "z2" );
+    place->addZone( "z3" );
 
     // Calculate the new schedule
     HNIS_RESULT_T result = m_schedule.buildSchedule();
