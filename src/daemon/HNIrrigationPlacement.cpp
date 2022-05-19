@@ -1,7 +1,7 @@
 #include <iostream>
 #include <regex>
 
-#include "HNIrrigationCriteria.h"
+#include "HNIrrigationPlacement.h"
 
 HNIrrigationCriteria::HNIrrigationCriteria()
 {

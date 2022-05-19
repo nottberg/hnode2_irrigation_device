@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "HNIrrigationZone.h"
-#include "HNIrrigationCriteria.h"
+#include "HNIrrigationPlacement.h"
 #include "HNIrrigationSchedule.h"
 
 class HNIrrigationTest

@@ -12,7 +12,7 @@
 #include <hnode2/HNodeConfig.h>
 
 #include "HNIrrigationTypes.h"
-#include "HNIrrigationCriteria.h"
+#include "HNIrrigationPlacement.h"
 #include "HNIrrigationZone.h"
 
 typedef enum HNISPeriodTypeEnum
