@@ -25,6 +25,690 @@ static const char *s_dayNames[] =
     "Not Set"
 };
 
+class HNISPlacementTracker
+{
+    public:
+      HNISPlacementTracker();
+     ~HNISPlacementTracker();
+      
+      void setStartSec( uint startSec );
+      void setDuration( uint durSec );
+      void setRank( uint rank );
+      void setRoundRobinIndex( uint rri );
+      void setMaxCycleDuration( uint durSec );
+      
+      uint getStartSec();
+      uint getDuration();
+      uint getRank();
+      uint getRoundRobinIndex();
+      uint getMaxCycleDuration();
+      
+      void addZoneSet( std::set<std::string> &srcSet );
+      std::set< std::string >& getZoneSetRef();
+      uint getZoneCnt();
+      bool hasZone( std::string zoneID );
+
+      static bool compareTrackerStartTimes( HNISPlacementTracker t1, HNISPlacementTracker t2 );    
+    
+    private:
+      uint m_startSec;
+      uint m_duration;
+      uint m_rank;
+      uint m_rri;
+      uint m_maxCycleDuration;
+      
+      std::set< std::string > m_zoneSet;
+
+};
+
+HNISPlacementTracker::HNISPlacementTracker()
+{
+
+}
+
+HNISPlacementTracker::~HNISPlacementTracker()
+{
+
+}
+
+void 
+HNISPlacementTracker::setStartSec( uint startSec )
+{
+    m_startSec = startSec;
+}
+
+void 
+HNISPlacementTracker::setDuration( uint durSec )
+{
+    m_duration = durSec;
+}
+
+void 
+HNISPlacementTracker::setRank( uint rank )
+{
+    m_rank = rank;
+}
+
+void 
+HNISPlacementTracker::setRoundRobinIndex( uint rri )
+{
+    m_rri = rri;
+}
+   
+void 
+HNISPlacementTracker::setMaxCycleDuration( uint durSec )
+{
+    m_maxCycleDuration = durSec;
+}
+  
+uint 
+HNISPlacementTracker::getStartSec()
+{
+    return m_startSec;
+}
+
+uint 
+HNISPlacementTracker::getDuration()
+{
+    return m_duration;
+}
+
+uint 
+HNISPlacementTracker::getRank()
+{
+    return m_rank;
+}
+
+uint 
+HNISPlacementTracker::getRoundRobinIndex()
+{
+    return m_rri;
+}
+     
+uint 
+HNISPlacementTracker::getMaxCycleDuration()
+{
+    return m_maxCycleDuration;
+}
+ 
+void 
+HNISPlacementTracker::addZoneSet( std::set<std::string> &srcSet )
+{
+    for( std::set<std::string>::iterator it = srcSet.begin(); it != srcSet.end(); it++ )
+    {
+        printf( "Tracker zone add: %s\n", it->c_str());
+        m_zoneSet.insert( *it );
+    }
+}
+
+std::set< std::string >& 
+HNISPlacementTracker::getZoneSetRef()
+{
+    return m_zoneSet;
+}
+
+uint 
+HNISPlacementTracker::getZoneCnt()
+{
+    return m_zoneSet.size();
+}
+
+bool 
+HNISPlacementTracker::hasZone( std::string zoneID )
+{
+    std::set<std::string>::iterator it = m_zoneSet.find( zoneID );
+    
+    if( it == m_zoneSet.end() )
+        return false;
+        
+    return true;
+}
+
+bool 
+HNISPlacementTracker::compareTrackerStartTimes( HNISPlacementTracker t1, HNISPlacementTracker t2 )
+{
+    return (t1.m_startSec < t2.m_startSec);
+}
+
+class HNISTimeSlot
+{
+    public:
+      HNISTimeSlot();
+     ~HNISTimeSlot();
+     
+      void setStartSec( uint startSec );
+      void setDuration( uint durSec );
+      
+      uint getStartSec();
+      uint getDuration();
+    
+      void setParent( HNISPlacementTracker *ptPtr );      
+      HNISPlacementTracker* getParent();
+     
+      bool hasZone( std::string zoneID );
+
+    private:
+      uint m_startSec;
+      uint m_duration;
+      
+      HNISPlacementTracker* m_srcPtr;      
+};
+
+HNISTimeSlot::HNISTimeSlot()
+{
+
+}
+
+HNISTimeSlot::~HNISTimeSlot()
+{
+
+}
+     
+void 
+HNISTimeSlot::setStartSec( uint startSec )
+{
+    m_startSec = startSec;
+}
+
+void 
+HNISTimeSlot::setDuration( uint durSec )
+{
+    m_duration = durSec;
+}
+      
+uint 
+HNISTimeSlot::getStartSec()
+{
+    return m_startSec;
+}
+
+uint 
+HNISTimeSlot::getDuration()
+{
+    return m_duration;
+}
+
+void 
+HNISTimeSlot::setParent( HNISPlacementTracker *ptPtr )
+{
+    m_srcPtr = ptPtr;
+}
+
+HNISPlacementTracker* 
+HNISTimeSlot::getParent()
+{
+    return m_srcPtr;
+}
+
+bool 
+HNISTimeSlot::hasZone( std::string zoneID )
+{
+    return m_srcPtr->hasZone( zoneID );
+}
+
+class HNISZoneTracker
+{
+    public:
+      HNISZoneTracker();
+     ~HNISZoneTracker();
+     
+      void setDuration( uint durSec );
+      uint getDuration();
+      
+      void setParent( HNIrrigationZone *zonePtr );
+      HNIrrigationZone* getParent();
+      
+    private:
+      uint        m_duration;
+      
+      HNIrrigationZone* m_srcPtr;
+};
+
+HNISZoneTracker::HNISZoneTracker()
+{
+
+}
+
+HNISZoneTracker::~HNISZoneTracker()
+{
+
+}
+     
+void 
+HNISZoneTracker::setDuration( uint durSec )
+{
+    m_duration = durSec;
+}
+
+uint 
+HNISZoneTracker::getDuration()
+{
+    return m_duration;
+}
+      
+void 
+HNISZoneTracker::setParent( HNIrrigationZone *zonePtr )
+{
+    m_srcPtr = zonePtr;
+}
+
+HNIrrigationZone* 
+HNISZoneTracker::getParent()
+{
+    return m_srcPtr;
+}
+
+class HNISPlacerDay
+{
+    public:
+      HNISPlacerDay();
+     ~HNISPlacerDay();
+    
+      void setDayIndex( HNIS_DAY_INDX_T dayIndx );
+      uint getDayIndex();
+      
+      HNISPlacementTracker* findAvail( uint rank, uint rrIndx );
+    
+      HNIS_RESULT_T mapPlacementSpecs( std::vector< HNIrrigationCriteria > &placementList );
+      HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIrrigationZoneSet *zones );
+      HNIS_RESULT_T generateTimeSlots();
+      HNIS_RESULT_T placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISchedule &tgtSched );
+      
+    private:
+      HNIS_DAY_INDX_T m_dayIndx;
+      
+      std::list<HNISTimeSlot> m_slotList;
+      std::vector<HNISPlacementTracker> m_availArray;
+      std::map<uint, uint> m_rankRRIMap;
+      
+      uint m_maxrri;
+      uint m_maxRank;
+      
+};
+
+HNISPlacerDay::HNISPlacerDay()
+{
+
+}
+
+HNISPlacerDay::~HNISPlacerDay()
+{
+
+}
+
+void 
+HNISPlacerDay::setDayIndex( HNIS_DAY_INDX_T dayIndx )
+{
+    m_dayIndx = dayIndx;
+}
+
+uint 
+HNISPlacerDay::getDayIndex()
+{
+    return m_dayIndx;
+}
+
+HNISPlacementTracker* 
+HNISPlacerDay::findAvail( uint rank, uint rrIndx )
+{
+    for( std::vector<HNISPlacementTracker>::iterator it = m_availArray.begin(); it != m_availArray.end(); it++ )
+    {
+        if( (rank == it->getRank()) && (rrIndx == it->getRoundRobinIndex()) && (it->getDuration() > 0) )
+            return &(*it);
+    }
+    
+    // No match
+    return NULL;
+}
+
+HNIS_RESULT_T
+HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationCriteria > &placementList )
+{
+    uint rank = 0;
+    uint maxRank = 0;
+
+    while(rank < 100)
+    {
+        // Start Round Robin at zero for each rank level
+        uint roundRobinIndex = 0;
+        
+        // Accumulate the available time blocks from criteria with current rank.
+        for( std::vector< HNIrrigationCriteria >::iterator pit = placementList.begin(); pit != placementList.end(); pit++ )
+        {
+            if( ( pit->isForDay(m_dayIndx) == true ) && ( pit->getRank() == rank ) )
+            {
+                    HNISPlacementTracker track;
+                    track.setStartSec( pit->getStartTime().getSeconds() );
+                    track.setDuration( (pit->getEndTime().getSeconds() - pit->getStartTime().getSeconds()) );
+                    track.addZoneSet( pit->getZoneSetRef() );
+                    track.setRank( pit->getRank() );
+                    track.setRoundRobinIndex( roundRobinIndex );  
+                    
+                    m_availArray.push_back( track );
+                    
+                    if( m_rankRRIMap.count(rank) )
+                        m_rankRRIMap[rank] = (roundRobinIndex+1);
+                    else
+                        m_rankRRIMap.insert( std::pair<uint,uint>(rank, roundRobinIndex+1) );
+                    
+                    printf("tins - rank: %d  rri: %d\n", rank, roundRobinIndex+1);
+                                       
+                    roundRobinIndex += 1;
+                    
+                    maxRank = rank;
+            }
+        }
+
+        // Record the maximum Round Robin Index at this rank level
+        m_maxrri = roundRobinIndex; 
+
+        // Scan the next rank layer
+        rank += 1;
+    }
+    
+    for(std::map<uint, uint>::iterator mip = m_rankRRIMap.begin(); mip != m_rankRRIMap.end(); mip++)
+    {
+        printf("map - %d : %d\n", mip->first, mip->second);
+    }
+        
+    // Record the maximum rank with actual data
+    m_maxRank = maxRank;
+        
+    // Now sort the m_dayArr
+    std::sort( m_availArray.begin(), m_availArray.end(), HNISPlacementTracker::compareTrackerStartTimes );
+        
+    printf("=== day index: %d  max_rank: %d  max_rri: %d ===\n", m_dayIndx, m_maxRank, m_maxrri); 
+    uint idx = 0;
+    for( std::vector< HNISPlacementTracker >::iterator it = m_availArray.begin(); it != m_availArray.end(); it++ )
+    {
+        printf("%d: start: %d  dur: %d  rank: %d  rri: %d\n", idx, it->getStartSec(), it->getDuration(), it->getRank(), it->getRoundRobinIndex());
+        idx += 1;
+    }
+    printf("\n\n");
+         
+    for( std::map< uint, uint >::iterator it = m_rankRRIMap.begin(); it != m_rankRRIMap.end(); it++ )
+    {
+        printf("rmap: %d  %d\n", it->first, it->second);
+    }
+                
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T
+HNISPlacerDay::calculateZoneMaxCycleDurations( HNIrrigationZoneSet *zones )
+{
+    for( std::vector<HNISPlacementTracker>::iterator it = m_availArray.begin(); it != m_availArray.end(); it++ )
+    {
+        uint tgtSlotSeconds = zones->getMaxCycleTimeForZoneSet( it->getZoneSetRef() );
+        it->setMaxCycleDuration( tgtSlotSeconds );
+    }
+    
+    return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T
+HNISPlacerDay::generateTimeSlots()
+{
+    // Start carving the available space into slots
+    uint rank = 0;
+    uint rrIndx = 0;
+    for( uint rank = 0; rank <= m_maxRank; rank++ )
+    {
+        uint availCnt = m_rankRRIMap[rank];
+
+        printf("start carve -- rank: %d  availCnt: %d\n", rank, availCnt);
+            
+        while( availCnt )
+        {   
+            printf("start carve rr -- rrindx: %d\n", rrIndx);
+
+            // Check if space is available for this rank and rrIndx. 
+            HNISPlacementTracker *curAvail = findAvail( rank, rrIndx );
+                
+            // If no space found, dec the available count, and try again
+            if( curAvail == NULL )
+            {
+                availCnt -= 1;
+                  
+                rrIndx += 1;
+                if( rrIndx >= m_rankRRIMap[rank] )
+                    rrIndx = 0;
+                continue;  
+            }
+              
+            printf("found %d:%d - start: %d  dur: %d  rank: %d  rri: %d\n", rank, rrIndx, curAvail->getStartSec(), curAvail->getDuration(), curAvail->getRank(), curAvail->getRoundRobinIndex());
+              
+            // Get the slot size for this space
+            uint tgtSlotSeconds = curAvail->getMaxCycleDuration();
+            uint avzCnt = curAvail->getZoneCnt();
+                
+            printf("  tgtSlotSize: %d  avzCnt: %d\n", tgtSlotSeconds, avzCnt);
+                
+            // Allocate slots for all applicable zones
+            for( uint i = 0; i < avzCnt; i++ )
+            {
+                HNISTimeSlot slot;
+                   
+                if( curAvail->getDuration() == 0 )
+                {
+                    availCnt -= 1;
+                    break;
+                }
+                else if( curAvail->getDuration() >= tgtSlotSeconds )
+                {
+                    slot.setStartSec( curAvail->getStartSec() );
+                    slot.setDuration( tgtSlotSeconds );
+                    slot.setParent( curAvail );
+                    
+                    m_slotList.push_back(slot);
+                    
+                    curAvail->setStartSec( curAvail->getStartSec() + tgtSlotSeconds );
+                    curAvail->setDuration( curAvail->getDuration() - tgtSlotSeconds );
+                }
+                else
+                {
+                    slot.setStartSec( curAvail->getStartSec() );
+                    slot.setDuration( curAvail->getDuration() );
+                    slot.setParent( curAvail );
+                    
+                    m_slotList.push_back(slot);
+                    
+                    curAvail->setDuration( 0 );
+                    availCnt -= 1;
+                    break;
+                }
+            }
+                
+            // Update Round Robin
+            rrIndx += 1;
+            if( rrIndx >= m_rankRRIMap[rank] )
+              rrIndx = 0;
+        }
+    }
+       
+    return HNIS_RESULT_SUCCESS;    
+}
+   
+HNIS_RESULT_T
+HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISchedule &tgtSched )
+{
+    bool progress = false;
+
+    printf( "dayIndx %d\n", m_dayIndx );
+            
+    // Try to allocate a slot for each zone.
+    for( std::vector<HNISZoneTracker>::iterator zit = zoneTrackers.begin(); zit != zoneTrackers.end(); zit++ )
+    {
+        printf( "check zone %s\n", zit->getParent()->getID().c_str());
+                
+        // Skip zones that have been fully placed.
+        if( zit->getDuration() == 0 )
+            continue;
+                    
+        uint maxCycle = zit->getParent()->getMaximumCycleTimeSeconds();
+        uint minCycle = zit->getParent()->getMinimumCycleTimeSeconds();
+        uint secNeeded = (zit->getDuration() > maxCycle) ? maxCycle : zit->getDuration();
+        std::string zid = zit->getParent()->getID();
+                    
+        // Attempt to find next slot for this zone
+        for( std::list<HNISTimeSlot>::iterator it = m_slotList.begin(); it != m_slotList.end(); it++)
+        {
+            // Skip used up slots.
+            if( it->getDuration() == 0 )
+                continue;
+                        
+            printf( "slot - hasZone %d  secSupply: %d\n", it->hasZone( zid ), it->getDuration() );
+            if( (it->hasZone( zid ) == true) && (it->getDuration() >= minCycle) )
+            {                        
+                printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
+
+                // Check if timeslot is big enough for max placement.
+                if( secNeeded <= it->getDuration() )
+                {
+                    // This will consume all of the time slot exactly.
+                    // Add the new slot to the schedule.
+                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getParent()->getID(), it->getStartSec(), secNeeded );
+                            
+                    // Account for allocated time
+                    zit->setDuration( zit->getDuration() - secNeeded );
+                    it->setStartSec( it->getStartSec() + secNeeded );
+                    it->setDuration( it->getDuration() - secNeeded );
+                }
+                else if( secNeeded > it->getDuration() )
+                {
+                    // This will consume all of the time slot exactly.
+                    // Add the new slot to the schedule.
+                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getParent()->getID(), it->getStartSec(), it->getDuration() );
+                            
+                    // Account for allocated time
+                    zit->setDuration( zit->getDuration() - it->getDuration() );
+                    it->setStartSec( it->getStartSec() + it->getDuration() );
+                    it->setDuration( 0 );                        
+                }
+                                                
+                progress = true;
+                        
+                break;
+            }
+        }
+    }
+
+    // Keep going if we successfully placed a zone
+    if( progress == true )
+        return HNIS_RESULT_SCH_CONTINUE;
+
+    // Done
+    return HNIS_RESULT_SUCCESS;
+}
+     
+// Now generate an ordered list across all days by traversing the individual day list in a specific
+// pattern. Order the slots so that they are spread temporally, so that as the 
+// amount of watering time goes up/down the watering is still distributed
+// roughly evenly over the whole available time period.
+static const uint g_insOrdArr[] = { HNIS_DINDX_TUESDAY, HNIS_DINDX_THURSDAY, HNIS_DINDX_MONDAY, HNIS_DINDX_WEDNESDAY, HNIS_DINDX_FRIDAY, HNIS_DINDX_SUNDAY, HNIS_DINDX_SATURDAY};
+       
+class HNISPlacer
+{
+    public:
+      HNISPlacer();
+     ~HNISPlacer();    
+    
+      HNIS_RESULT_T mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationCriteria > &placementList );
+      HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIS_DAY_INDX_T dayIndex, HNIrrigationZoneSet *zones );
+      HNIS_RESULT_T generateTimeSlots( HNIS_DAY_INDX_T dayIndex );
+
+      HNIS_RESULT_T initZoneTracking( std::vector< HNIrrigationZone > &zoneList );
+      
+      HNIS_RESULT_T placeZones( HNISchedule &tgtSched );
+      
+    private:
+      HNISPlacerDay  m_dayArr[ HNIS_DINDX_NOTSET ];
+      
+      std::vector< HNISZoneTracker > m_zoneTrackers;
+      
+
+};
+
+HNISPlacer::HNISPlacer()
+{
+    for( uint dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+    {
+        m_dayArr[dayIndx].setDayIndex( (HNIS_DAY_INDX_T)dayIndx );
+    }
+}
+
+HNISPlacer::~HNISPlacer()
+{
+
+}
+
+HNIS_RESULT_T 
+HNISPlacer::mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationCriteria > &placementList )
+{
+    return m_dayArr[ dayIndex ].mapPlacementSpecs( placementList );
+}
+
+HNIS_RESULT_T
+HNISPlacer::calculateZoneMaxCycleDurations( HNIS_DAY_INDX_T dayIndex, HNIrrigationZoneSet *zones )
+{
+    return m_dayArr[ dayIndex ].calculateZoneMaxCycleDurations( zones );
+}
+
+HNIS_RESULT_T 
+HNISPlacer::generateTimeSlots( HNIS_DAY_INDX_T dayIndex )
+{
+    return m_dayArr[ dayIndex ].generateTimeSlots();
+}
+
+HNIS_RESULT_T
+HNISPlacer::initZoneTracking( std::vector< HNIrrigationZone > &zoneList )
+{
+    // Create a tracker for each zone
+    for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
+    {
+        HNISZoneTracker ztrack;
+        uint duration = zit->getWeeklySeconds();
+        
+        ztrack.setDuration( duration );
+        ztrack.setParent( &(*zit) );
+        
+        m_zoneTrackers.push_back(ztrack);
+    }  
+    
+    return HNIS_RESULT_SUCCESS;   
+}
+
+
+HNIS_RESULT_T
+HNISPlacer::placeZones( HNISchedule &tgtSched )
+{
+    HNIS_RESULT_T result;
+    
+    // Attempt to schedule each zone
+    bool progress = true;
+    while( progress )
+    {
+        progress = false;
+        
+        // Cycle through each day
+        for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        {
+            uint dayIndx = g_insOrdArr[ indx ];
+
+            printf( "dayIndx %d\n", dayIndx );
+     
+            result = m_dayArr[(HNIS_DAY_INDX_T)dayIndx].placeZones( m_zoneTrackers, tgtSched );
+            
+            if( result == HNIS_RESULT_SCH_CONTINUE )
+                progress = true;
+            else if( result != HNIS_RESULT_SUCCESS )
+                return result;
+        }
+    }
+
+    return HNIS_RESULT_SUCCESS;
+}
+
 HNISPeriod::HNISPeriod()
 {
     m_type = HNIS_PERIOD_TYPE_NOTSET;
@@ -204,61 +888,6 @@ HNISPeriod::getEndTimeStr()
     return m_endTime.getHMSStr();
 }
 
-uint 
-HNISPeriod::getRank()
-{
-    return m_rank;
-}
-
-void 
-HNISPeriod::moveStartToSecond( uint seconds )
-{
-    std::cout << "moveStartToSeconds - " << seconds << "  " << getStartTimeSeconds() << std::endl;
-
-    if( seconds <= getStartTimeSeconds() )
-        return;
-
-    uint duration = ( seconds - getStartTimeSeconds() );
-
-    std::cout << "moveStartToSeconds - duration: " << duration << std::endl;
-
-    m_startTime.addSeconds( duration );
-    m_endTime.addSeconds( duration );
-
-    std::cout << "moveStartToSeconds - fin: " << getStartTimeSeconds() << "  " << getEndTimeSeconds() << std::endl;
-}
-
-void 
-HNISPeriod::moveEndToSecond( uint seconds )
-{
-    std::cout << "moveEndToSeconds - " << seconds << "  " << getEndTimeSeconds() << std::endl;
-
-    if( seconds >= getEndTimeSeconds() )
-        return;
-
-    uint duration = ( getEndTimeSeconds() - seconds );
-
-    std::cout << "moveEndToSeconds - duration: " << duration << std::endl;
-
-    m_startTime.subtractSeconds( duration );
-    m_endTime.subtractSeconds( duration );
-
-    std::cout << "moveEndToSeconds - fin: " << getStartTimeSeconds() << "  " << getEndTimeSeconds() << std::endl;
-}
-
-bool 
-HNISPeriod::rankCompare( const HNISPeriod& first, const HNISPeriod& second )
-{
-  // First sort by rank
-  if( first.m_rank < second.m_rank )
-      return true;
-  else if( first.m_rank < second.m_rank )
-      return false;
-
-  // If ranks are equal then sort by time
-  return ( first.m_startTime.getSeconds() < second.m_startTime.getSeconds() );
-}
-
 HNISDay::HNISDay()
 {
     m_dayIndex = HNIS_DINDX_NOTSET;
@@ -284,372 +913,28 @@ HNISDay::setIndex( HNIS_DAY_INDX_T dayIndex )
         m_dayIndex = dayIndex;
 }
 
-void 
-HNISDay::coalesce()
+HNIS_RESULT_T
+HNISDay::addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec )
 {
-   // Cycle through all periods,
-   // Combine exclusions that overlapp
-
-}
-
-
-std::string 
-HNISDay::addAvailablePeriod( uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
-{
+    // Create a new period for the zone on time
+    char newID[64];
     HNISPeriod period;
 
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
-
-    period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-    period.setRank( rank );
-
-    period.clearZones();
-    period.addZoneSet( zoneSet );
-
-    m_periodList.push_back( period );
-
-    return newID;
-}
-
-std::string
-HNISDay::insertBeforeAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
-{
-    HNISPeriod period;
-
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
-
-    period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
-    period.setDayIndex( m_dayIndex );
-    period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-    period.setRank( rank );
-
-    period.clearZones();
-    period.addZoneSet( zoneSet ); 
-
-    m_periodList.insert( it, period );
-
-    return newID;
-}
-
-std::string
-HNISDay::insertAfterAvailablePeriod( std::list< HNISPeriod >::iterator &it, uint startSec, uint endSec, uint rank, std::set< std::string > &zoneSet )
-{
-    HNISPeriod period;
-
-    char newID[64];
-    sprintf( newID, "%ld", m_periodList.size() );
+    sprintf( newID, "p%ld", m_periodList.size() );
 
     // Add a period to represent the overlap region
     period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_AVAILABLE );
+    period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( endSec );
-    period.setRank( rank );
+    period.setEndTimeSeconds( (startSec + durationSec) );
 
     period.clearZones();
-    period.addZoneSet( zoneSet );
+    period.addZone( zoneID );
 
-    // Add the new period after the current one.
-    std::list< HNISPeriod >::iterator iit = it;
-    iit++;
-    if( iit != m_periodList.end() )
-        m_periodList.insert( iit, period );
-    else
-        m_periodList.push_back( period );
-
-    return newID;
-}
-
-void
-HNISDay::applyZoneSet( std::string periodID, std::set< std::string > &zoneSet )
-{
-    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
-    {
-        if( it->getID() == periodID )
-        {
-            it->addZoneSet( zoneSet );
-            return;
-        }
-    }     
-}
-
-OVLP_TYPE_T 
-HNISDay::compareOverlap( uint cs, uint ce, HNISPeriod &period )
-{       
-    // Day matches so check times
-    uint overlapType = 0;
-
-    uint ps = period.getStartTime().getSeconds();
-    uint pe = period.getEndTime().getSeconds();
-
-    std::cout << "ovcmp - cs: " << cs << "  ce: " << ce << "  ps:" << ps << "  pe:" << pe << std::endl;
-
-    if( cs < ps )
-        overlapType |= 1;
-    if( ce <= ps )
-        overlapType |= 2;
-    if( cs <= pe )
-        overlapType |= 4;
-    if( ce <= pe )
-        overlapType |= 8;
-             
-    return (OVLP_TYPE_T) overlapType;
-}
-
-HNIS_RESULT_T 
-HNISDay::applyCriteria( HNIrrigationCriteria &criteria )
-{
-    HNISPeriod period;
-
-    std::cout << std::endl << "applyCriteria: " << criteria.getID() << "  dayIndex: " << m_dayIndex << std::endl;
-
-    uint spanStart = criteria.getStartTime().getSeconds();
-    uint spanEnd   = criteria.getEndTime().getSeconds();
-
-    // Find the insertion point
-    // The list should be in order, so scan until we are overlapping an entry or beyond possible entries. 
-    uint index = 0;
-    for( std::list< HNISPeriod >::iterator pit = m_periodList.begin(); pit != m_periodList.end(); pit++ )
-    {
-        // Determine the overlap type between the regions
-        OVLP_TYPE_T overlapType = compareOverlap( spanStart, spanEnd, *pit );
-             
-        std::cout << "applyCriteria - iter: " << index << "  sov: " << overlapType << "  segment: " << criteria.getID() << std::endl;
-
-        // Take action based on the type of overlap
-        switch( overlapType )
-        {
-            // The criteria is completely after the current period,
-            // so keep scanning to check for overlap with later periods.
-            // If we reach the end then this criteria can be inserted there.
-            case OVLP_TYPE_CRIT_AFTER:
-                continue;
-
-            // The criteria is completely before the current period,
-            // since the list should be in order, we are finished with
-            // this criteria.
-            case OVLP_TYPE_CRIT_BEFORE:
-
-                // If there is still part of this criteria left to insert
-                // then add it now.
-                if( spanStart != spanEnd )
-                {
-                    std::cout << "applyCriteria - before add" << std::endl;
-                    insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
-                }
-                
-                // Criteria complete
-                return HNIS_RESULT_SUCCESS;
-            break;
-
-            // The criteria overlap the start of the period
-            // adjust the overlapped period 
-            case OVLP_TYPE_CRIT_FRONT:
-            {
-                std::cout << "  front overlap - c zones - shrink and add" << std::endl;
-
-                std::cout << "  front overlap - spanStart: " << spanStart << "  pitStart: " << pit->getStartTime().getSeconds() << std::endl;
-                // If the overlap has a region before the period, add a new period for it.
-                if( spanStart < pit->getStartTime().getSeconds() )
-                {
-                    std::cout << "  front overlap - before add: " << spanStart << " : " << pit->getStartTime().getSeconds() << std::endl;
-                    insertBeforeAvailablePeriod( pit, spanStart, pit->getStartTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
-
-                    spanStart = pit->getStartTime().getSeconds();
-                }
-
-                // Create a new period to represent the overlap
-                std::cout << "  front overlap - overlap add: " << spanStart << " : " << spanEnd << std::endl;
-
-                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
-
-                applyZoneSet( pID, pit->getZoneSetRef() );
-
-                // Shrink/eliminate the existing period
-                if( spanEnd == pit->getEndTime().getSeconds() )
-                {
-                    std::cout << "  front overlap - erase tail" << std::endl;
-                    m_periodList.erase( pit );
-                }
-                else
-                {
-                    std::cout << "  front overlap - shrink tail: " << spanEnd << std::endl;
-                    pit->setStartTimeSeconds( spanEnd );
-                }
-
-                // Finished with this criteria
-                return HNIS_RESULT_SUCCESS;
-            }
-            break;
-
-            // The criteria is encapsulated by the period
-            // Check whether to split the existing period, or to discard this
-            // criteria.
-            case OVLP_TYPE_CRIT_WITHIN:
-            {
-                std::cout << "  criteria within existing period" << std::endl;
-
-                // Add a new period for the first portion of the original period
-                if( spanStart != pit->getStartTime().getSeconds() )
-                {
-                    insertBeforeAvailablePeriod( pit, pit->getStartTime().getSeconds(), spanStart, pit->getRank(), pit->getZoneSetRef() );
-                }
-
-                // Add a period for the overlap section
-                std::string pID = insertBeforeAvailablePeriod( pit, spanStart, spanEnd, criteria.getRank(), criteria.getZoneSetRef() );
-
-                applyZoneSet( pID, pit->getZoneSetRef() );
-
-                // Shrink/eliminate the existing period
-                if( criteria.getEndTime().getSeconds() == pit->getEndTime().getSeconds() )
-                    m_periodList.erase( pit );
-                else
-                    pit->setStartTime( criteria.getEndTime() );            
-
-                // Finished with this criteria
-                return HNIS_RESULT_SUCCESS;
-            }
-            break;
-
-            // Must keep going to ensure all of criteria has
-            // been accounted for.
-            case OVLP_TYPE_CRIT_BACK:
-            {
-                // Add a period to represent the overlap region
-                std::string pID = insertAfterAvailablePeriod( pit, spanStart, pit->getEndTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
-
-                applyZoneSet( pID, pit->getZoneSetRef() );
-
-                // Calculate the used up portion of the criteria
-                uint origEnd = pit->getEndTime().getSeconds();
-
-                // Shorten the original period to subtract the overlap
-                pit->setEndTimeSeconds( spanStart );
-
-                // Adjust the criteria remainder
-                spanStart = origEnd;
-             
-                std::cout << "  back adj - origEnd: " << origEnd << "  spanStart: " << spanStart << std::endl;
-
-                // Bump the iterator to point at the element which
-                // was just inserted and run the loop again.
-                pit++; 
-            }
-            break;
-
-            // Must keep going to ensure all of criteria has
-            // been accounted for.
-            case OVLP_TYPE_CRIT_AROUND:
-            {
-                // Update the current period zone with
-                // new criteria additions
-                pit->addZoneSet( criteria.getZoneSetRef() );
- 
-                // Update the criteria start and next iteration
-                spanStart = pit->getEndTime().getSeconds();
-            }
-            break;
-        }
-
-        index++;
-    }
-
-    // If the criteria was not all used up
-    // in the collision scan then add any remainder
-    // here
-    if( spanStart != spanEnd )
-    {
-        std::cout << "applyCriteria - loop finish add" << std::endl;
-
-        addAvailablePeriod( criteria.getStartTime().getSeconds(), criteria.getEndTime().getSeconds(), criteria.getRank(), criteria.getZoneSetRef() );
-    }
-
+    m_periodList.push_back( period );
+    
     return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNISDay::getAvailableSlotsForZone( std::string zoneID, std::vector< HNISPeriod > &slotList )
-{
-    // Build a list of available slots for this zone.
-    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
-    {
-        if( it->getType() == HNIS_PERIOD_TYPE_AVAILABLE )
-        {
-            if( it->hasZone( zoneID ) )
-            {
-                slotList.push_back( *it );
-            }
-        }
-    }
-
-    // Sort the zone list by rank and time.
-    // Lower Ranks and earlier times are favored
-    std::sort( slotList.begin(), slotList.end(), HNISPeriod::rankCompare );
-
-    return HNIS_RESULT_SUCCESS;
-}
-
-void
-HNISDay::addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec )
-{
-    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
-    {
-        if( it->getID() != periodID )
-            continue;
-
-        if( it->getType() != HNIS_PERIOD_TYPE_AVAILABLE )
-            continue;
-
-        uint periodSec = it->getEndTime().getSeconds() - it->getStartTime().getSeconds();
-
-        if( durationSec > periodSec )
-        {
-            return;
-        }
-        else if( durationSec == periodSec )
-        {
-            // Current period will be consumed
-            // so just turn it into the zone-on period
-            it->setType( HNIS_PERIOD_TYPE_ZONE_ON );
-            it->clearZones();
-            it->addZone( zoneID );
-        }
-        else
-        {
-            // Determine the dividing time
-            uint dTime = it->getStartTime().getSeconds() + durationSec;
-
-            // Create a new period for the zone on time
-            char newID[64];
-            HNISPeriod period;
-
-            sprintf( newID, "%ld", m_periodList.size() );
-
-            // Add a period to represent the overlap region
-            period.setID( newID );
-            period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
-            period.setDayIndex( m_dayIndex );
-            period.setStartTime( it->getStartTime() );
-            period.setEndTimeSeconds( dTime );
-
-            period.clearZones();
-            period.addZone( zoneID );
-
-            m_periodList.insert( it, period );
-
-            // Shorten the available time period
-            it->setStartTimeSeconds( dTime );
-        }        
-    }
 }
 
 HNIS_RESULT_T 
@@ -693,16 +978,119 @@ HNISDay::debugPrint()
     }    
 }
 
-HNIrrigationSchedule::HNIrrigationSchedule()
+HNISchedule::HNISchedule()
 {
-    std::cout << "HNIrrigationSchedule -- create" << std::endl;
-
-    m_timezone = "Americas/Denver";
     m_schCRC32 = 0;
 
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].setIndex( (HNIS_DAY_INDX_T) indx );
+}
 
+HNISchedule::~HNISchedule()
+{
+
+}
+
+void 
+HNISchedule::clear()
+{
+    // Clear any existing data
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        m_dayArr[ indx ].clear();
+
+    m_timezone.clear();
+    m_schCRC32 = 0;
+}
+
+void 
+HNISchedule::setTimezoneStr( std::string tzs )
+{
+    m_timezone = tzs;
+}
+
+std::string 
+HNISchedule::getTimezoneStr()
+{
+    return m_timezone;
+}
+
+uint 
+HNISchedule::getSMCRC32()
+{
+    return m_schCRC32;
+}
+
+HNIS_RESULT_T
+HNISchedule::addPeriodZoneOn( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint startSec, uint durationSec )
+{
+    return m_dayArr[ dayIndex ].addPeriodZoneOn( zoneID, startSec, durationSec );
+}
+
+HNIS_RESULT_T 
+HNISchedule::finalize()
+{
+    return HNIS_RESULT_SUCCESS;
+}
+        
+std::string 
+HNISchedule::getDayName( HNIS_DAY_INDX_T dayIndex )
+{
+    return m_dayArr[ dayIndex ].getDayName();
+}
+
+void 
+HNISchedule::getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList )
+{
+    m_dayArr[ dayIndex ].getPeriodList( periodList );
+}
+
+void
+HNISchedule::calculateSMCRC32()
+{
+    // Get a string to build the data into
+    Poco::Checksum digest;
+
+    digest.update( getTimezoneStr() );
+
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+    {
+        std::vector< HNISPeriod > periodList;
+        m_dayArr[ indx ].getPeriodList( periodList );
+
+        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
+        {
+            pjs::Object jsSWAction;
+          
+            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
+            {
+                continue;
+            }
+
+            digest.update( "swon" );
+            digest.update( it->getStartTimeStr() );
+            digest.update( it->getEndTimeStr() );
+            digest.update( it->getZoneSetAsStr() );
+        }
+        
+    }
+
+    std::cout << "Calculate SMCRC32: " << digest.checksum() << std::endl;
+
+    m_schCRC32 = digest.checksum();
+}
+
+void
+HNISchedule::debugPrint()
+{
+    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        m_dayArr[ indx ].debugPrint();
+}
+
+HNIrrigationSchedule::HNIrrigationSchedule()
+{
+    std::cout << "HNIrrigationSchedule -- create" << std::endl;
+
+    m_schedule.setTimezoneStr( "Americas/Denver" );
 }
 
 HNIrrigationSchedule::~HNIrrigationSchedule()
@@ -724,183 +1112,68 @@ void
 HNIrrigationSchedule::clear()
 {
     // Clear any existing data
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-        m_dayArr[ indx ].clear();
-
-    //m_criteria->clear();
-    //m_zones->clear();
-    m_schCRC32 = 0;
+    m_schedule.clear();
 }
 
 std::string
 HNIrrigationSchedule::getTimezoneStr()
 {
-    return m_timezone;
+    return m_schedule.getTimezoneStr();
 }
 
 uint 
 HNIrrigationSchedule::getSMCRC32()
 {
-    return m_schCRC32;
+    return m_schedule.getSMCRC32();
 }
 
 std::string
 HNIrrigationSchedule::getSMCRC32Str()
 {
     char tmpStr[64];
-    sprintf( tmpStr, "0x%x", m_schCRC32 );
+    sprintf( tmpStr, "0x%x", m_schedule.getSMCRC32() );
     return tmpStr;
 }
 
-HNIS_RESULT_T 
-HNIrrigationSchedule::initConfigSections( HNodeConfig &cfg )
-{
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::readConfigSections( HNodeConfig &cfg )
-{
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
-HNIrrigationSchedule::updateConfigSections( HNodeConfig &cfg )
-{
-    return HNIS_RESULT_SUCCESS;
-}
-
-HNIS_RESULT_T 
+HNIS_RESULT_T
 HNIrrigationSchedule::buildSchedule()
 {
-    std::cout << "BuildSchedule - start" << std::endl;
+    uint rank = 0;
+    uint roundRobinIndex = 0;
+    uint maxRank = 0;
+    bool processCriteria = true;
 
-    // Clear any schedule data
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-        m_dayArr[ indx ].clear();
+    HNISPlacer src;
+        
+    std::cout << "buildSchedule - start" << std::endl;
 
-    // Create an array covering a week of non-overlapping available scheduling slots
+    // Get criteriaList for later usage.
     std::vector< HNIrrigationCriteria > criteriaList;
     m_criteria->getCriteriaList( criteriaList );
-    for( std::vector< HNIrrigationCriteria >::iterator cit = criteriaList.begin(); cit != criteriaList.end(); cit++ )
+
+    for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
-        // Check each possible day.
-        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
-        {
-            bool inserted = false;
-
-            // Check whether this day applies to the criteria
-            if( cit->isForDay( (HNIS_DAY_INDX_T) dayIndx ) == false )
-                continue;
-
-            // Insert the new criteria
-            m_dayArr[ dayIndx ].applyCriteria( *cit );
-        }
-    }    
-
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-        m_dayArr[ indx ].debugPrint();
-    
-
-    // Attempt to schedule each zone
-    std::vector< HNIrrigationZone > zoneList;
-    m_zones->getZoneList( zoneList );
-    for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
-    {
-        std::vector<HNISPeriod> availSlotLists[ HNIS_DINDX_NOTSET ];
-        uint maxLayer = 0;
-        uint totalAvailSeconds = 0;
-
-        // Generate a list of available zone slots for each day.
-        for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-        {
-            m_dayArr[ indx ].getAvailableSlotsForZone( zit->getID(), availSlotLists[ indx ] );
-
-            if( maxLayer < availSlotLists[ indx ].size() )
-                maxLayer = availSlotLists[ indx ].size();
-        }
-
-        // Now generate an ordered list across all days by traversing the individual day list in a specific
-        // pattern. Order the slots so that they are spread temporally, so that as the 
-        // amount of watering time goes up/down the watering is still distributed
-        // roughly evenly over the whole available time period.
-        uint insOrdArr[] = { HNIS_DINDX_SUNDAY, HNIS_DINDX_MONDAY, HNIS_DINDX_TUESDAY, HNIS_DINDX_WEDNESDAY, HNIS_DINDX_THURSDAY, HNIS_DINDX_FRIDAY, HNIS_DINDX_SATURDAY };
-        std::vector<HNISPeriod> orderedSlotList;
-
-        for( uint layerIndex = 0; layerIndex < maxLayer; layerIndex++ )
-        {
-            for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-            {
-                HNISPeriod slot;
-                uint dayIndx = insOrdArr[ indx ];
-                if( layerIndex < availSlotLists[ dayIndx ].size() )
-                {
-                    slot = availSlotLists[ dayIndx ][ layerIndex ];
-                    totalAvailSeconds += ( slot.getEndTime().getSeconds() - slot.getStartTime().getSeconds() );
-                    orderedSlotList.push_back( slot );
-                }
-            }
-        }
-
-        // Calculate how many of the slots to use.
-        uint uniqueSlots = orderedSlotList.size();
-
-        std::cout << "==== Zone: " << zit->getID() << "  availSec: " << totalAvailSeconds << "  slotCount: " << uniqueSlots << std::endl;
-
-        // Calculate the total weekly time needed for the zone.
-        uint totalWeeklySeconds = zit->getWeeklySeconds();
+        // Accumulate the available time blocks from criteria with current rank.
+        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, criteriaList );
         
-        // Make sure it will fit.
-        if( totalWeeklySeconds > totalAvailSeconds )
-        {
-            // Mark the zone as unable to schedule
-            std::cout << "   Error - not enough available time to schedule zone - needed: " << totalWeeklySeconds << "  available: " << totalAvailSeconds << std::endl;
-
-            // Attempt next zone
-            continue;
-        }
-
-        // Check that the number of available slots is sufficient
-        uint minCycleCnt = totalWeeklySeconds / zit->getMaximumCycleTimeSeconds();
-        if( minCycleCnt > uniqueSlots )
-        {
-            // Mark zone as unschedulable
-            std::cout << "   Error - not enough slots available to schedule zone - needed: " << minCycleCnt << "  available: " << uniqueSlots << std::endl;
-
-            // Attempt next zone
-            continue;
-        }
-
-        // Shoot for an average time between lower and upper bound
-        uint cycleTimePerSlot = totalWeeklySeconds / uniqueSlots;
-        uint targetCycleTime = zit->getMinimumCycleTimeSeconds();
-        if( targetCycleTime < cycleTimePerSlot )
-            targetCycleTime = cycleTimePerSlot;
-
-        targetCycleTime = ( ( targetCycleTime + zit->getMaximumCycleTimeSeconds() ) / 2 );
-        uint targetSlotCnt = totalWeeklySeconds / targetCycleTime;
-    
-        std::cout << "  targetCycleTime: " << targetCycleTime << "  targetSlotCnt: " << targetSlotCnt << std::endl;
-
-        // Make the allocations of slots from the ordered list
-        std::vector<HNISPeriod>::iterator slit = orderedSlotList.begin();
-        for( uint slotIndex = 0; slotIndex < targetSlotCnt; slit++, slotIndex++ )
-        {
-            std::cout << "    day: " << slit->getDayIndex() << "  rank: " << slit->getRank() << "  startSec: " << slit->getStartTime().getSeconds() << std::endl;
-            m_dayArr[ slit->getDayIndex() ].addPeriodZoneOn( slit->getID(), zit->getID(), targetCycleTime );
-        }
-
+        // Handle any overlapping placement segments
+        //FIXME
+        
+        src.calculateZoneMaxCycleDurations( (HNIS_DAY_INDX_T) dayIndx, m_zones );
+        src.generateTimeSlots( (HNIS_DAY_INDX_T) dayIndx );
     }
 
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-        m_dayArr[ indx ].debugPrint();
+    // Create a tracker for each zone
+    std::vector< HNIrrigationZone > zoneList;
+    m_zones->getZoneList( zoneList );
+    
+    src.initZoneTracking( zoneList );
 
-    // Calculate a hash value for this schedule
-    // which will be used to determine update flow.
-    calculateSMCRC32();
+    src.placeZones( m_schedule );
+    
+    m_schedule.debugPrint();
 
     return HNIS_RESULT_SUCCESS;
-
 }
 
 HNIS_RESULT_T 
@@ -920,7 +1193,8 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         pjs::Array jsActions;
 
         std::vector< HNISPeriod > periodList;
-        m_dayArr[ indx ].getPeriodList( periodList );
+        m_schedule.getPeriodList( (HNIS_DAY_INDX_T) indx, periodList );
+        //m_dayArr[ indx ].getPeriodList( periodList );
 
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
@@ -949,7 +1223,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             }
         }
         
-        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+        jsDays.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) indx ), jsActions );
     }
 
     jsRoot.set( "scheduleMatrix", jsDays );
@@ -965,44 +1239,6 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     }
 
     return HNIS_RESULT_SUCCESS;
-}
-
-void
-HNIrrigationSchedule::calculateSMCRC32()
-{
-    // Get a string to build the data into
-    Poco::Checksum digest;
-
-    digest.update( getTimezoneStr() );
-
-    for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
-    {
-        std::vector< HNISPeriod > periodList;
-        m_dayArr[ indx ].getPeriodList( periodList );
-
-        for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
-        {
-            pjs::Object jsSWAction;
-          
-            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
-            {
-                continue;
-            }
-
-            digest.update( "swon" );
-            digest.update( it->getStartTimeStr() );
-            digest.update( it->getEndTimeStr() );
-    
-            HNIrrigationZone zone;
-            m_zones->getZone( it->getZoneSetAsStr(), zone );
-            digest.update( zone.getSWIDListStr() );
-        }
-        
-    }
-
-    std::cout << "Calculate SMCRC32: " << digest.checksum() << std::endl;
-
-    m_schCRC32 = digest.checksum();
 }
 
 std::string 
@@ -1030,7 +1266,8 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
         std::cout << "js chk day: " << indx << std::endl;
 
         std::vector< HNISPeriod > periodList;
-        m_dayArr[ indx ].getPeriodList( periodList );
+        m_schedule.getPeriodList( (HNIS_DAY_INDX_T) indx, periodList );       
+        //m_dayArr[ indx ].getPeriodList( periodList );
 
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
@@ -1062,7 +1299,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
             jsActions.add( jsSWAction );
         }
         
-        jsDays.set( m_dayArr[ indx ].getDayName(), jsActions );
+        jsDays.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) indx ), jsActions );
     }
 
     jsRoot.set( "scheduleMatrix", jsDays );

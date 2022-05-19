@@ -138,8 +138,9 @@ class HNISDay
 
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
-        void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
-
+        //void addPeriodZoneOn( std::string periodID, std::string zoneID, uint durationSec );
+        HNIS_RESULT_T addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec );
+        
         std::string getDayName();
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
@@ -149,19 +150,56 @@ class HNISDay
         void debugPrint();
 };
 
-class HNIrrigationSchedule
+class HNISchedule
 {
     private:
-
         std::string m_timezone;
         uint32_t    m_schCRC32;
 
         HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
+ 
+        void calculateSMCRC32();
+        
+    public:
+        HNISchedule();
+       ~HNISchedule();
+      
+        void clear();
+
+        void setTimezoneStr( std::string tzs );
+        std::string getTimezoneStr();
+
+        uint getSMCRC32();
+
+        HNIS_RESULT_T addPeriodZoneOn( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint startSec, uint durationSec );
+        
+        HNIS_RESULT_T finalize();
+        
+        std::string getDayName( HNIS_DAY_INDX_T dayIndex );       
+        void getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
+        
+        //HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
+
+        //std::string getSwitchDaemonJSON();
+        
+        void debugPrint();
+};
+
+class HNIrrigationSchedule
+{
+    private:
+
+//      std::string m_timezone;
+//      uint32_t    m_schCRC32;
+
+//        HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
+        HNISchedule m_schedule;
 
         HNIrrigationCriteriaSet *m_criteria;
         HNIrrigationZoneSet     *m_zones;
 
-        void calculateSMCRC32();
+//        void calculateSMCRC32();
+
 
     public:
         HNIrrigationSchedule();
@@ -176,11 +214,13 @@ class HNIrrigationSchedule
 
         void clear();
 
-        HNIS_RESULT_T initConfigSections( HNodeConfig &cfg );
-        HNIS_RESULT_T readConfigSections( HNodeConfig &cfg );
-        HNIS_RESULT_T updateConfigSections( HNodeConfig &cfg );
+        //HNIS_RESULT_T initConfigSections( HNodeConfig &cfg );
+        //HNIS_RESULT_T readConfigSections( HNodeConfig &cfg );
+        //HNIS_RESULT_T updateConfigSections( HNodeConfig &cfg );
 
         HNIS_RESULT_T buildSchedule();
+        //HNIS_RESULT_T buildTimeSource();
+        //HNIS_RESULT_T buildSlotQueue();
 
         HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
 

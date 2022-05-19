@@ -896,7 +896,7 @@ HNIrrigationDevice::initConfig()
 
     m_criteria.initCriteriaListSection( cfg );
 
-    m_schedule.initConfigSections( cfg );
+    //m_schedule.initConfigSections( cfg );
 
     cfg.debugPrint(2);
     
@@ -936,8 +936,8 @@ HNIrrigationDevice::readConfig()
     std::cout << "cl3" << std::endl;
     m_criteria.readCriteriaListSection( cfg );
 
-    std::cout << "cl4" << std::endl;
-    m_schedule.readConfigSections( cfg );
+    //std::cout << "cl4" << std::endl;
+    //m_schedule.readConfigSections( cfg );
 
     std::cout << "Config loaded" << std::endl;
 
@@ -956,7 +956,7 @@ HNIrrigationDevice::updateConfig()
 
     m_criteria.updateCriteriaListSection( cfg );
 
-    m_schedule.updateConfigSections( cfg );
+    //m_schedule.updateConfigSections( cfg );
 
     cfg.debugPrint(2);
     

@@ -114,6 +114,8 @@ class HNIrrigationZoneSet
         void getActiveZones( std::vector< HNIrrigationZone > &zoneList );
         void getDisabledZones( std::vector< HNIrrigationZone > &zoneList );
         void getInhibitedZones( std::vector< HNIrrigationZone > &zoneList );
+        
+        uint getMaxCycleTimeForZoneSet( std::set< std::string > &zoneIDSet );
 };
 
 #endif // __HN_IRRIGATION_ZONE_H__
