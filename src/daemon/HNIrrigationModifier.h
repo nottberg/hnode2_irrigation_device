@@ -28,8 +28,8 @@ class HNIrrigationModifier
         std::string  m_desc;
 
         HNIM_TYPE_T  m_type;
-
-        std::string  m_zone;
+        std::string  m_value;
+        std::string  m_zoneid;
 
     public:
         HNIrrigationModifier();
@@ -39,7 +39,10 @@ class HNIrrigationModifier
         void setName( std::string value );
         void setDesc( std::string value );
 
-        void setType( HNIM_TYPE_T type ); 
+        void setType( HNIM_TYPE_T type );
+        HNIS_RESULT_T setTypeFromStr( std::string typeStr );
+        
+        void setValue( std::string value );         
         void setZoneID( std::string zone );
 
         std::string getID();
@@ -47,7 +50,12 @@ class HNIrrigationModifier
         std::string getDesc();
 
         HNIM_TYPE_T getType();
+        std::string getTypeAsStr();
+        
+        std::string getValue();        
         std::string getZoneID();
+        
+        HNIS_RESULT_T validateSettings();
 };
 
 class HNIrrigationModifierSet

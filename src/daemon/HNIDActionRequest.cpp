@@ -37,6 +37,12 @@ HNIDActionRequest::setPlacementID( std::string value )
 }
 
 void 
+HNIDActionRequest::setModifierID( std::string value )
+{
+    m_modifierID = value;
+}
+
+void 
 HNIDActionRequest::setScheduleStateRequestType( HNID_SSR_T value )
 {
     m_schReqType = value;
@@ -82,6 +88,12 @@ std::string
 HNIDActionRequest::getPlacementID()
 {
     return m_placementID;
+}
+
+std::string 
+HNIDActionRequest::getModifierID()
+{
+    return m_modifierID;
 }
 
 HNID_SSR_T 
@@ -368,6 +380,73 @@ HNIDActionRequest::applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement )
 }
 
 bool
+HNIDActionRequest::decodeModifierUpdate( std::istream& bodyStream )
+{
+    std::string rstStr;
+    HNIrrigationModifier modifier;
+
+    // Clear the update mask
+    m_modifierUpdateMask = HNID_MU_FLDMASK_CLEAR;
+
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        //HNIrrigationModifier *event = m_schedule.updateModifier( modifierID );
+
+        if( jsRoot->has( "name" ) )
+        {
+            modifier.setName( jsRoot->getValue<std::string>( "name" ) );
+            m_modifierUpdateMask |= HNID_MU_FLDMASK_NAME;
+        }
+
+        if( jsRoot->has( "description" ) )
+        {
+            modifier.setDesc( jsRoot->getValue<std::string>( "description" ) );
+            m_modifierUpdateMask |= HNID_MU_FLDMASK_DESC;
+        }
+   
+        if( modifier.validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateModifier validate failed" << std::endl;
+            // zoneid parameter is required
+            //return HNID_RESULT_BAD_REQUEST;
+            return true;
+        }        
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "updateModifier exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        //return HNID_RESULT_BAD_REQUEST;
+        return true;
+    }
+
+    // Add the zone info to the list
+    m_modifiersList.push_back( modifier );
+
+    return false;
+}
+
+void 
+HNIDActionRequest::applyModifierUpdate( HNIrrigationModifier *tgtModifier )
+{
+    HNIrrigationModifier *srcModifier = &m_modifiersList[0];
+
+    if( m_modifierUpdateMask & HNID_MU_FLDMASK_NAME )
+        tgtModifier->setName( srcModifier->getName() );
+
+    if( m_modifierUpdateMask & HNID_MU_FLDMASK_DESC )
+        tgtModifier->setDesc( srcModifier->getDesc() );
+}
+
+bool
 HNIDActionRequest::decodeSchedulerState( std::istream& bodyStream )
 {
     // Parse the json body of the request
@@ -492,6 +571,8 @@ HNIDActionRequest::hasRspContent( std::string &contentType )
         case HNID_AR_TYPE_PLACELIST:
         case HNID_AR_TYPE_PLACEINFO:
         case HNID_AR_TYPE_IRRSTATUS:
+        case HNID_AR_TYPE_MODIFIERSLIST:
+        case HNID_AR_TYPE_MODIFIERINFO:        
             contentType = "application/json";
             return true;
 
@@ -515,6 +596,10 @@ HNIDActionRequest::hasNewObject( std::string &newID )
 
         case HNID_AR_TYPE_PLACECREATE:
             newID = getPlacementID();
+            return true;
+
+        case HNID_AR_TYPE_MODIFIERCREATE:
+            newID = getModifierID();
             return true;
 
         default:
@@ -715,6 +800,43 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
+
+        case HNID_AR_TYPE_MODIFIERSLIST:
+        {
+            // Create a json root object
+            pjs::Array jsRoot;
+
+            for( std::vector< HNIrrigationModifier >::iterator mit = refModifiersList().begin(); mit != refModifiersList().end(); mit++ )
+            { 
+                pjs::Object mObj;
+
+                mObj.set( "modifierid", mit->getID() );
+                mObj.set( "name", mit->getName() );
+                mObj.set( "description", mit->getDesc() );
+                
+                // Add new placement object to return list
+                jsRoot.add( mObj );
+            }
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_MODIFIERINFO:
+        {
+            // Create a json root object
+            pjs::Object      jsRoot;
+
+            std::vector< HNIrrigationModifier >::iterator modifier = refModifiersList().begin();
+
+            jsRoot.set( "modifierid", modifier->getID() );
+            jsRoot.set( "name", modifier->getName() );
+            jsRoot.set( "description", modifier->getDesc() );
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
         case HNID_AR_TYPE_SCHINFO:
         case HNID_AR_TYPE_IRRSTATUS:
             Poco::StreamCopier::copyStream( refRspStream(), ostr );
@@ -735,6 +857,12 @@ std::vector< HNIrrigationPlacement >&
 HNIDActionRequest::refPlacementsList()
 {
     return m_placementsList;
+}
+
+std::vector< HNIrrigationModifier >&
+HNIDActionRequest::refModifiersList()
+{
+    return m_modifiersList;
 }
 
 std::vector< HNSWDSwitchInfo >&

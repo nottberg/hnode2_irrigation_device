@@ -31,6 +31,24 @@ HNIrrigationModifier::setDesc( std::string value )
     m_desc = value;
 }
 
+void 
+HNIrrigationModifier::setType( HNIM_TYPE_T type )
+{
+    m_type = type;
+}
+
+void 
+HNIrrigationModifier::setValue( std::string value )
+{
+    m_value = value;
+}
+
+void 
+HNIrrigationModifier::setZoneID( std::string zoneid )
+{
+    m_zoneid = zoneid;
+}
+
 std::string 
 HNIrrigationModifier::getID()
 {
@@ -47,6 +65,66 @@ std::string
 HNIrrigationModifier::getDesc()
 {
     return m_desc;
+}
+
+HNIM_TYPE_T 
+HNIrrigationModifier::getType()
+{
+    return m_type;
+}
+
+std::string 
+HNIrrigationModifier::getValue()
+{
+    return m_value;
+}
+
+std::string 
+HNIrrigationModifier::getZoneID()
+{
+    return m_zoneid;
+}
+
+HNIS_RESULT_T 
+HNIrrigationModifier::setTypeFromStr( std::string typeStr )
+{
+    m_type = HNIM_TYPE_NOTSET;
+    
+    if( typeStr == "local.duration" )
+        m_type = HNIM_TYPE_LOCAL_DURATION;
+    else if( typeStr == "local.percent" )
+        m_type = HNIM_TYPE_LOCAL_PERCENT;
+    else
+        return HNIS_RESULT_FAILURE;
+    
+    return HNIS_RESULT_SUCCESS;
+}
+
+std::string 
+HNIrrigationModifier::getTypeAsStr()
+{
+    switch( m_type )
+    {
+        case HNIM_TYPE_LOCAL_DURATION:
+            return "local.duration";
+        break;
+        
+        case HNIM_TYPE_LOCAL_PERCENT:
+            return "local.percent";
+        break;
+        
+        default:
+        break;
+    }
+    
+    return "notset";
+}
+
+HNIS_RESULT_T 
+HNIrrigationModifier::validateSettings()
+{
+    // Add validation checking here
+    return HNIS_RESULT_SUCCESS;
 }
 
 

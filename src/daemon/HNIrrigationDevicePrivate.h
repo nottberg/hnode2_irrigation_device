@@ -66,9 +66,10 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         HNodeDevice m_hnodeDev;
 
+        HNIrrigationZoneSet      m_zones;
         HNIrrigationPlacementSet m_placements;
-        HNIrrigationZoneSet     m_zones;
-        HNIrrigationSchedule    m_schedule;
+        HNIrrigationModifierSet  m_modifiers;
+        HNIrrigationSchedule     m_schedule;
 
         bool m_sendSchedule;
 
@@ -84,6 +85,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         bool getUniqueZoneID( HNIDActionRequest *action );
         bool getUniquePlacementID( HNIDActionRequest *action );
+        bool getUniqueModifierID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 

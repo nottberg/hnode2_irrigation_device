@@ -10,6 +10,9 @@
 
 #include <hnode2/HNReqWaitQueue.h>
 
+#include "HNIrrigationZone.h"
+#include "HNIrrigationPlacement.h"
+#include "HNIrrigationModifier.h"
 #include "HNIrrigationSchedule.h"
 #include "HNSWDPacketClient.h"
 
@@ -31,7 +34,12 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_PLACEUPDATE    = 13,
     HNID_AR_TYPE_PLACEDELETE    = 14,
     HNID_AR_TYPE_IRRSTATUS      = 15,
-    HNID_AR_TYPE_ZONECTL        = 16
+    HNID_AR_TYPE_ZONECTL        = 16,
+    HNID_AR_TYPE_MODIFIERSLIST  = 17,
+    HNID_AR_TYPE_MODIFIERINFO   = 18,
+    HNID_AR_TYPE_MODIFIERCREATE = 19,
+    HNID_AR_TYPE_MODIFIERUPDATE = 20,
+    HNID_AR_TYPE_MODIFIERDELETE = 21
 }HNID_AR_TYPE_T;
 
 // Change scheduling state. Enable/Disable/Inhibit
@@ -78,6 +86,16 @@ typedef enum HNIDActionPlacementUpdateMaskEnum
     HNID_PU_FLDMASK_ZONELIST = 0x00000080
 }HNID_PU_FLDMASK_T;
 
+typedef enum HNIDActionModifierUpdateMaskEnum
+{
+    HNID_MU_FLDMASK_CLEAR    = 0x00000000,
+    HNID_MU_FLDMASK_NAME     = 0x00000001,
+    HNID_MU_FLDMASK_DESC     = 0x00000002,
+    HNID_MU_FLDMASK_TYPE     = 0x00000004,
+    HNID_MU_FLDMASK_VALUE    = 0x00000008,
+    HNID_MU_FLDMASK_ZONEID   = 0x00000010
+}HNID_MU_FLDMASK_T;
+
 typedef enum HNIDActionRequestResult
 {
     HNID_AR_RESULT_SUCCESS,
@@ -90,15 +108,17 @@ class HNIDActionRequest : public HNReqWaitAction
         HNID_AR_TYPE_T  m_type;
 
         std::string m_zoneID;
-
         std::string m_placementID;
+        std::string m_modifierID;
 
         std::vector< HNIrrigationZone > m_zoneList;
         std::vector< HNIrrigationPlacement > m_placementsList;
+        std::vector< HNIrrigationModifier > m_modifiersList;        
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
         uint m_placementUpdateMask;
+        uint m_modifierUpdateMask;       
 
         std::stringstream m_rspStream;
 
@@ -117,9 +137,11 @@ class HNIDActionRequest : public HNReqWaitAction
         void setType( HNID_AR_TYPE_T type );
         void setZoneID( std::string value );
         void setPlacementID( std::string value );
+        void setModifierID( std::string value );
 
         bool decodeZoneUpdate( std::istream& bodyStream );
         bool decodePlacementUpdate( std::istream& bodyStream );
+        bool decodeModifierUpdate( std::istream& bodyStream );       
         bool decodeSchedulerState( std::istream& bodyStream );
         bool decodeZoneCtrl( std::istream& bodyStream );
 
@@ -133,6 +155,7 @@ class HNIDActionRequest : public HNReqWaitAction
         HNID_AR_TYPE_T getType();
         std::string getZoneID();
         std::string getPlacementID();
+        std::string getModifierID();        
 
         HNID_SSR_T getScheduleStateRequestType();
         HNID_ZCR_T getZoneControlRequestType();
@@ -143,9 +166,11 @@ class HNIDActionRequest : public HNReqWaitAction
 
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
         void applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement );
+        void applyModifierUpdate( HNIrrigationModifier *tgtModifier );
 
         std::vector< HNIrrigationZone > &refZoneList();
         std::vector< HNIrrigationPlacement > &refPlacementsList();
+        std::vector< HNIrrigationModifier > &refModifiersList();       
         std::vector< HNSWDSwitchInfo > &refSwitchList();
 
         std::stringstream &refRspStream();

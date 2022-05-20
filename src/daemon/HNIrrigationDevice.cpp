@@ -355,6 +355,108 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
+      "/hnode2/irrigation/modifier": {
+        "get": {
+          "summary": "Get list of zone modifiers.",
+          "operationId": "getModifiersList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new zone modifier.",
+          "operationId": "createModifier",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/modifier/{modifierid}": {
+        "get": {
+          "summary": "Get information about a specific zone modifier.",
+          "operationId": "getModifier",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "put": {
+          "summary": "Update an existing modifier.",
+          "operationId": "updateModifier",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing modifier.",
+          "operationId": "deleteModifier",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
       "/hnode2/irrigation/zonectl": {
         "put": {
           "summary": "Send manual control request for one or more zones.",
@@ -1002,11 +1104,34 @@ HNIrrigationDevice::getUniquePlacementID( HNIDActionRequest *action )
 
     do
     {
-        sprintf( tmpID, "e%d", idNum );
+        sprintf( tmpID, "p%d", idNum );
 
         if( m_placements.hasID( tmpID ) == false )
         {
             action->setPlacementID( tmpID );
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
+bool
+HNIrrigationDevice::getUniqueModifierID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    do
+    {
+        sprintf( tmpID, "m%d", idNum );
+
+        if( m_modifiers.hasID( tmpID ) == false )
+        {
+            action->setModifierID( tmpID );
             return true;
         }
 
@@ -1240,6 +1365,82 @@ HNIrrigationDevice::startAction()
         }
         break;
 
+        case HNID_AR_TYPE_MODIFIERSLIST:
+            // Populate the event list in the action
+            m_modifiers.getModifiersList( m_curAction->refModifiersList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_MODIFIERINFO:
+        {
+            HNIrrigationModifier event;
+
+            if( m_modifiers.getModifier( m_curAction->getModifierID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refModifiersList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_MODIFIERCREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueModifierID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNIrrigationModifier *event = m_modifiers.updateModifier( m_curAction->getModifierID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyModifierUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_MODIFIERUPDATE:
+        {
+            if( m_modifiers.hasID( m_curAction->getModifierID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNIrrigationModifier *event = m_modifiers.updateModifier( m_curAction->getModifierID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyModifierUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_MODIFIERDELETE:
+        {
+            // Remove the zone record
+            m_modifiers.deleteModifier( m_curAction->getModifierID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+        
         // Get detailed health information
         //HNSWD_PTYPE_HEALTH_REQ,
         //HNSWD_PTYPE_HEALTH_RSP,
@@ -1634,6 +1835,66 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 
         action.setType( HNID_AR_TYPE_PLACEDELETE );
         action.setPlacementID( placementID );
+    }
+    else if( "getModifiersList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_MODIFIERSLIST );
+    }
+    else if( "createModifier" == opID )
+    {
+        action.setType( HNID_AR_TYPE_MODIFIERCREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeModifierUpdate( bodyStream );
+    }
+    else if( "getModifier" == opID )
+    {
+        std::string modifierID;
+
+        if( opData->getParam( "modifierid", modifierID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_MODIFIERINFO );
+        action.setModifierID( modifierID );
+    }
+    else if( "updateModifier" == opID )
+    {
+        std::string modifierID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "modifierid", modifierID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_MODIFIERUPDATE );
+        action.setModifierID( modifierID );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeModifierUpdate( bodyStream );
+    }
+    else if( "deleteModifier" == opID )
+    {
+        std::string modifierID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "modifierid", modifierID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_MODIFIERDELETE );
+        action.setModifierID( modifierID );
     }
     else if( "getScheduleInfo" == opID )
     {
