@@ -568,6 +568,15 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
             {                        
                 printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
 
+                // If the period immediately proceeding this slot is for this same zone,
+                // then skip this slot so that the zone is not on continuously for more than
+                // zones max cycle time.
+                if( tgtSched.proceedingZonePeriod( m_dayIndx, zit->getZoneID(), it->getStartSec() ) == true )
+                {
+                    printf( "Slot is immediatly proceeded by same zone -- skipping\n" );
+                    continue;
+                } 
+
                 // Check if timeslot is big enough for max placement.
                 if( secNeeded <= it->getDuration() )
                 {
@@ -810,6 +819,15 @@ HNISPeriod::setDayIndex( HNIS_DAY_INDX_T dindx )
 }
 
 bool 
+HNISPeriod::containsTimeSeconds( uint probeSeconds )
+{
+    if( (m_startTime.getSeconds() <= probeSeconds) && (m_endTime.getSeconds() >= probeSeconds) )
+        return true;
+        
+    return false;
+}
+        
+bool 
 HNISPeriod::hasZone( std::string zoneID )
 {
     // No zones is interpreted as all zones.
@@ -949,7 +967,8 @@ HNISDay::addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec )
     period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
-    period.setEndTimeSeconds( (startSec + durationSec) );
+    uint endTime = startSec + durationSec - (durationSec ? 1 : 0);
+    period.setEndTimeSeconds( endTime );
 
     period.clearZones();
     period.addZone( zoneID );
@@ -967,6 +986,31 @@ HNISDay::addPeriod( HNISPeriod value )
     m_periodList.push_back( value );
     
     return HNIS_RESULT_SUCCESS;
+}
+
+bool 
+HNISDay::proceedingZonePeriod( std::string zoneID, uint startSec )
+{
+    uint probeSec;
+    
+    // If we are at the beggining already then nothing will 
+    // proceed this one.
+    if( startSec == 0 )
+        return false;
+    
+    // Move to just before the current start second.    
+    probeSec = startSec - 1;
+    
+    // Scan the existing periods and see if one encludes the probeSec,
+    // if so then check if its zoneID is a match.
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        if( it->containsTimeSeconds( probeSec ) && it->hasZone( zoneID ) )
+            return true;
+    }
+
+    // No match found  
+    return false;
 }
 
 void 
@@ -1052,6 +1096,12 @@ HNIS_RESULT_T
 HNISchedule::finalize()
 {
     return HNIS_RESULT_SUCCESS;
+}
+  
+bool 
+HNISchedule::proceedingZonePeriod( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint startSec )
+{
+    return m_dayArr[ dayIndex ].proceedingZonePeriod( zoneID, startSec );
 }
         
 std::string 

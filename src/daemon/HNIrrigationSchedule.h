@@ -66,7 +66,9 @@ class HNISPeriod
         uint getEndTimeSeconds();
         std::string getEndTimeStr();
 
+        bool containsTimeSeconds( uint seconds );
         bool hasZone( std::string zoneID );
+        
         void clearZones();
         void addZone( std::string name );
 
@@ -94,6 +96,8 @@ class HNISDay
         HNIS_RESULT_T addPeriod( HNISPeriod value );
 
         HNIS_RESULT_T addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec );
+
+        bool proceedingZonePeriod( std::string zoneID, uint startSec );
         
         std::string getDayName();
 
@@ -124,9 +128,11 @@ class HNISchedule
         uint getSMCRC32();
 
         HNIS_RESULT_T addPeriodZoneOn( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint startSec, uint durationSec );
+
+        bool proceedingZonePeriod( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint startSec );
         
         HNIS_RESULT_T finalize();
-        
+       
         std::string getDayName( HNIS_DAY_INDX_T dayIndex );       
         void getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
         
