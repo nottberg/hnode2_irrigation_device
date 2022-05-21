@@ -265,6 +265,8 @@ HNIrrigationModifierSet::getModifiersForZone( std::string zoneID, std::vector< H
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
+    modifiersList.clear();
+    
     for( std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.begin(); it != m_modifiersMap.end(); it++ )
     {
         if( it->second.getZoneID() == zoneID )
