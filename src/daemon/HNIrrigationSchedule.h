@@ -14,6 +14,7 @@
 #include "HNIrrigationTypes.h"
 #include "HNIrrigationPlacement.h"
 #include "HNIrrigationZone.h"
+#include "HNIrrigationModifier.h"
 
 typedef enum HNISPeriodTypeEnum
 {
@@ -139,24 +140,17 @@ class HNISchedule
 class HNIrrigationSchedule
 {
     private:
-
-//      std::string m_timezone;
-//      uint32_t    m_schCRC32;
-
-//        HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
         HNISchedule m_schedule;
 
         HNIrrigationPlacementSet *m_placements;
-        HNIrrigationZoneSet     *m_zones;
-
-//        void calculateSMCRC32();
-
+        HNIrrigationZoneSet      *m_zones;
+        HNIrrigationModifierSet  *m_modifiers;
 
     public:
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
 
-        void init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones );
+        void init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers );
 
         std::string getTimezoneStr();
 
@@ -165,13 +159,7 @@ class HNIrrigationSchedule
 
         void clear();
 
-        //HNIS_RESULT_T initConfigSections( HNodeConfig &cfg );
-        //HNIS_RESULT_T readConfigSections( HNodeConfig &cfg );
-        //HNIS_RESULT_T updateConfigSections( HNodeConfig &cfg );
-
         HNIS_RESULT_T buildSchedule();
-        //HNIS_RESULT_T buildTimeSource();
-        //HNIS_RESULT_T buildSlotQueue();
 
         HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
 

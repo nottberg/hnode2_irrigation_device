@@ -8,8 +8,9 @@ class HNIrrigationTest
 {
     public:
         HNIrrigationPlacementSet m_placements;
-        HNIrrigationZoneSet     m_zones;
-        HNIrrigationSchedule    m_schedule;
+        HNIrrigationZoneSet      m_zones;
+        HNIrrigationModifierSet  m_modifiers;
+        HNIrrigationSchedule     m_schedule;
 
         void init();
         
@@ -19,7 +20,7 @@ class HNIrrigationTest
 void
 HNIrrigationTest::init()
 {
-    m_schedule.init( &m_placements, &m_zones );
+    m_schedule.init( &m_placements, &m_zones, &m_modifiers );
 }
 
 void
@@ -127,6 +128,36 @@ HNIrrigationTest::test1()
     place->addZone( "z1" );
     place->addZone( "z2" );
     place->addZone( "z3" );
+
+    // Create a modifier record
+    HNIrrigationModifier *mod = m_modifiers.updateModifier( "m1" );
+
+    // Fill in modifier record fields.
+    mod->setName( "Modifier1" );
+    mod->setDesc( "" );
+    mod->setTypeFromStr( "local.duration" );
+    mod->setValue( "1500" );
+    mod->setZoneID( "z1" );
+
+    // Create a modifier record
+    mod = m_modifiers.updateModifier( "m2" );
+
+    // Fill in modifier record fields.
+    mod->setName( "Modifier2" );
+    mod->setDesc( "" );
+    mod->setTypeFromStr( "local.duration" );
+    mod->setValue( "-500" );
+    mod->setZoneID( "z2" );
+
+    // Create a modifier record
+    mod = m_modifiers.updateModifier( "m3" );
+
+    // Fill in modifier record fields.
+    mod->setName( "Modifier3" );
+    mod->setDesc( "" );
+    mod->setTypeFromStr( "local.percent" );
+    mod->setValue( "-50" );
+    mod->setZoneID( "z3" );
 
     // Calculate the new schedule
     HNIS_RESULT_T result = m_schedule.buildSchedule();

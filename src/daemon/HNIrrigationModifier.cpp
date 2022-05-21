@@ -127,6 +127,35 @@ HNIrrigationModifier::validateSettings()
     return HNIS_RESULT_SUCCESS;
 }
 
+double
+HNIrrigationModifier::calculateDelta( uint baseDuration )
+{
+    double delta = 0;
+            
+    switch( getType() )
+    {
+        case HNIM_TYPE_LOCAL_DURATION:
+        {
+            double value = strtod( m_value.c_str(), NULL );
+            delta = value;
+        }
+        break;
+    
+        case HNIM_TYPE_LOCAL_PERCENT:
+        {
+            double value = strtod( m_value.c_str(), NULL );
+            
+            value /= 100.0;
+            delta = ((double)baseDuration) * value;       
+        }
+        break;
+        
+        default:
+        break;
+    }
+    
+    return delta;
+}
 
 HNIrrigationModifierSet::HNIrrigationModifierSet()
 {
@@ -230,6 +259,19 @@ HNIrrigationModifierSet::getModifier( std::string id, HNIrrigationModifier &even
     return HNIS_RESULT_SUCCESS;
 }
 
+void 
+HNIrrigationModifierSet::getModifiersForZone( std::string zoneID, std::vector< HNIrrigationModifier > &modifiersList )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    for( std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.begin(); it != m_modifiersMap.end(); it++ )
+    {
+        if( it->second.getZoneID() == zoneID )
+            modifiersList.push_back( it->second );
+    }
+}
+
 HNIS_RESULT_T 
 HNIrrigationModifierSet::initModifiersListSection( HNodeConfig &cfg )
 {
@@ -328,4 +370,5 @@ HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
 
     return HNIS_RESULT_SUCCESS;
 }
+
 

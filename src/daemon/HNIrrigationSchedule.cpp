@@ -255,13 +255,12 @@ class HNISZoneTracker
       void setDuration( uint durSec );
       uint getDuration();
       
-      void setParent( HNIrrigationZone *zonePtr );
-      HNIrrigationZone* getParent();
+      void setZoneID( std::string zoneID );
+      std::string getZoneID();
       
     private:
       uint        m_duration;
-      
-      HNIrrigationZone* m_srcPtr;
+      std::string m_zoneID;
 };
 
 HNISZoneTracker::HNISZoneTracker()
@@ -287,15 +286,15 @@ HNISZoneTracker::getDuration()
 }
       
 void 
-HNISZoneTracker::setParent( HNIrrigationZone *zonePtr )
+HNISZoneTracker::setZoneID( std::string zoneID )
 {
-    m_srcPtr = zonePtr;
+    m_zoneID = zoneID;
 }
 
-HNIrrigationZone* 
-HNISZoneTracker::getParent()
+std::string
+HNISZoneTracker::getZoneID()
 {
-    return m_srcPtr;
+    return m_zoneID;
 }
 
 class HNISPlacerDay
@@ -309,10 +308,10 @@ class HNISPlacerDay
       
       HNISPlacementTracker* findAvail( uint rank, uint rrIndx );
     
-      HNIS_RESULT_T mapPlacementSpecs( std::vector< HNIrrigationPlacement > &placementList );
+      HNIS_RESULT_T mapPlacementSpecs( HNIrrigationPlacementSet *placements );
       HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIrrigationZoneSet *zones );
       HNIS_RESULT_T generateTimeSlots();
-      HNIS_RESULT_T placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISchedule &tgtSched );
+      HNIS_RESULT_T placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrigationZoneSet *zones, HNISchedule &tgtSched );
       
     private:
       HNIS_DAY_INDX_T m_dayIndx;
@@ -362,10 +361,13 @@ HNISPlacerDay::findAvail( uint rank, uint rrIndx )
 }
 
 HNIS_RESULT_T
-HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationPlacement > &placementList )
+HNISPlacerDay::mapPlacementSpecs( HNIrrigationPlacementSet *placements )
 {
     uint rank = 0;
     uint maxRank = 0;
+
+    std::vector< HNIrrigationPlacement > placementsList;
+    placements->getPlacementsList( placementsList );
 
     while(rank < 100)
     {
@@ -373,7 +375,7 @@ HNISPlacerDay::mapPlacementSpecs( std::vector< HNIrrigationPlacement > &placemen
         uint roundRobinIndex = 0;
         
         // Accumulate the available time blocks from placements with current rank.
-        for( std::vector< HNIrrigationPlacement >::iterator pit = placementList.begin(); pit != placementList.end(); pit++ )
+        for( std::vector< HNIrrigationPlacement >::iterator pit = placementsList.begin(); pit != placementsList.end(); pit++ )
         {
             if( ( pit->isForDay(m_dayIndx) == true ) && ( pit->getRank() == rank ) )
             {
@@ -530,7 +532,7 @@ HNISPlacerDay::generateTimeSlots()
 }
    
 HNIS_RESULT_T
-HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISchedule &tgtSched )
+HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
 {
     bool progress = false;
 
@@ -539,16 +541,20 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISche
     // Try to allocate a slot for each zone.
     for( std::vector<HNISZoneTracker>::iterator zit = zoneTrackers.begin(); zit != zoneTrackers.end(); zit++ )
     {
-        printf( "check zone %s\n", zit->getParent()->getID().c_str());
+        printf( "check zone %s\n", zit->getZoneID().c_str());
                 
         // Skip zones that have been fully placed.
         if( zit->getDuration() == 0 )
             continue;
-                    
-        uint maxCycle = zit->getParent()->getMaximumCycleTimeSeconds();
-        uint minCycle = zit->getParent()->getMinimumCycleTimeSeconds();
+        
+        HNIrrigationZone zone;       
+        if( zones->getZone( zit->getZoneID(), zone ) != HNIS_RESULT_SUCCESS )
+            continue;
+              
+        uint maxCycle = zone.getMaximumCycleTimeSeconds();
+        uint minCycle = zone.getMinimumCycleTimeSeconds();
         uint secNeeded = (zit->getDuration() > maxCycle) ? maxCycle : zit->getDuration();
-        std::string zid = zit->getParent()->getID();
+        std::string zid = zit->getZoneID();
                     
         // Attempt to find next slot for this zone
         for( std::list<HNISTimeSlot>::iterator it = m_slotList.begin(); it != m_slotList.end(); it++)
@@ -567,7 +573,7 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISche
                 {
                     // This will consume all of the time slot exactly.
                     // Add the new slot to the schedule.
-                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getParent()->getID(), it->getStartSec(), secNeeded );
+                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getZoneID(), it->getStartSec(), secNeeded );
                             
                     // Account for allocated time
                     zit->setDuration( zit->getDuration() - secNeeded );
@@ -578,7 +584,7 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNISche
                 {
                     // This will consume all of the time slot exactly.
                     // Add the new slot to the schedule.
-                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getParent()->getID(), it->getStartSec(), it->getDuration() );
+                    tgtSched.addPeriodZoneOn( m_dayIndx, zit->getZoneID(), it->getStartSec(), it->getDuration() );
                             
                     // Account for allocated time
                     zit->setDuration( zit->getDuration() - it->getDuration() );
@@ -613,13 +619,13 @@ class HNISPlacer
       HNISPlacer();
      ~HNISPlacer();    
     
-      HNIS_RESULT_T mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationPlacement > &placementList );
+      HNIS_RESULT_T mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, HNIrrigationPlacementSet *placements  );
       HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIS_DAY_INDX_T dayIndex, HNIrrigationZoneSet *zones );
       HNIS_RESULT_T generateTimeSlots( HNIS_DAY_INDX_T dayIndex );
 
-      HNIS_RESULT_T initZoneTracking( std::vector< HNIrrigationZone > &zoneList );
+      HNIS_RESULT_T initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers );
       
-      HNIS_RESULT_T placeZones( HNISchedule &tgtSched );
+      HNIS_RESULT_T placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched );
       
     private:
       HNISPlacerDay  m_dayArr[ HNIS_DINDX_NOTSET ];
@@ -643,9 +649,9 @@ HNISPlacer::~HNISPlacer()
 }
 
 HNIS_RESULT_T 
-HNISPlacer::mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex, std::vector< HNIrrigationPlacement > &placementList )
+HNISPlacer::mapPlacementSpecs( HNIS_DAY_INDX_T dayIndex,  HNIrrigationPlacementSet *placements  )
 {
-    return m_dayArr[ dayIndex ].mapPlacementSpecs( placementList );
+    return m_dayArr[ dayIndex ].mapPlacementSpecs( placements );
 }
 
 HNIS_RESULT_T
@@ -661,16 +667,39 @@ HNISPlacer::generateTimeSlots( HNIS_DAY_INDX_T dayIndex )
 }
 
 HNIS_RESULT_T
-HNISPlacer::initZoneTracking( std::vector< HNIrrigationZone > &zoneList )
+HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers )
 {
     // Create a tracker for each zone
+    std::vector< HNIrrigationZone > zoneList;
+    zones->getZoneList( zoneList );
     for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
     {
         HNISZoneTracker ztrack;
-        uint duration = zit->getWeeklySeconds();
+        uint baseDur = zit->getWeeklySeconds();
+        double duration = baseDur;
         
-        ztrack.setDuration( duration );
-        ztrack.setParent( &(*zit) );
+        printf( "%s - Base Duration: %d\n", zit->getID().c_str(), baseDur );
+        
+        std::vector< HNIrrigationModifier > modifierList;
+        modifiers->getModifiersForZone( zit->getID(), modifierList );
+        for( std::vector< HNIrrigationModifier >::iterator mit = modifierList.begin(); mit != modifierList.end(); mit++ )
+        {
+            double delta = mit->calculateDelta( baseDur );
+
+            duration += delta;
+                        
+            printf( "%s - Mod: %s  Delta: %f  Duration: %f\n", zit->getID().c_str(), mit->getName().c_str(), delta, duration );
+        }
+    
+        if( duration < 1 )
+            duration = 0;
+        
+        uint finalDur = (uint) duration;
+        
+        printf( "%s - Final Duration: %d\n", zit->getID().c_str(), finalDur );
+        
+        ztrack.setDuration( finalDur );
+        ztrack.setZoneID( zit->getID() );
         
         m_zoneTrackers.push_back(ztrack);
     }  
@@ -680,7 +709,7 @@ HNISPlacer::initZoneTracking( std::vector< HNIrrigationZone > &zoneList )
 
 
 HNIS_RESULT_T
-HNISPlacer::placeZones( HNISchedule &tgtSched )
+HNISPlacer::placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
 {
     HNIS_RESULT_T result;
     
@@ -697,7 +726,7 @@ HNISPlacer::placeZones( HNISchedule &tgtSched )
 
             printf( "dayIndx %d\n", dayIndx );
      
-            result = m_dayArr[(HNIS_DAY_INDX_T)dayIndx].placeZones( m_zoneTrackers, tgtSched );
+            result = m_dayArr[(HNIS_DAY_INDX_T)dayIndx].placeZones( m_zoneTrackers, zones, tgtSched );
             
             if( result == HNIS_RESULT_SCH_CONTINUE )
                 progress = true;
@@ -1093,12 +1122,13 @@ HNIrrigationSchedule::~HNIrrigationSchedule()
 }
 
 void
-HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones )
+HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers )
 {
     std::cout << "HNIrrigationSchedule -- init" << std::endl;
 
     m_placements = placements;
     m_zones = zones;
+    m_modifiers = modifiers;
 }
 
 void 
@@ -1141,13 +1171,10 @@ HNIrrigationSchedule::buildSchedule()
     std::cout << "buildSchedule - start" << std::endl;
 
     // Get placementList for later usage.
-    std::vector< HNIrrigationPlacement > placementsList;
-    m_placements->getPlacementsList( placementsList );
-
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
         // Accumulate the available time blocks from placements with current rank.
-        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, placementsList );
+        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, m_placements );
         
         // Handle any overlapping placement segments
         //FIXME
@@ -1155,14 +1182,10 @@ HNIrrigationSchedule::buildSchedule()
         src.calculateZoneMaxCycleDurations( (HNIS_DAY_INDX_T) dayIndx, m_zones );
         src.generateTimeSlots( (HNIS_DAY_INDX_T) dayIndx );
     }
+   
+    src.initZoneTracking( m_zones, m_modifiers );
 
-    // Create a tracker for each zone
-    std::vector< HNIrrigationZone > zoneList;
-    m_zones->getZoneList( zoneList );
-    
-    src.initZoneTracking( zoneList );
-
-    src.placeZones( m_schedule );
+    src.placeZones( m_zones, m_schedule );
     
     m_schedule.debugPrint();
 

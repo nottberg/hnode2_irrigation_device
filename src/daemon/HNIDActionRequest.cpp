@@ -411,6 +411,24 @@ HNIDActionRequest::decodeModifierUpdate( std::istream& bodyStream )
             modifier.setDesc( jsRoot->getValue<std::string>( "description" ) );
             m_modifierUpdateMask |= HNID_MU_FLDMASK_DESC;
         }
+
+        if( jsRoot->has( "type" ) )
+        {
+            modifier.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_modifierUpdateMask |= HNID_MU_FLDMASK_TYPE;
+        }
+
+        if( jsRoot->has( "value" ) )
+        {
+            modifier.setValue( jsRoot->getValue<std::string>( "value" ) );
+            m_modifierUpdateMask |= HNID_MU_FLDMASK_VALUE;
+        }
+
+        if( jsRoot->has( "zoneid" ) )
+        {
+            modifier.setDesc( jsRoot->getValue<std::string>( "zoneid" ) );
+            m_modifierUpdateMask |= HNID_MU_FLDMASK_ZONEID;
+        }
    
         if( modifier.validateSettings() != HNIS_RESULT_SUCCESS )
         {
@@ -444,6 +462,16 @@ HNIDActionRequest::applyModifierUpdate( HNIrrigationModifier *tgtModifier )
 
     if( m_modifierUpdateMask & HNID_MU_FLDMASK_DESC )
         tgtModifier->setDesc( srcModifier->getDesc() );
+        
+    if( m_modifierUpdateMask & HNID_MU_FLDMASK_TYPE )
+        tgtModifier->setType( srcModifier->getType() );
+        
+    if( m_modifierUpdateMask & HNID_MU_FLDMASK_VALUE )
+        tgtModifier->setValue( srcModifier->getValue() );
+        
+    if( m_modifierUpdateMask & HNID_MU_FLDMASK_ZONEID )
+        tgtModifier->setZoneID( srcModifier->getZoneID() );
+        
 }
 
 bool
@@ -813,7 +841,10 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 mObj.set( "modifierid", mit->getID() );
                 mObj.set( "name", mit->getName() );
                 mObj.set( "description", mit->getDesc() );
-                
+                mObj.set( "type", mit->getTypeAsStr() );
+                mObj.set( "value", mit->getValue() );
+                mObj.set( "zoneid", mit->getZoneID() );
+
                 // Add new placement object to return list
                 jsRoot.add( mObj );
             }
@@ -832,6 +863,9 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "modifierid", modifier->getID() );
             jsRoot.set( "name", modifier->getName() );
             jsRoot.set( "description", modifier->getDesc() );
+            jsRoot.set( "type", modifier->getTypeAsStr() );
+            jsRoot.set( "value", modifier->getValue() );
+            jsRoot.set( "zoneid", modifier->getZoneID() );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }

@@ -559,7 +559,7 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     m_hnodeDev.addEndpoint( hndEP );
 
-    m_schedule.init( &m_placements, &m_zones );
+    m_schedule.init( &m_placements, &m_zones, &m_modifiers );
 
     std::cout << "Looking for config file" << std::endl;
     
