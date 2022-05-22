@@ -1,5 +1,5 @@
-#ifndef __HN_IRRIGATION_CRITERIA_H__
-#define __HN_IRRIGATION_CRITERIA_H__
+#ifndef __HN_IRRIGATION_PLACEMENT_H__
+#define __HN_IRRIGATION_PLACEMENT_H__
 
 #include <stdint.h>
 
@@ -13,7 +13,7 @@
 
 #include "HNIrrigationTypes.h"
 
-typedef enum HNIrrigationCriteriaDayBitsEnum
+typedef enum HNIrrigationPlacementDayBitsEnum
 {
     HNSC_DBITS_DAILY     = 0x00,
     HNSC_DBITS_SUNDAY    = 0x01,
@@ -25,7 +25,7 @@ typedef enum HNIrrigationCriteriaDayBitsEnum
     HNSC_DBITS_SATURDAY  = 0x40
 }HNSC_DBITS_T;
 
-class HNIrrigationCriteria
+class HNIrrigationPlacement
 {
     private:
         std::string  m_id;
@@ -42,8 +42,8 @@ class HNIrrigationCriteria
         std::set< std::string > m_zoneSet;
 
     public:
-        HNIrrigationCriteria();
-       ~HNIrrigationCriteria();
+        HNIrrigationPlacement();
+       ~HNIrrigationPlacement();
 
         void setID( std::string id );
         void setName( std::string value );
@@ -83,32 +83,32 @@ class HNIrrigationCriteria
         HNIS_RESULT_T validateSettings();
 };
 
-class HNIrrigationCriteriaSet
+class HNIrrigationPlacementSet
 {
     private:
         // Protect access to the data members
         std::mutex m_accessMutex;
 
-        std::map< std::string, HNIrrigationCriteria > m_criteriaMap;
+        std::map< std::string, HNIrrigationPlacement > m_placementsMap;
 
-        HNIrrigationCriteria* internalUpdateCriteria( std::string id );
+        HNIrrigationPlacement* internalUpdatePlacement( std::string id );
 
     public:
-        HNIrrigationCriteriaSet();
-       ~HNIrrigationCriteriaSet();
+        HNIrrigationPlacementSet();
+       ~HNIrrigationPlacementSet();
 
         bool hasID( std::string id );
 
-        HNIrrigationCriteria* updateCriteria( std::string id );
-        void deleteCriteria( std::string criteriaID );
-        void getCriteriaList( std::vector< HNIrrigationCriteria > &criteriaList );
-        HNIS_RESULT_T getCriteria( std::string criteriaID, HNIrrigationCriteria &event );
+        HNIrrigationPlacement* updatePlacement( std::string id );
+        void deletePlacement( std::string placementID );
+        void getPlacementsList( std::vector< HNIrrigationPlacement > &placementsList );
+        HNIS_RESULT_T getPlacement( std::string placementID, HNIrrigationPlacement &event );
 
         void clear();
 
-        HNIS_RESULT_T initCriteriaListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T readCriteriaListSection( HNodeConfig &cfg );
-        HNIS_RESULT_T updateCriteriaListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T initPlacementsListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T readPlacementsListSection( HNodeConfig &cfg );
+        HNIS_RESULT_T updatePlacementsListSection( HNodeConfig &cfg );
 };
 
-#endif // __HN_IRRIGATION_CRITERIA_H__
+#endif // __HN_IRRIGATION_PLACEMENT_H__

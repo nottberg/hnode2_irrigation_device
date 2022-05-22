@@ -57,11 +57,17 @@ class HNIrrigationClient: public Application
         bool _updateZoneRequested  = false;
         bool _deleteZoneRequested  = false;
 
-        bool _listCriteriaRequested   = false;
-        bool _createCriteriaRequested = false;
-        bool _infoCriteriaRequested   = false;
-        bool _updateCriteriaRequested = false;
-        bool _deleteCriteriaRequested = false;
+        bool _listPlacementsRequested   = false;
+        bool _createPlacementRequested = false;
+        bool _infoPlacementRequested   = false;
+        bool _updatePlacementRequested = false;
+        bool _deletePlacementRequested = false;
+
+        bool _listModifiersRequested   = false;
+        bool _createModifierRequested = false;
+        bool _infoModifierRequested   = false;
+        bool _updateModifierRequested = false;
+        bool _deleteModifierRequested = false;
 
         bool _switchListRequested = false;
 
@@ -86,7 +92,9 @@ class HNIrrigationClient: public Application
         bool _swidPresent         = false;        
         bool _zoneidPresent       = false;
         bool _dayListPresent      = false;
-        
+
+        bool _modtypeDurationPresent = false;
+        bool _modtypePercentPresent  = false;
 
         std::string _hostStr;
         std::string _nameStr;
@@ -103,6 +111,8 @@ class HNIrrigationClient: public Application
         std::string _swidStr;        
         std::string _zoneidStr;
         std::string _dayListStr;
+        
+        std::string _modtypeValueStr;
         
         uint _spwInt;
         uint _sxcInt;
@@ -166,15 +176,25 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("delete-zone", "", "Delete an existing zone").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("criteria-list", "", "Get a list of defined scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("placements-list", "", "Get a list of defined scheduling placements.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("create-criteria", "", "Create a new scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("create-placement", "", "Create a new scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("criteria-info", "", "Get info for a single scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("placement-info", "", "Get info for a single scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("update-criteria", "", "Update an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("update-placement", "", "Update an existing scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("delete-criteria", "", "Delete an existing scheduling criteria.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("delete-placement", "", "Delete an existing scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("modifiers-list", "", "Get a list of defined zone modifiers.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("create-modifier", "", "Create a new zone modifier.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("modifier-info", "", "Get info for a single zone modifier.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("update-modifier", "", "Update an existing zone modifier.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("delete-modifier", "", "Delete an existing scheduling placement.").required(false).repeatable(false).callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("zonectl", "", "Send a zone control command. Possible commands: .").required(false).repeatable(false).argument("command").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -196,7 +216,7 @@ class HNIrrigationClient: public Application
 
             options.addOption( Option("end-time", "", "Specify an end time").required(false).repeatable(false).argument("<HH:MM:SS>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
-            options.addOption( Option("rank", "", "Specify the rank integer for a criteria.  Criteria with the lowest rank will be utilized first.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+            options.addOption( Option("rank", "", "Specify the rank integer for a placement.  Placement with the lowest rank will be utilized first.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("inhibitDuration", "", "Duration in HH:MM:SS format.").required(false).repeatable(false).argument("00:00:00").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
@@ -209,6 +229,10 @@ class HNIrrigationClient: public Application
             options.addOption( Option("zoneid-list", "", "A list of one or more zone ids.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("z1").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
             options.addOption( Option("day-list", "", "A list of day names.  Multi-entry lists must be space seperated and in quotes.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("modtype-duration", "", "Zone modifier type which increments/decrements zone duration by a fixed number of seconds.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
+
+            options.addOption( Option("modtype-percent", "", "Zone modifier type which increments/decrements zone duration based on a percentage of zone base duration.").required(false).repeatable(false).argument("<value>").callback(OptionCallback<HNIrrigationClient>(this, &HNIrrigationClient::handleOptions)));
 
         }
 	
@@ -235,16 +259,26 @@ class HNIrrigationClient: public Application
                 _updateZoneRequested = true;
             else if( "delete-zone" == name )
                 _deleteZoneRequested = true;
-            else if( "criteria-list" == name )
-                _listCriteriaRequested = true;
-            else if( "create-criteria" == name )
-                _createCriteriaRequested = true;
-            else if( "criteria-info" == name )
-                _infoCriteriaRequested = true;
-            else if( "update-criteria" == name )
-                _updateCriteriaRequested = true;
-            else if( "delete-criteria" == name )
-                _deleteCriteriaRequested = true;
+            else if( "placements-list" == name )
+                _listPlacementsRequested = true;
+            else if( "create-placement" == name )
+                _createPlacementRequested = true;
+            else if( "placement-info" == name )
+                _infoPlacementRequested = true;
+            else if( "update-placement" == name )
+                _updatePlacementRequested = true;
+            else if( "delete-placement" == name )
+                _deletePlacementRequested = true;     
+            else if( "modifiers-list" == name )
+                _listModifiersRequested = true;
+            else if( "create-modifier" == name )
+                _createModifierRequested = true;
+            else if( "modifier-info" == name )
+                _infoModifierRequested = true;
+            else if( "update-modifier" == name )
+                _updateModifierRequested = true;
+            else if( "delete-modifier" == name )
+                _deleteModifierRequested = true;          
             else if( "switch-list" == name )
                 _switchListRequested = true;
             else if( "schedule" == name )
@@ -338,6 +372,16 @@ class HNIrrigationClient: public Application
             {
                 _dayListPresent = true;
                 _dayListStr     = value;
+            }
+            else if( "modtype-duration" == name )
+            {
+                _modtypeDurationPresent = true;
+                _modtypeValueStr        = value;
+            }
+            else if( "modtype-percent" == name )
+            {
+                _modtypePercentPresent = true;
+                _modtypeValueStr       = value;
             }
 
         }
@@ -1076,13 +1120,13 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getCriteriaList()
+        void getPlacementsList()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/criteria" );
+            uri.setPath( "/hnode2/irrigation/placement" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1103,14 +1147,14 @@ class HNIrrigationClient: public Application
         }
 
 
-        void createCriteriaRequest()
+        void createPlacementRequest()
         {
             Poco::URI uri;
 
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
-            uri.setPath( "/hnode2/irrigation/criteria" );
+            uri.setPath( "/hnode2/irrigation/placement" );
 
             pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
             pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
@@ -1198,14 +1242,14 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void getCriteriaInfo()
+        void getPlacementInfo()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1228,7 +1272,7 @@ class HNIrrigationClient: public Application
             std::cout << body << std::endl;
         }
 
-        void updateCriteriaRequest()
+        void updatePlacementRequest()
         {
             Poco::URI uri;
 
@@ -1236,7 +1280,7 @@ class HNIrrigationClient: public Application
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1328,14 +1372,228 @@ class HNIrrigationClient: public Application
             std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
         }
 
-        void deleteCriteriaRequest()
+        void deletePlacementRequest()
         {
             Poco::URI uri;
             uri.setScheme( "http" );
             uri.setHost( m_host );
             uri.setPort( m_port );
 
-            std::string path( "/hnode2/irrigation/criteria/" );
+            std::string path( "/hnode2/irrigation/placement/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_DELETE, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void getModifiersList()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/modifier" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+        void createModifierRequest()
+        {
+            Poco::URI uri;
+
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+            uri.setPath( "/hnode2/irrigation/modifier" );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_POST, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+            pjs::Array  jsZoneList;
+            pjs::Array  jsDayList;
+            
+            // Add request data fields
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _zoneidPresent )
+                jsRoot.set( "zoneid", _zoneidStr );
+            
+            if( _modtypeDurationPresent )
+            {
+                jsRoot.set( "type", "local.duration" );
+                jsRoot.set( "value", _modtypeValueStr );            
+            }
+            
+            if( _modtypePercentPresent )
+            {
+                jsRoot.set( "type", "local.percent" );
+                jsRoot.set( "value", _modtypeValueStr );            
+            }
+            
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+            }
+            catch( ... )
+            {
+                std::cerr << "Unknown exception" << std::endl;
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void getModifierInfo()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/modifier/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_GET, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            session.sendRequest( request );
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+
+            if( response.getStatus() != Poco::Net::HTTPResponse::HTTP_OK )
+            {
+                return;
+            }
+
+            std::string body;
+            Poco::StreamCopier::copyToString( rs, body );
+            std::cout << body << std::endl;
+        }
+
+        void updateModifierRequest()
+        {
+            Poco::URI uri;
+
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/modifier/" );
+            path += _idStr;
+
+            uri.setPath( path );
+
+            pn::HTTPClientSession session( uri.getHost(), uri.getPort() );
+            pn::HTTPRequest request( pn::HTTPRequest::HTTP_PUT, uri.getPathAndQuery(), pn::HTTPMessage::HTTP_1_1 );
+            pn::HTTPResponse response;
+
+            request.setContentType( "application/json" );
+
+            std::ostream& os = session.sendRequest( request );
+
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+            pjs::Array  jsZoneList;
+            pjs::Array  jsDayList;
+            
+            // Add request data fields
+            if( _namePresent )
+                jsRoot.set( "name", _nameStr );
+
+            if( _descPresent )
+                jsRoot.set( "description", _descStr );
+
+            if( _zoneidPresent )
+                jsRoot.set( "zoneid", _zoneidStr );
+
+            if( _modtypeDurationPresent )
+            {
+                jsRoot.set( "type", "local.duration" );
+                jsRoot.set( "value", _modtypeValueStr );            
+            }
+            
+            if( _modtypePercentPresent )
+            {
+                jsRoot.set( "type", "local.percent" );
+                jsRoot.set( "value", _modtypeValueStr );            
+            }
+            
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, os );
+            }
+            catch( Poco::Exception& ex )
+            {
+                std::cerr << ex.displayText() << std::endl;
+                return;
+            }
+            catch( ... )
+            {
+                std::cerr << "Unknown exception" << std::endl;
+                return;
+            }
+
+            // Wait for the response
+            std::istream& rs = session.receiveResponse( response );
+            std::cout << response.getStatus() << " " << response.getReason() << " " << response.getContentLength() << std::endl;
+        }
+
+        void deleteModifierRequest()
+        {
+            Poco::URI uri;
+            uri.setScheme( "http" );
+            uri.setHost( m_host );
+            uri.setPort( m_port );
+
+            std::string path( "/hnode2/irrigation/modifier/" );
             path += _idStr;
 
             uri.setPath( path );
@@ -1616,26 +1874,49 @@ class HNIrrigationClient: public Application
             {
                 deleteZoneRequest();
             }
-            else if( _listCriteriaRequested == true )
+            else if( _listPlacementsRequested == true )
             {
-                getCriteriaList();
+                getPlacementsList();
             }
-            else if( _createCriteriaRequested == true )
+            else if( _createPlacementRequested == true )
             {
-                createCriteriaRequest();
+                createPlacementRequest();
             }
-            else if( _infoCriteriaRequested == true )
+            else if( _infoPlacementRequested == true )
             {
-                getCriteriaInfo();
+                getPlacementInfo();
             }
-            else if( _updateCriteriaRequested == true )
+            else if( _updatePlacementRequested == true )
             {
-                updateCriteriaRequest();
+                updatePlacementRequest();
             }
-            else if( _deleteCriteriaRequested == true )
+            else if( _deletePlacementRequested == true )
             {
-                deleteCriteriaRequest();
+                deletePlacementRequest();
             }
+            
+            else if( _listModifiersRequested == true )
+            {
+                getModifiersList();
+            }
+            else if( _createModifierRequested == true )
+            {
+                createModifierRequest();
+            }
+            else if( _infoModifierRequested == true )
+            {
+                getModifierInfo();
+            }
+            else if( _updateModifierRequested == true )
+            {
+                updateModifierRequest();
+            }
+            else if( _deleteModifierRequested == true )
+            {
+                deleteModifierRequest();
+            }
+            
+            
             else if( _switchListRequested == true )
             {
                 getSwitchList();

@@ -558,3 +558,20 @@ HNIrrigationZoneSet::getInhibitedZones( std::vector< HNIrrigationZone > &zoneLis
     }
 }
 
+uint 
+HNIrrigationZoneSet::getMaxCycleTimeForZoneSet( std::set< std::string > &zoneIDSet )
+{
+    uint maxCycleTime = 0;
+    
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
+    {
+        if( it->second.getMaximumCycleTimeSeconds() > maxCycleTime )
+            maxCycleTime = it->second.getMaximumCycleTimeSeconds();
+    }
+    
+    return maxCycleTime;
+}
+
