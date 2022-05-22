@@ -16,19 +16,10 @@
 #include "HNIrrigationZone.h"
 #include "HNIrrigationModifier.h"
 
-typedef enum HNISPeriodTypeEnum
-{
-    HNIS_PERIOD_TYPE_NOTSET,
-    HNIS_PERIOD_TYPE_AVAILABLE,
-    HNIS_PERIOD_TYPE_ZONE_ON
-}HNIS_PERIOD_TYPE_T;
-
 class HNISPeriod
 {
     private:
         std::string m_id;
-
-        HNIS_PERIOD_TYPE_T m_type;
 
         HNIS_DAY_INDX_T m_dayIndx;
 
@@ -42,7 +33,6 @@ class HNISPeriod
        ~HNISPeriod();
 
         void setID( std::string id );
-        void setType( HNIS_PERIOD_TYPE_T value );
 
         void setDayIndex( HNIS_DAY_INDX_T dindx );
         void setStartTime( HNI24HTime &time );
@@ -54,7 +44,6 @@ class HNISPeriod
         void setTimesFromStr( std::string startTime, std::string endTime ); 
 
         std::string getID();
-        HNIS_PERIOD_TYPE_T getType();
 
         HNIS_DAY_INDX_T getDayIndex();
 
@@ -135,11 +124,7 @@ class HNISchedule
        
         std::string getDayName( HNIS_DAY_INDX_T dayIndex );       
         void getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
-        
-        //HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
-
-        //std::string getSwitchDaemonJSON();
-        
+                
         void debugPrint();
 };
 

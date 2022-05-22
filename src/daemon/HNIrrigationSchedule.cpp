@@ -749,7 +749,7 @@ HNISPlacer::placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
 
 HNISPeriod::HNISPeriod()
 {
-    m_type = HNIS_PERIOD_TYPE_NOTSET;
+
 }
 
 HNISPeriod::~HNISPeriod()
@@ -761,12 +761,6 @@ void
 HNISPeriod::setID( std::string id )
 {
     m_id = id;
-}
-
-void 
-HNISPeriod::setType( HNIS_PERIOD_TYPE_T value )
-{
-    m_type = value;
 }
 
 void
@@ -804,12 +798,6 @@ std::string
 HNISPeriod::getID()
 {
     return m_id;
-}
-
-HNIS_PERIOD_TYPE_T 
-HNISPeriod::getType()
-{
-    return m_type;
 }
 
 void 
@@ -964,7 +952,7 @@ HNISDay::addPeriodZoneOn( std::string zoneID, uint startSec, uint durationSec )
 
     // Add a period to represent the overlap region
     period.setID( newID );
-    period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
+    //period.setType( HNIS_PERIOD_TYPE_ZONE_ON );
     period.setDayIndex( m_dayIndex );
     period.setStartTimeSeconds( startSec );
     uint endTime = startSec + durationSec - (durationSec ? 1 : 0);
@@ -1040,7 +1028,7 @@ HNISDay::debugPrint()
     std::cout << "==== Day: " << getDayName() << " ====" << std::endl;
     for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
     {
-        std::cout << "   " << it->getType() << "  " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getID() << "  " << it->getZoneSetAsStr() << std::endl;
+        std::cout << "   " << it->getStartTimeStr() << "  " << it->getEndTimeStr() << "  " << it->getID() << "  " << it->getZoneSetAsStr() << std::endl;
     }    
 }
 
@@ -1132,11 +1120,6 @@ HNISchedule::calculateSMCRC32()
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
             pjs::Object jsSWAction;
-          
-            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
-            {
-                continue;
-            }
 
             digest.update( "swon" );
             digest.update( it->getStartTimeStr() );
@@ -1265,13 +1248,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
             pjs::Object jsSWAction;
-
-            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
-            {
-                std::cout << "js continue" << std::endl;                
-                continue;
-            }
-            
+           
             for( std::set< std::string >::iterator zsit = it->getZoneSetRef().begin(); zsit != it->getZoneSetRef().end(); zsit++ )
             {
                 std::string zoneid = *zsit;
@@ -1338,14 +1315,6 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
         for( std::vector< HNISPeriod >::iterator it = periodList.begin(); it != periodList.end(); it++ )
         {
             pjs::Object jsSWAction;
-          
-            std::cout << "js chk period: " << it->getType() << std::endl;
-
-            if( it->getType() != HNIS_PERIOD_TYPE_ZONE_ON )
-            {
-                std::cout << "js continue" << std::endl;                
-                continue;
-            }
 
             std::cout << "js add action" << std::endl;
 
