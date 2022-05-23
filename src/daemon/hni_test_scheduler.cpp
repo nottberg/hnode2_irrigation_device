@@ -21,6 +21,8 @@ class HNIrrigationTest
         
         void test1();
         void test2();
+        
+        void testUnplacedZone();
 };
 
 void
@@ -323,6 +325,34 @@ HNIrrigationTest::test2()
     HNIS_RESULT_T result = m_schedule.buildSchedule();
 }
 
+void
+HNIrrigationTest::testUnplacedZone()
+{
+    // Local pointers
+    HNIrrigationPlacement *place;
+
+    // Create a zone records
+    addZone( "z1", "Front Grass East", "", 5000, 300, 20, "s11" );
+                                                        
+    // Create a placement record
+    place = m_placements.updatePlacement( "e2" );
+
+    // Fill in zone record fields.
+    place->setName( "Test" );
+    place->setDesc( "" );
+    place->setStartTime( "03:00:00" );
+    place->setEndTime( "04:00:00" );
+    place->setRank( 1 );
+    place->setDayBits(( HNSC_DBITS_TUESDAY | HNSC_DBITS_THURSDAY ));
+
+    place->clearZones();
+    place->addZone( "z1" );
+      
+    // Calculate the new schedule
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
+}
+
+
 
 int 
 main( int argc, char* argv[] )
@@ -338,6 +368,9 @@ main( int argc, char* argv[] )
 
     testObj.preTestInit( "test2" );
     testObj.test2();
+
+    testObj.preTestInit( "Unplaced Zone Test" );
+    testObj.testUnplacedZone();
 
     std::cout << "=== End hni_test_scheduler ===" << std::endl;
     

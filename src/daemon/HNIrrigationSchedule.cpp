@@ -610,6 +610,8 @@ class HNISPlacer
       
       HNIS_RESULT_T placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched );
       
+      HNIS_RESULT_T checkForUnplacedZones( std::string &zoneStr );
+      
     private:
       HNISPlacerDay  m_dayArr[ HNIS_DINDX_NOTSET ];
       
@@ -717,6 +719,22 @@ HNISPlacer::placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
     }
 
     return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNISPlacer::checkForUnplacedZones( std::string &zoneStr )
+{
+    zoneStr.clear();
+    
+    for( std::vector< HNISZoneTracker >::iterator it = m_zoneTrackers.begin(); it != m_zoneTrackers.end(); it++ ) 
+    {
+        if( it->getDuration() != 0 )
+        {
+            zoneStr += it->getZoneID() + " ";
+        }
+    }
+    
+    return ( (zoneStr.empty() == true) ? HNIS_RESULT_SUCCESS : HNIS_RESULT_FAILURE );
 }
 
 HNISPeriod::HNISPeriod()
@@ -1063,7 +1081,7 @@ HNISchedule::proceedingZonePeriod( HNIS_DAY_INDX_T dayIndex, std::string zoneID,
 {
     return m_dayArr[ dayIndex ].proceedingZonePeriod( zoneID, startSec );
 }
-        
+             
 std::string 
 HNISchedule::getDayName( HNIS_DAY_INDX_T dayIndex )
 {
@@ -1166,14 +1184,14 @@ HNIrrigationSchedule::getSMCRC32Str()
 HNIS_RESULT_T
 HNIrrigationSchedule::buildSchedule()
 {
-    uint rank = 0;
-    uint roundRobinIndex = 0;
-    uint maxRank = 0;
-
-    HNISPlacer placer;
+    std::string checkStr;
+    HNISPlacer  placer;
         
     std::cout << "buildSchedule - start" << std::endl;
 
+    // Clear existing schedule data.
+    m_schedule.clear();
+    
     // Get placementList for later usage.
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
@@ -1190,6 +1208,15 @@ HNIrrigationSchedule::buildSchedule()
     placer.initZoneTracking( m_zones, m_modifiers );
 
     placer.placeZones( m_zones, m_schedule );
+    
+    if( placer.checkForUnplacedZones( checkStr ) != HNIS_RESULT_SUCCESS )
+    {
+        std::cout << "WARNING: Could not successfully place all zones - failing zone list: " << checkStr << std::endl;
+    }
+    else
+    {
+        std::cout << "All zones successfully placed." << std::endl;
+    }
     
     m_schedule.debugPrint();
 
