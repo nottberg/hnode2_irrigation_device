@@ -136,7 +136,6 @@ HNISPlacementTracker::addZoneSet( std::set<std::string> &srcSet )
 {
     for( std::set<std::string>::iterator it = srcSet.begin(); it != srcSet.end(); it++ )
     {
-        printf( "Tracker zone add: %s\n", it->c_str());
         m_zoneSet.insert( *it );
     }
 }
@@ -392,9 +391,7 @@ HNISPlacerDay::mapPlacementSpecs( HNIrrigationPlacementSet *placements )
                         m_rankRRIMap[rank] = (roundRobinIndex+1);
                     else
                         m_rankRRIMap.insert( std::pair<uint,uint>(rank, roundRobinIndex+1) );
-                    
-                    printf("tins - rank: %d  rri: %d\n", rank, roundRobinIndex+1);
-                                       
+                                                          
                     roundRobinIndex += 1;
                     
                     maxRank = rank;
@@ -407,12 +404,7 @@ HNISPlacerDay::mapPlacementSpecs( HNIrrigationPlacementSet *placements )
         // Scan the next rank layer
         rank += 1;
     }
-    
-    for(std::map<uint, uint>::iterator mip = m_rankRRIMap.begin(); mip != m_rankRRIMap.end(); mip++)
-    {
-        printf("map - %d : %d\n", mip->first, mip->second);
-    }
-        
+           
     // Record the maximum rank with actual data
     m_maxRank = maxRank;
         
@@ -427,12 +419,7 @@ HNISPlacerDay::mapPlacementSpecs( HNIrrigationPlacementSet *placements )
         idx += 1;
     }
     printf("\n\n");
-         
-    for( std::map< uint, uint >::iterator it = m_rankRRIMap.begin(); it != m_rankRRIMap.end(); it++ )
-    {
-        printf("rmap: %d  %d\n", it->first, it->second);
-    }
-                
+           
     return HNIS_RESULT_SUCCESS;
 }
 
@@ -458,12 +445,8 @@ HNISPlacerDay::generateTimeSlots()
     {
         uint availCnt = m_rankRRIMap[rank];
 
-        printf("start carve -- rank: %d  availCnt: %d\n", rank, availCnt);
-            
         while( availCnt )
         {   
-            printf("start carve rr -- rrindx: %d\n", rrIndx);
-
             // Check if space is available for this rank and rrIndx. 
             HNISPlacementTracker *curAvail = findAvail( rank, rrIndx );
                 
@@ -478,13 +461,9 @@ HNISPlacerDay::generateTimeSlots()
                 continue;  
             }
               
-            printf("found %d:%d - start: %d  dur: %d  rank: %d  rri: %d\n", rank, rrIndx, curAvail->getStartSec(), curAvail->getDuration(), curAvail->getRank(), curAvail->getRoundRobinIndex());
-              
             // Get the slot size for this space
             uint tgtSlotSeconds = curAvail->getMaxCycleDuration();
             uint avzCnt = curAvail->getZoneCnt();
-                
-            printf("  tgtSlotSize: %d  avzCnt: %d\n", tgtSlotSeconds, avzCnt);
                 
             // Allocate slots for all applicable zones
             for( uint i = 0; i < avzCnt; i++ )
@@ -536,13 +515,9 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
 {
     bool progress = false;
 
-    printf( "dayIndx %d\n", m_dayIndx );
-            
     // Try to allocate a slot for each zone.
     for( std::vector<HNISZoneTracker>::iterator zit = zoneTrackers.begin(); zit != zoneTrackers.end(); zit++ )
     {
-        printf( "check zone %s\n", zit->getZoneID().c_str());
-                
         // Skip zones that have been fully placed.
         if( zit->getDuration() == 0 )
             continue;
@@ -563,7 +538,6 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
             if( it->getDuration() == 0 )
                 continue;
                         
-            printf( "slot - hasZone %d  secSupply: %d\n", it->hasZone( zid ), it->getDuration() );
             if( (it->hasZone( zid ) == true) && (it->getDuration() >= minCycle) )
             {                        
                 printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
@@ -573,7 +547,7 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                 // zones max cycle time.
                 if( tgtSched.proceedingZonePeriod( m_dayIndx, zit->getZoneID(), it->getStartSec() ) == true )
                 {
-                    printf( "Slot is immediatly proceeded by same zone -- skipping\n" );
+                    printf( "  Slot is immediatly proceeded by same zone -- skipping\n" );
                     continue;
                 } 
 
@@ -636,6 +610,8 @@ class HNISPlacer
       
       HNIS_RESULT_T placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched );
       
+      HNIS_RESULT_T checkForUnplacedZones( std::string &zoneStr );
+      
     private:
       HNISPlacerDay  m_dayArr[ HNIS_DINDX_NOTSET ];
       
@@ -697,7 +673,7 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
 
             duration += delta;
                         
-            printf( "%s - Mod: %s  Delta: %f  Duration: %f\n", zit->getID().c_str(), mit->getName().c_str(), delta, duration );
+            printf( "  %s - Mod: %s  Delta: %f  Duration: %f\n", zit->getID().c_str(), mit->getName().c_str(), delta, duration );
         }
     
         if( duration < 1 )
@@ -733,8 +709,6 @@ HNISPlacer::placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
         {
             uint dayIndx = g_insOrdArr[ indx ];
 
-            printf( "dayIndx %d\n", dayIndx );
-     
             result = m_dayArr[(HNIS_DAY_INDX_T)dayIndx].placeZones( m_zoneTrackers, zones, tgtSched );
             
             if( result == HNIS_RESULT_SCH_CONTINUE )
@@ -745,6 +719,22 @@ HNISPlacer::placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched )
     }
 
     return HNIS_RESULT_SUCCESS;
+}
+
+HNIS_RESULT_T 
+HNISPlacer::checkForUnplacedZones( std::string &zoneStr )
+{
+    zoneStr.clear();
+    
+    for( std::vector< HNISZoneTracker >::iterator it = m_zoneTrackers.begin(); it != m_zoneTrackers.end(); it++ ) 
+    {
+        if( it->getDuration() != 0 )
+        {
+            zoneStr += it->getZoneID() + " ";
+        }
+    }
+    
+    return ( (zoneStr.empty() == true) ? HNIS_RESULT_SUCCESS : HNIS_RESULT_FAILURE );
 }
 
 HNISPeriod::HNISPeriod()
@@ -1091,7 +1081,7 @@ HNISchedule::proceedingZonePeriod( HNIS_DAY_INDX_T dayIndex, std::string zoneID,
 {
     return m_dayArr[ dayIndex ].proceedingZonePeriod( zoneID, startSec );
 }
-        
+             
 std::string 
 HNISchedule::getDayName( HNIS_DAY_INDX_T dayIndex )
 {
@@ -1194,31 +1184,39 @@ HNIrrigationSchedule::getSMCRC32Str()
 HNIS_RESULT_T
 HNIrrigationSchedule::buildSchedule()
 {
-    uint rank = 0;
-    uint roundRobinIndex = 0;
-    uint maxRank = 0;
-    //bool processPlacements = true;
-
-    HNISPlacer src;
+    std::string checkStr;
+    HNISPlacer  placer;
         
     std::cout << "buildSchedule - start" << std::endl;
 
+    // Clear existing schedule data.
+    m_schedule.clear();
+    
     // Get placementList for later usage.
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
         // Accumulate the available time blocks from placements with current rank.
-        src.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, m_placements );
+        placer.mapPlacementSpecs( (HNIS_DAY_INDX_T) dayIndx, m_placements );
         
         // Handle any overlapping placement segments
         //FIXME
         
-        src.calculateZoneMaxCycleDurations( (HNIS_DAY_INDX_T) dayIndx, m_zones );
-        src.generateTimeSlots( (HNIS_DAY_INDX_T) dayIndx );
+        placer.calculateZoneMaxCycleDurations( (HNIS_DAY_INDX_T) dayIndx, m_zones );
+        placer.generateTimeSlots( (HNIS_DAY_INDX_T) dayIndx );
     }
    
-    src.initZoneTracking( m_zones, m_modifiers );
+    placer.initZoneTracking( m_zones, m_modifiers );
 
-    src.placeZones( m_zones, m_schedule );
+    placer.placeZones( m_zones, m_schedule );
+    
+    if( placer.checkForUnplacedZones( checkStr ) != HNIS_RESULT_SUCCESS )
+    {
+        std::cout << "WARNING: Could not successfully place all zones - failing zone list: " << checkStr << std::endl;
+    }
+    else
+    {
+        std::cout << "All zones successfully placed." << std::endl;
+    }
     
     m_schedule.debugPrint();
 
