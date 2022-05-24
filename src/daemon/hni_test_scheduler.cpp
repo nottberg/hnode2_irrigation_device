@@ -215,23 +215,23 @@ HNIrrigationTest::test2()
 
     
     // Create a zone records
-    addZone( "z1", "Front Grass East", "", 2520, 120, 20, "s11" );
-    addZone( "z2", "Front Grass West", "", 3360, 240, 20, "s10" );
+    addZone( "z1", "Front Grass East", "", 2520, 240, 20, "s11" );
+    addZone( "z2", "Front Grass West", "", 3360, 360, 20, "s10" );
     addZone( "z3", "Dog Paddock 1", "", 1680, 120, 20, "s17" );
     addZone( "z4", "Dog Paddock 2", "", 1680, 120, 20, "s18" );
     addZone( "z5", "Dog Paddock 3", "", 1680, 120, 20, "s19" );
     addZone( "z6", "Dog Paddock 4", "", 1680, 120, 20, "s20" );
-    addZone( "z7", "Back Fence West", "", 1680, 120, 20, "s22" );
-    addZone( "z8", "Back Fence East", "", 1680, 120, 20, "s21" );
-    addZone( "z9", "Back Pathway West", "", 2520, 120, 20, "s3" );
-    addZone( "z10", "Back Pathway East", "", 2520, 120, 20, "s2" );
-    addZone( "z11", "North Planter", "", 2520, 120, 20, "s13" );
-    addZone( "z12", "East Planter", "", 2520, 120, 20, "s12" );
-    addZone( "z13", "East Shrubs", "", 2520, 120, 20, "s16" );
-    addZone( "z14", "Southeast Berm", "", 2520, 120, 20, "s14" );
-    addZone( "z15", "Southwest Berm", "", 2520, 120, 20, "s15" );
-    addZone( "z16", "Garden", "", 2520, 120, 20, "s1" );
-    addZone( "z17", "Front Planter", "", 2520, 120, 20, "s9" );
+    addZone( "z7", "Back Fence West", "", 1680, 240, 20, "s22" );
+    addZone( "z8", "Back Fence East", "", 1680, 240, 20, "s21" );
+    addZone( "z9", "Back Pathway West", "", 2520, 240, 20, "s3" );
+    addZone( "z10", "Back Pathway East", "", 2520, 240, 20, "s2" );
+    addZone( "z11", "North Planter", "", 2520, 240, 20, "s13" );
+    addZone( "z12", "East Planter", "", 2520, 240, 20, "s12" );
+    addZone( "z13", "East Shrubs", "", 2520, 240, 20, "s16" );
+    addZone( "z14", "Southeast Berm", "", 2520, 240, 20, "s14" );
+    addZone( "z15", "Southwest Berm", "", 2520, 240, 20, "s15" );
+    addZone( "z16", "Garden", "", 2520, 240, 20, "s1" );
+    addZone( "z17", "Front Planter", "", 2520, 240, 20, "s9" );
 
     // Add local modifiers
     addModifier( "m1", "Z1 Manual Adj", "", "local.duration", "0", "z1" );
@@ -366,11 +366,11 @@ main( int argc, char* argv[] )
     testObj.preTestInit( "test1" );
     testObj.test1();
 
-    testObj.preTestInit( "test2" );
-    testObj.test2();
-
     testObj.preTestInit( "Unplaced Zone Test" );
     testObj.testUnplacedZone();
+
+    testObj.preTestInit( "test2" );
+    testObj.test2();
 
     std::cout << "=== End hni_test_scheduler ===" << std::endl;
     
