@@ -1042,7 +1042,6 @@ HNISchedule::clear()
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].clear();
 
-    m_timezone.clear();
     m_schCRC32 = 0;
 }
 
