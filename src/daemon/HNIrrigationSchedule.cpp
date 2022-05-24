@@ -1073,6 +1073,9 @@ HNISchedule::addPeriodZoneOn( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint
 HNIS_RESULT_T 
 HNISchedule::finalize()
 {
+    // Calculate the schedule CRC to allow update comparisons.
+    calculateSMCRC32();
+    
     return HNIS_RESULT_SUCCESS;
 }
   
@@ -1208,7 +1211,7 @@ HNIrrigationSchedule::buildSchedule()
     placer.initZoneTracking( m_zones, m_modifiers );
 
     placer.placeZones( m_zones, m_schedule );
-    
+        
     if( placer.checkForUnplacedZones( checkStr ) != HNIS_RESULT_SUCCESS )
     {
         std::cout << "WARNING: Could not successfully place all zones - failing zone list: " << checkStr << std::endl;
@@ -1217,6 +1220,8 @@ HNIrrigationSchedule::buildSchedule()
     {
         std::cout << "All zones successfully placed." << std::endl;
     }
+    
+    m_schedule.finalize();
     
     m_schedule.debugPrint();
 
@@ -1230,8 +1235,8 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     pjs::Object jsRoot;
 
     // Add the timezone name field
-    jsRoot.set( "scheduleTimezone", "Americas/Denver" );
-
+    jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() );
+    
     // Add data for each day
     pjs::Object jsDays;
 
@@ -1292,7 +1297,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
     pjs::Object jsRoot;
 
     // Add the timezone name field
-    jsRoot.set( "scheduleTimezone", getTimezoneStr() ); // "Americas/Denver" );
+    jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() ); // "Americas/Denver" );
 
     // Add the scheduleMatrix hash value
     jsRoot.set( "scheduleCRC32", getSMCRC32Str() );
