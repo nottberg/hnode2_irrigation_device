@@ -998,7 +998,7 @@ HNIrrigationDevice::initConfig()
 
     m_placements.initPlacementsListSection( cfg );
 
-    //m_schedule.initConfigSections( cfg );
+    m_modifiers.initModifiersListSection( cfg );
 
     cfg.debugPrint(2);
     
@@ -1038,8 +1038,8 @@ HNIrrigationDevice::readConfig()
     std::cout << "cl3" << std::endl;
     m_placements.readPlacementsListSection( cfg );
 
-    //std::cout << "cl4" << std::endl;
-    //m_schedule.readConfigSections( cfg );
+    std::cout << "cl4" << std::endl;
+    m_modifiers.readModifiersListSection( cfg );
 
     std::cout << "Config loaded" << std::endl;
 
@@ -1058,7 +1058,7 @@ HNIrrigationDevice::updateConfig()
 
     m_placements.updatePlacementsListSection( cfg );
 
-    //m_schedule.updateConfigSections( cfg );
+    m_modifiers.updateModifiersListSection( cfg );
 
     cfg.debugPrint(2);
     
