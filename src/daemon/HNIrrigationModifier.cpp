@@ -337,6 +337,21 @@ HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
             modifierPtr->setDesc( rstStr );
         }
 
+        if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setTypeFromStr( rstStr );
+        }
+
+        if( objPtr->getValueByName( "value", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setValue( rstStr );
+        }
+
+        if( objPtr->getValueByName( "zoneid", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setZoneID( rstStr );
+        }
+
     }
           
     return HNIS_RESULT_SUCCESS;
@@ -368,6 +383,9 @@ HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
 
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );
+        objPtr->updateValue( "type", it->second.getTypeAsStr() );
+        objPtr->updateValue( "value", it->second.getValue() );
+        objPtr->updateValue( "zoneid", it->second.getZoneID() );
     }
 
     return HNIS_RESULT_SUCCESS;
