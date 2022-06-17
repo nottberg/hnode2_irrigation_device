@@ -426,7 +426,7 @@ HNIDActionRequest::decodeModifierUpdate( std::istream& bodyStream )
 
         if( jsRoot->has( "zoneid" ) )
         {
-            modifier.setDesc( jsRoot->getValue<std::string>( "zoneid" ) );
+            modifier.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
             m_modifierUpdateMask |= HNID_MU_FLDMASK_ZONEID;
         }
    
