@@ -1204,6 +1204,8 @@ HNIrrigationDevice::initConfig()
 
     m_sequences.initSequencesListSection( cfg );
 
+    m_inhibits.initInhibitsListSection( cfg );
+
     cfg.debugPrint(2);
     
     std::cout << "Saving config..." << std::endl;
@@ -1245,8 +1247,11 @@ HNIrrigationDevice::readConfig()
     std::cout << "cl4" << std::endl;
     m_modifiers.readModifiersListSection( cfg );
 
-    std::cout << "cl4" << std::endl;
+    std::cout << "cl5" << std::endl;
     m_sequences.readSequencesListSection( cfg );
+
+    std::cout << "cl6" << std::endl;
+    m_inhibits.readInhibitsListSection( cfg );
 
     std::cout << "Config loaded" << std::endl;
 
@@ -1268,6 +1273,8 @@ HNIrrigationDevice::updateConfig()
     m_modifiers.updateModifiersListSection( cfg );
 
     m_sequences.updateSequencesListSection( cfg );
+
+    m_inhibits.updateInhibitsListSection( cfg );
 
     cfg.debugPrint(2);
     
