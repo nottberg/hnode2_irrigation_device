@@ -14,6 +14,8 @@
 #include "HNIrrigationPlacement.h"
 #include "HNIrrigationModifier.h"
 #include "HNIrrigationSchedule.h"
+#include "HNIrrigationSequence.h"
+#include "HNIrrigationInhibit.h"
 #include "HNSWDPacketClient.h"
 
 typedef enum HNIDActionRequestType 
@@ -39,7 +41,17 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_MODIFIERINFO   = 18,
     HNID_AR_TYPE_MODIFIERCREATE = 19,
     HNID_AR_TYPE_MODIFIERUPDATE = 20,
-    HNID_AR_TYPE_MODIFIERDELETE = 21
+    HNID_AR_TYPE_MODIFIERDELETE = 21,
+    HNID_AR_TYPE_SEQUENCESLIST  = 22,
+    HNID_AR_TYPE_SEQUENCEINFO   = 23,
+    HNID_AR_TYPE_SEQUENCECREATE = 24,
+    HNID_AR_TYPE_SEQUENCEUPDATE = 25,
+    HNID_AR_TYPE_SEQUENCEDELETE = 26,
+    HNID_AR_TYPE_INHIBITSLIST   = 27,
+    HNID_AR_TYPE_INHIBITINFO    = 28,
+    HNID_AR_TYPE_INHIBITCREATE  = 29,
+    HNID_AR_TYPE_INHIBITUPDATE  = 30,
+    HNID_AR_TYPE_INHIBITDELETE  = 31    
 }HNID_AR_TYPE_T;
 
 // Change scheduling state. Enable/Disable/Inhibit
@@ -96,6 +108,26 @@ typedef enum HNIDActionModifierUpdateMaskEnum
     HNID_MU_FLDMASK_ZONEID   = 0x00000010
 }HNID_MU_FLDMASK_T;
 
+typedef enum HNIDActionSequenceUpdateMaskEnum
+{
+    HNID_SQU_FLDMASK_CLEAR    = 0x00000000,
+    HNID_SQU_FLDMASK_NAME     = 0x00000001,
+    HNID_SQU_FLDMASK_DESC     = 0x00000002,
+    HNID_SQU_FLDMASK_TYPE     = 0x00000004,
+    HNID_SQU_FLDMASK_VALUE    = 0x00000008,
+    HNID_SQU_FLDMASK_ZONEID   = 0x00000010
+}HNID_SQU_FLDMASK_T;
+
+typedef enum HNIDActionInhibitUpdateMaskEnum
+{
+    HNID_INU_FLDMASK_CLEAR    = 0x00000000,
+    HNID_INU_FLDMASK_NAME     = 0x00000001,
+    HNID_INU_FLDMASK_DESC     = 0x00000002,
+    HNID_INU_FLDMASK_TYPE     = 0x00000004,
+    HNID_INU_FLDMASK_VALUE    = 0x00000008,
+    HNID_INU_FLDMASK_ZONEID   = 0x00000010
+}HNID_INU_FLDMASK_T;
+
 typedef enum HNIDActionRequestResult
 {
     HNID_AR_RESULT_SUCCESS,
@@ -110,15 +142,21 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string m_zoneID;
         std::string m_placementID;
         std::string m_modifierID;
+        std::string m_sequenceID;
+        std::string m_inhibitID;
 
         std::vector< HNIrrigationZone > m_zoneList;
         std::vector< HNIrrigationPlacement > m_placementsList;
-        std::vector< HNIrrigationModifier > m_modifiersList;        
+        std::vector< HNIrrigationModifier > m_modifiersList;
+        std::vector< HNIrrigationSequence > m_sequencesList;
+        std::vector< HNIrrigationInhibit > m_inhibitsList;        
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
         uint m_placementUpdateMask;
         uint m_modifierUpdateMask;       
+        uint m_sequenceUpdateMask;
+        uint m_inhibitUpdateMask;  
 
         std::stringstream m_rspStream;
 
@@ -138,10 +176,15 @@ class HNIDActionRequest : public HNReqWaitAction
         void setZoneID( std::string value );
         void setPlacementID( std::string value );
         void setModifierID( std::string value );
+        void setSequenceID( std::string value );
+        void setInhibitID( std::string value );
+
 
         bool decodeZoneUpdate( std::istream& bodyStream );
         bool decodePlacementUpdate( std::istream& bodyStream );
-        bool decodeModifierUpdate( std::istream& bodyStream );       
+        bool decodeModifierUpdate( std::istream& bodyStream );
+        bool decodeSequenceUpdate( std::istream& bodyStream );
+        bool decodeInhibitUpdate( std::istream& bodyStream );
         bool decodeSchedulerState( std::istream& bodyStream );
         bool decodeZoneCtrl( std::istream& bodyStream );
 
@@ -155,7 +198,9 @@ class HNIDActionRequest : public HNReqWaitAction
         HNID_AR_TYPE_T getType();
         std::string getZoneID();
         std::string getPlacementID();
-        std::string getModifierID();        
+        std::string getModifierID();
+        std::string getSequenceID();
+        std::string getInhibitID();
 
         HNID_SSR_T getScheduleStateRequestType();
         HNID_ZCR_T getZoneControlRequestType();
@@ -167,10 +212,15 @@ class HNIDActionRequest : public HNReqWaitAction
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
         void applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement );
         void applyModifierUpdate( HNIrrigationModifier *tgtModifier );
+        void applySequenceUpdate( HNIrrigationSequence *tgtSequence );
+        void applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit );
 
         std::vector< HNIrrigationZone > &refZoneList();
         std::vector< HNIrrigationPlacement > &refPlacementsList();
-        std::vector< HNIrrigationModifier > &refModifiersList();       
+        std::vector< HNIrrigationModifier > &refModifiersList();
+        std::vector< HNIrrigationSequence > &refSequencesList();
+        std::vector< HNIrrigationInhibit > &refInhibitsList();
+
         std::vector< HNSWDSwitchInfo > &refSwitchList();
 
         std::stringstream &refRspStream();

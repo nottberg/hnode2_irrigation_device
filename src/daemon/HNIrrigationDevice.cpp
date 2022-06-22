@@ -187,7 +187,6 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
-
       "/hnode2/irrigation/schedule": {
         "get": {
           "summary": "Get information about the current zone schedule.",
@@ -251,7 +250,6 @@ const std::string g_HNode2IrrigationRest = R"(
         }
 
       },
-
 
       "/hnode2/irrigation/placement": {
         "get": {
@@ -439,6 +437,210 @@ const std::string g_HNode2IrrigationRest = R"(
         "delete": {
           "summary": "Delete an existing modifier.",
           "operationId": "deleteModifier",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/sequence": {
+        "get": {
+          "summary": "Get list of zone sequences.",
+          "operationId": "getSequencesList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new zone sequence.",
+          "operationId": "createSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/sequence/{sequenceid}": {
+        "get": {
+          "summary": "Get information about a specific zone sequence.",
+          "operationId": "getSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "put": {
+          "summary": "Update an existing sequence.",
+          "operationId": "updateSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing sequence.",
+          "operationId": "deleteSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/inhibit": {
+        "get": {
+          "summary": "Get list of zone inhibits.",
+          "operationId": "getInhibitsList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new zone inhibit.",
+          "operationId": "createInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/inhibit/{inhibitid}": {
+        "get": {
+          "summary": "Get information about a specific zone inhibit.",
+          "operationId": "getInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "put": {
+          "summary": "Update an existing inhibit.",
+          "operationId": "updateInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing inhibit.",
+          "operationId": "deleteInhibit",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -1000,6 +1202,8 @@ HNIrrigationDevice::initConfig()
 
     m_modifiers.initModifiersListSection( cfg );
 
+    m_sequences.initSequencesListSection( cfg );
+
     cfg.debugPrint(2);
     
     std::cout << "Saving config..." << std::endl;
@@ -1041,6 +1245,9 @@ HNIrrigationDevice::readConfig()
     std::cout << "cl4" << std::endl;
     m_modifiers.readModifiersListSection( cfg );
 
+    std::cout << "cl4" << std::endl;
+    m_sequences.readSequencesListSection( cfg );
+
     std::cout << "Config loaded" << std::endl;
 
     return HNID_RESULT_SUCCESS;
@@ -1059,6 +1266,8 @@ HNIrrigationDevice::updateConfig()
     m_placements.updatePlacementsListSection( cfg );
 
     m_modifiers.updateModifiersListSection( cfg );
+
+    m_sequences.updateSequencesListSection( cfg );
 
     cfg.debugPrint(2);
     
@@ -1132,6 +1341,52 @@ HNIrrigationDevice::getUniqueModifierID( HNIDActionRequest *action )
         if( m_modifiers.hasID( tmpID ) == false )
         {
             action->setModifierID( tmpID );
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
+bool
+HNIrrigationDevice::getUniqueSequenceID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    do
+    {
+        sprintf( tmpID, "sq%d", idNum );
+
+        if( m_sequences.hasID( tmpID ) == false )
+        {
+            action->setSequenceID( tmpID );
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
+bool
+HNIrrigationDevice::getUniqueInhibitID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    do
+    {
+        sprintf( tmpID, "in%d", idNum );
+
+        if( m_inhibits.hasID( tmpID ) == false )
+        {
+            action->setInhibitID( tmpID );
             return true;
         }
 
@@ -1441,6 +1696,157 @@ HNIrrigationDevice::startAction()
         }
         break;
         
+        case HNID_AR_TYPE_SEQUENCESLIST:
+            // Populate the event list in the action
+            m_sequences.getSequencesList( m_curAction->refSequencesList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEINFO:
+        {
+            HNIrrigationSequence event;
+
+            if( m_sequences.getSequence( m_curAction->getSequenceID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refSequencesList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCECREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueSequenceID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNIrrigationSequence *event = m_sequences.updateSequence( m_curAction->getSequenceID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applySequenceUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEUPDATE:
+        {
+            if( m_sequences.hasID( m_curAction->getSequenceID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNIrrigationSequence *event = m_sequences.updateSequence( m_curAction->getSequenceID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applySequenceUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEDELETE:
+        {
+            // Remove the zone record
+            m_sequences.deleteSequence( m_curAction->getSequenceID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITSLIST:
+            // Populate the event list in the action
+            m_inhibits.getInhibitsList( m_curAction->refInhibitsList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_INHIBITINFO:
+        {
+            HNIrrigationInhibit event;
+
+            if( m_inhibits.getInhibit( m_curAction->getInhibitID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refInhibitsList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITCREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueInhibitID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNIrrigationInhibit *event = m_inhibits.updateInhibit( m_curAction->getInhibitID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyInhibitUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITUPDATE:
+        {
+            if( m_inhibits.hasID( m_curAction->getInhibitID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNIrrigationInhibit *event = m_inhibits.updateInhibit( m_curAction->getInhibitID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applyInhibitUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITDELETE:
+        {
+            // Remove the zone record
+            m_inhibits.deleteInhibit( m_curAction->getInhibitID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;                
         // Get detailed health information
         //HNSWD_PTYPE_HEALTH_REQ,
         //HNSWD_PTYPE_HEALTH_RSP,
@@ -1896,6 +2302,126 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         action.setType( HNID_AR_TYPE_MODIFIERDELETE );
         action.setModifierID( modifierID );
     }
+    else if( "getSequencesList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_SEQUENCESLIST );
+    }
+    else if( "createSequence" == opID )
+    {
+        action.setType( HNID_AR_TYPE_SEQUENCECREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeSequenceUpdate( bodyStream );
+    }
+    else if( "getSequence" == opID )
+    {
+        std::string sequenceID;
+
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEINFO );
+        action.setSequenceID( sequenceID );
+    }
+    else if( "updateSequence" == opID )
+    {
+        std::string sequenceID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEUPDATE );
+        action.setSequenceID( sequenceID );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeSequenceUpdate( bodyStream );
+    }
+    else if( "deleteSequence" == opID )
+    {
+        std::string sequenceID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEDELETE );
+        action.setSequenceID( sequenceID );
+    }
+    else if( "getInhibitsList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_INHIBITSLIST );
+    }
+    else if( "createInhibit" == opID )
+    {
+        action.setType( HNID_AR_TYPE_INHIBITCREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeInhibitUpdate( bodyStream );
+    }
+    else if( "getInhibit" == opID )
+    {
+        std::string inhibitID;
+
+        if( opData->getParam( "inhibitid", inhibitID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_INHIBITINFO );
+        action.setInhibitID( inhibitID );
+    }
+    else if( "updateInhibit" == opID )
+    {
+        std::string inhibitID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "inhibitid", inhibitID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_INHIBITUPDATE );
+        action.setInhibitID( inhibitID );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeInhibitUpdate( bodyStream );
+    }
+    else if( "deleteInhibit" == opID )
+    {
+        std::string inhibitID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "inhibitid", inhibitID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_INHIBITDELETE );
+        action.setInhibitID( inhibitID );
+    }    
     else if( "getScheduleInfo" == opID )
     {
         action.setType( HNID_AR_TYPE_SCHINFO );

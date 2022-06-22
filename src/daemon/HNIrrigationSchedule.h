@@ -16,6 +16,66 @@
 #include "HNIrrigationZone.h"
 #include "HNIrrigationModifier.h"
 
+// Track some zone statitics
+// that result from building a schedule
+class HNISZoneAppliedModifier
+{
+    public:
+       HNISZoneAppliedModifier();
+       HNISZoneAppliedModifier( std::string modID, std::string appliedValue, int deltaSec );
+      ~HNISZoneAppliedModifier();
+
+       void setID( std::string modID );
+       void setAppliedValue( std::string appliedValue );
+       void setDeltaSeconds( int deltaSec );
+
+       std::string getID();
+       std::string getAppliedValue();
+       int getDeltaSeconds();
+
+    private:
+       std::string m_id;
+       std::string m_appliedValue;
+       int         m_deltaSec;
+};
+
+class HNISZoneStats
+{
+    public:
+        HNISZoneStats();
+        HNISZoneStats( std::string zoneID, uint baseSeconds );
+       ~HNISZoneStats();
+
+        void setZoneID( std::string zoneID );
+        void setBaseSeconds( uint value );
+        void setTotalSeconds( uint value );
+        void setSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value );
+        void addToSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value );
+        void addAppliedModifier( std::string modID, std::string appliedValue, double deltaSeconds );
+
+        std::string getZoneID();
+        uint getBaseSeconds();
+        uint getTotalSeconds();
+        double getAverageSecondsPerDay();
+        uint getSecondsForDay( HNIS_DAY_INDX_T dayIndx );
+
+        void getAppliedModifiersList( std::vector< HNISZoneAppliedModifier > &amList );
+
+        void finalize();
+
+    private:
+        std::string m_zoneID;
+
+        uint m_baseSeconds;
+        uint m_totalSeconds;
+
+        double m_avgSecondsPerDay;
+
+        std::vector< HNISZoneAppliedModifier > m_appliedModList;
+
+        uint m_secPerDay[ HNIS_DINDX_NOTSET ];
+};
+
 class HNISPeriod
 {
     private:
@@ -103,6 +163,8 @@ class HNISchedule
 
         HNISDay  m_dayArr[ HNIS_DINDX_NOTSET ];
  
+        std::vector< HNISZoneStats > m_zoneStats;
+
         void calculateSMCRC32();
         
     public:
@@ -125,6 +187,10 @@ class HNISchedule
         std::string getDayName( HNIS_DAY_INDX_T dayIndex );       
         void getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
                 
+        HNISZoneStats *createZoneStatsTracker( std::string zoneID, uint baseSeconds );
+        void addToZoneStatDailyTime( std::string zoneID, HNIS_DAY_INDX_T dayIndex, uint seconds );
+        void getZoneStatList( std::vector< HNISZoneStats > &zsList );
+
         void debugPrint();
 };
 

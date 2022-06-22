@@ -1,99 +1,99 @@
 #include <iostream>
 #include <regex>
 
-#include "HNIrrigationModifier.h"
+#include "HNIrrigationSequence.h"
 
-HNIrrigationModifier::HNIrrigationModifier()
+HNIrrigationSequence::HNIrrigationSequence()
 {
-    m_type = HNIM_TYPE_NOTSET;
+    m_type = HNISQ_TYPE_NOTSET;
 }
 
-HNIrrigationModifier::~HNIrrigationModifier()
+HNIrrigationSequence::~HNIrrigationSequence()
 {
 
 }
 
 void 
-HNIrrigationModifier::setID( std::string id )
+HNIrrigationSequence::setID( std::string id )
 {
     m_id = id;
 }
 
 void 
-HNIrrigationModifier::setName( std::string value )
+HNIrrigationSequence::setName( std::string value )
 {
     m_name = value;
 }
 
 void 
-HNIrrigationModifier::setDesc( std::string value )
+HNIrrigationSequence::setDesc( std::string value )
 {
     m_desc = value;
 }
 
 void 
-HNIrrigationModifier::setType( HNIM_TYPE_T type )
+HNIrrigationSequence::setType( HNISQ_TYPE_T type )
 {
     m_type = type;
 }
 
 void 
-HNIrrigationModifier::setValue( std::string value )
+HNIrrigationSequence::setValue( std::string value )
 {
     m_value = value;
 }
 
 void 
-HNIrrigationModifier::setZoneID( std::string zoneid )
+HNIrrigationSequence::setZoneID( std::string zoneid )
 {
     m_zoneid = zoneid;
 }
 
 std::string 
-HNIrrigationModifier::getID()
+HNIrrigationSequence::getID()
 {
     return m_id;
 }
 
 std::string 
-HNIrrigationModifier::getName()
+HNIrrigationSequence::getName()
 {
     return m_name;
 }
 
 std::string 
-HNIrrigationModifier::getDesc()
+HNIrrigationSequence::getDesc()
 {
     return m_desc;
 }
 
-HNIM_TYPE_T 
-HNIrrigationModifier::getType()
+HNISQ_TYPE_T 
+HNIrrigationSequence::getType()
 {
     return m_type;
 }
 
 std::string 
-HNIrrigationModifier::getValue()
+HNIrrigationSequence::getValue()
 {
     return m_value;
 }
 
 std::string 
-HNIrrigationModifier::getZoneID()
+HNIrrigationSequence::getZoneID()
 {
     return m_zoneid;
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifier::setTypeFromStr( std::string typeStr )
+HNIrrigationSequence::setTypeFromStr( std::string typeStr )
 {
-    m_type = HNIM_TYPE_NOTSET;
+    m_type = HNISQ_TYPE_NOTSET;
     
     if( typeStr == "local.duration" )
-        m_type = HNIM_TYPE_LOCAL_DURATION;
+        m_type = HNISQ_TYPE_LOCAL_DURATION;
     else if( typeStr == "local.percent" )
-        m_type = HNIM_TYPE_LOCAL_PERCENT;
+        m_type = HNISQ_TYPE_LOCAL_PERCENT;
     else
         return HNIS_RESULT_FAILURE;
     
@@ -101,15 +101,15 @@ HNIrrigationModifier::setTypeFromStr( std::string typeStr )
 }
 
 std::string 
-HNIrrigationModifier::getTypeAsStr()
+HNIrrigationSequence::getTypeAsStr()
 {
     switch( m_type )
     {
-        case HNIM_TYPE_LOCAL_DURATION:
+        case HNISQ_TYPE_LOCAL_DURATION:
             return "local.duration";
         break;
         
-        case HNIM_TYPE_LOCAL_PERCENT:
+        case HNISQ_TYPE_LOCAL_PERCENT:
             return "local.percent";
         break;
         
@@ -121,21 +121,21 @@ HNIrrigationModifier::getTypeAsStr()
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifier::validateSettings()
+HNIrrigationSequence::validateSettings()
 {
     // Add validation checking here
     return HNIS_RESULT_SUCCESS;
 }
 
 double
-HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedValue )
+HNIrrigationSequence::calculateDelta( uint baseDuration, std::string &appliedValue )
 {
     double delta = 0;
     char   avStr[256];
     
     switch( getType() )
     {
-        case HNIM_TYPE_LOCAL_DURATION:
+        case HNISQ_TYPE_LOCAL_DURATION:
         {
             double value = strtod( m_value.c_str(), NULL );
             delta = value;
@@ -143,7 +143,7 @@ HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedVal
         }
         break;
     
-        case HNIM_TYPE_LOCAL_PERCENT:
+        case HNISQ_TYPE_LOCAL_PERCENT:
         {
             double value = strtod( m_value.c_str(), NULL );
             
@@ -163,102 +163,102 @@ HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedVal
     return delta;
 }
 
-HNIrrigationModifierSet::HNIrrigationModifierSet()
+HNIrrigationSequenceSet::HNIrrigationSequenceSet()
 {
 
 }
 
-HNIrrigationModifierSet::~HNIrrigationModifierSet()
+HNIrrigationSequenceSet::~HNIrrigationSequenceSet()
 {
 
 }
 
 void
-HNIrrigationModifierSet::clear()
+HNIrrigationSequenceSet::clear()
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    m_modifiersMap.clear();
+    m_sequencesMap.clear();
 }
 
 bool 
-HNIrrigationModifierSet::hasID( std::string id )
+HNIrrigationSequenceSet::hasID( std::string id )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+    std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.find( id );
 
-    if( it == m_modifiersMap.end() )
+    if( it == m_sequencesMap.end() )
         return false;
 
     return true;
 }
 
-HNIrrigationModifier*
-HNIrrigationModifierSet::internalUpdateModifier( std::string id )
+HNIrrigationSequence*
+HNIrrigationSequenceSet::internalUpdateSequence( std::string id )
 {
-    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+    std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.find( id );
 
-    if( it == m_modifiersMap.end() )
+    if( it == m_sequencesMap.end() )
     {
-        HNIrrigationModifier nSpec;
+        HNIrrigationSequence nSpec;
         nSpec.setID( id );
-        m_modifiersMap.insert( std::pair< std::string, HNIrrigationModifier >( id, nSpec ) );\
-        return &( m_modifiersMap[ id ] );
+        m_sequencesMap.insert( std::pair< std::string, HNIrrigationSequence >( id, nSpec ) );\
+        return &( m_sequencesMap[ id ] );
     }
 
     return &(it->second);
 }
 
-HNIrrigationModifier*
-HNIrrigationModifierSet::updateModifier( std::string id )
+HNIrrigationSequence*
+HNIrrigationSequenceSet::updateSequence( std::string id )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    return internalUpdateModifier( id );
+    return internalUpdateSequence( id );
 }
 
 void 
-HNIrrigationModifierSet::deleteModifier( std::string id )
+HNIrrigationSequenceSet::deleteSequence( std::string id )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
     // Find the referenced zone
-    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+    std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.find( id );
 
     // If already no existant than nothing to do.
-    if( it == m_modifiersMap.end() )
+    if( it == m_sequencesMap.end() )
         return;
 
     // Get rid of the zone record
-    m_modifiersMap.erase( it );
+    m_sequencesMap.erase( it );
 }
 
 void 
-HNIrrigationModifierSet::getModifiersList( std::vector< HNIrrigationModifier > &modifiersList )
+HNIrrigationSequenceSet::getSequencesList( std::vector< HNIrrigationSequence > &sequencesList )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    for( std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.begin(); it != m_modifiersMap.end(); it++ )
+    for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
     {
-        modifiersList.push_back( it->second );
+        sequencesList.push_back( it->second );
     }
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifierSet::getModifier( std::string id, HNIrrigationModifier &event )
+HNIrrigationSequenceSet::getSequence( std::string id, HNIrrigationSequence &event )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+    std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.find( id );
 
-    if( it == m_modifiersMap.end() )
+    if( it == m_sequencesMap.end() )
         return HNIS_RESULT_FAILURE;
 
     event = it->second;
@@ -266,16 +266,16 @@ HNIrrigationModifierSet::getModifier( std::string id, HNIrrigationModifier &even
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifierSet::getModifierName( std::string id, std::string &name )
+HNIrrigationSequenceSet::getSequenceName( std::string id, std::string &name )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+    std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.find( id );
 
     name.clear();
 
-    if( it == m_modifiersMap.end() )
+    if( it == m_sequencesMap.end() )
         return HNIS_RESULT_FAILURE;
 
     name = it->second.getName();
@@ -283,38 +283,38 @@ HNIrrigationModifierSet::getModifierName( std::string id, std::string &name )
 }
 
 void 
-HNIrrigationModifierSet::getModifiersForZone( std::string zoneID, std::vector< HNIrrigationModifier > &modifiersList )
+HNIrrigationSequenceSet::getSequencesForZone( std::string zoneID, std::vector< HNIrrigationSequence > &sequencesList )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    modifiersList.clear();
+    sequencesList.clear();
     
-    for( std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.begin(); it != m_modifiersMap.end(); it++ )
+    for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
     {
         if( it->second.getZoneID() == zoneID )
-            modifiersList.push_back( it->second );
+            sequencesList.push_back( it->second );
     }
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifierSet::initModifiersListSection( HNodeConfig &cfg )
+HNIrrigationSequenceSet::initSequencesListSection( HNodeConfig &cfg )
 {
     HNCSection *secPtr;
 
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    cfg.updateSection( "irrModifiersInfo", &secPtr );
+    cfg.updateSection( "irrSequencesInfo", &secPtr );
     
     HNCObjList *listPtr;
-    secPtr->updateList( "modifiersList", &listPtr );
+    secPtr->updateList( "sequencesList", &listPtr );
 
     return HNIS_RESULT_SUCCESS;
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
+HNIrrigationSequenceSet::readSequencesListSection( HNodeConfig &cfg )
 {
     HNCSection  *secPtr;
 
@@ -324,17 +324,17 @@ HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
     // Aquire a pointer to the "device" section
-    cfg.updateSection( "irrModifiersInfo", &secPtr );
+    cfg.updateSection( "irrSequencesInfo", &secPtr );
 
     // Get a list pointer
     HNCObjList *listPtr;
-    secPtr->updateList( "modifiersList", &listPtr );
+    secPtr->updateList( "sequencesList", &listPtr );
 
     std::cout << "rc2: " << listPtr->size() << std::endl;
 
     for( uint indx = 0; indx < listPtr->size(); indx++ )
     {
-        std::string modifierID;
+        std::string sequenceID;
         std::string rstStr;
         HNCObj *objPtr;
 
@@ -342,37 +342,37 @@ HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
             continue;
 
         // Get the zoneID first, if missing skip the record
-        if( objPtr->getValueByName( "modifierid", modifierID ) != HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "sequenceid", sequenceID ) != HNC_RESULT_SUCCESS )
         {
             continue;
         }
 
         // Get the internal reference to the zone.
-        HNIrrigationModifier *modifierPtr = internalUpdateModifier( modifierID );
+        HNIrrigationSequence *sequencePtr = internalUpdateSequence( sequenceID );
 
         if( objPtr->getValueByName( "name", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            modifierPtr->setName( rstStr );
+            sequencePtr->setName( rstStr );
         }
 
         if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            modifierPtr->setDesc( rstStr );
+            sequencePtr->setDesc( rstStr );
         }
 
         if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            modifierPtr->setTypeFromStr( rstStr );
+            sequencePtr->setTypeFromStr( rstStr );
         }
 
         if( objPtr->getValueByName( "value", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            modifierPtr->setValue( rstStr );
+            sequencePtr->setValue( rstStr );
         }
 
         if( objPtr->getValueByName( "zoneid", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            modifierPtr->setZoneID( rstStr );
+            sequencePtr->setZoneID( rstStr );
         }
 
     }
@@ -381,7 +381,7 @@ HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
 }
 
 HNIS_RESULT_T 
-HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
+HNIrrigationSequenceSet::updateSequencesListSection( HNodeConfig &cfg )
 {
     char tmpStr[256];
     HNCSection *secPtr;
@@ -390,11 +390,11 @@ HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    cfg.updateSection( "irrModifiersInfo", &secPtr );
+    cfg.updateSection( "irrSequencesInfo", &secPtr );
 
-    secPtr->updateList( "modifiersList", &listPtr );
+    secPtr->updateList( "sequencesList", &listPtr );
 
-    for( std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.begin(); it != m_modifiersMap.end(); it++ )
+    for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
     { 
         HNCObj *objPtr;
 
@@ -402,7 +402,7 @@ HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
         listPtr->appendObj( &objPtr );
 
         // Fill the entry with the static event info
-        objPtr->updateValue( "modifierid", it->second.getID() );
+        objPtr->updateValue( "sequenceid", it->second.getID() );
 
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );

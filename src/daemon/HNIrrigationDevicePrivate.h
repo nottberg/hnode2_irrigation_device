@@ -18,6 +18,8 @@
 //#include "HNIrrigationZone.h"
 #include "HNIDActionRequest.h"
 #include "HNIrrigationSchedule.h"
+#include "HNIrrigationSequence.h"
+#include "HNIrrigationInhibit.h"
 
 #define HNODE_IRRIGATION_DEVTYPE   "hnode2-irrigation-device"
 
@@ -70,6 +72,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNIrrigationPlacementSet m_placements;
         HNIrrigationModifierSet  m_modifiers;
         HNIrrigationSchedule     m_schedule;
+        HNIrrigationSequenceSet  m_sequences;
+        HNIrrigationInhibitSet   m_inhibits;
 
         bool m_sendSchedule;
 
@@ -86,6 +90,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         bool getUniqueZoneID( HNIDActionRequest *action );
         bool getUniquePlacementID( HNIDActionRequest *action );
         bool getUniqueModifierID( HNIDActionRequest *action );
+        bool getUniqueSequenceID( HNIDActionRequest *action );
+        bool getUniqueInhibitID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 

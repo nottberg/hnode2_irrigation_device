@@ -57,7 +57,7 @@ class HNIrrigationModifier
         
         HNIS_RESULT_T validateSettings();
         
-        double calculateDelta( uint baseDuration );
+        double calculateDelta( uint baseDuration, std::string &appliedValue );
 };
 
 class HNIrrigationModifierSet
@@ -82,6 +82,7 @@ class HNIrrigationModifierSet
         void deleteModifier( std::string modifierID );
         void getModifiersList( std::vector< HNIrrigationModifier > &modifiersList );
         HNIS_RESULT_T getModifier( std::string modifierID, HNIrrigationModifier &modifier );
+        HNIS_RESULT_T getModifierName( std::string id, std::string &name );
 
         void getModifiersForZone( std::string zoneID, std::vector< HNIrrigationModifier > &modifiersList );
 
