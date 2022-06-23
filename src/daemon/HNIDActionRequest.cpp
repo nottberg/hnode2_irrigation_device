@@ -517,8 +517,6 @@ HNIDActionRequest::decodeSequenceUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNIrrigationModifier *event = m_schedule.updateModifier( modifierID );
-
         if( jsRoot->has( "name" ) )
         {
             sequence.setName( jsRoot->getValue<std::string>( "name" ) );
@@ -530,33 +528,47 @@ HNIDActionRequest::decodeSequenceUpdate( std::istream& bodyStream )
             sequence.setDesc( jsRoot->getValue<std::string>( "description" ) );
             m_sequenceUpdateMask |= HNID_SQU_FLDMASK_DESC;
         }
-/*
+
         if( jsRoot->has( "type" ) )
         {
-            modifier.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_TYPE;
+            sequence.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_TYPE;
         }
 
-        if( jsRoot->has( "value" ) )
+        if( jsRoot->has( "onDuration" ) )
         {
-            modifier.setValue( jsRoot->getValue<std::string>( "value" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_VALUE;
+            sequence.setOnDuration( strtol( jsRoot->getValue<std::string>( "onDuration" ).c_str(), NULL, 0 ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_ONDUR;
         }
 
-        if( jsRoot->has( "zoneid" ) )
+        if( jsRoot->has( "offDuration" ) )
         {
-            modifier.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_ZONEID;
+            sequence.setOffDuration( strtol( jsRoot->getValue<std::string>( "offDuration" ).c_str(), NULL, 0 ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OFFDUR;
         }
-   
-        if( modifier.validateSettings() != HNIS_RESULT_SUCCESS )
+
+        if( jsRoot->has( "objList" ) )
         {
-            std::cout << "updateModifier validate failed" << std::endl;
+            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objList" );
+
+            sequence.clearObjList();
+            
+            for( uint index = 0; index < jsObjList->size(); index++ )
+            {
+                std::string value = jsObjList->getElement<std::string>(index);
+                sequence.addObj( value );
+            }
+            
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OBJLIST;
+        }
+
+        if( sequence.validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateSequence validate failed" << std::endl;
             // zoneid parameter is required
             //return HNID_RESULT_BAD_REQUEST;
             return true;
         }
-*/
     }
     catch( Poco::Exception ex )
     {
@@ -582,16 +594,20 @@ HNIDActionRequest::applySequenceUpdate( HNIrrigationSequence *tgtSequence )
 
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_DESC )
         tgtSequence->setDesc( srcSequence->getDesc() );
-/*        
+        
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_TYPE )
         tgtSequence->setType( srcSequence->getType() );
         
-    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_VALUE )
-        tgtSequence->setValue( srcSequence->getValue() );
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_ONDUR )
+        tgtSequence->setOnDuration( srcSequence->getOnDuration() );
         
-    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_ZONEID )
-        tgtSequence->setZoneID( srcSequence->getZoneID() );
-*/        
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OFFDUR )
+        tgtSequence->setOffDuration( srcSequence->getOffDuration() );
+
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OBJLIST )
+    {
+        tgtSequence->setObjListFromStr( srcSequence->getObjListAsStr() );
+    }
 }
 
 bool

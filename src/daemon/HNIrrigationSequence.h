@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <list>
 #include <mutex>
 
 #include <hnode2/HNodeConfig.h>
@@ -15,9 +16,9 @@
 
 typedef enum HNIrrigationSequenceTypeEnum
 {
-    HNISQ_TYPE_NOTSET          = 0x00,
-    HNISQ_TYPE_LOCAL_DURATION  = 0x01,
-    HNISQ_TYPE_LOCAL_PERCENT   = 0x02    
+    HNISQ_TYPE_NOTSET   = 0x00,
+    HNISQ_TYPE_UNIFORM  = 0x01,  // A sequence of zones
+    HNISQ_TYPE_CHAIN    = 0x02   // A sequence of other Uniform sequences 
 }HNISQ_TYPE_T;
 
 class HNIrrigationSequence
@@ -28,9 +29,11 @@ class HNIrrigationSequence
         std::string  m_desc;
 
         HNISQ_TYPE_T  m_type;
-        std::string  m_value;
-        std::string  m_zoneid;
+        uint          m_onDuration;
+        uint          m_offDuration;
 
+        std::list< std::string > m_objList;
+        
     public:
         HNIrrigationSequence();
        ~HNIrrigationSequence();
@@ -42,22 +45,28 @@ class HNIrrigationSequence
         void setType( HNISQ_TYPE_T type );
         HNIS_RESULT_T setTypeFromStr( std::string typeStr );
         
-        void setValue( std::string value );         
-        void setZoneID( std::string zone );
+        void setOnDuration( uint seconds );
+        void setOffDuration( uint seconds );
 
+        void clearObjList();
+        void addObj( std::string objID );
+        void setObjListFromStr( std::string objListStr );
+        
         std::string getID();
         std::string getName();
         std::string getDesc();
 
         HNISQ_TYPE_T getType();
-        std::string getTypeAsStr();
-        
-        std::string getValue();        
-        std::string getZoneID();
-        
+        std::string  getTypeAsStr();
+
+        uint getOnDuration();
+        uint getOffDuration();
+
+        std::list< std::string >& getObjListRef();
+        std::string getObjListAsStr();
+
         HNIS_RESULT_T validateSettings();
         
-        double calculateDelta( uint baseDuration, std::string &appliedValue );
 };
 
 class HNIrrigationSequenceSet
@@ -83,8 +92,6 @@ class HNIrrigationSequenceSet
         void getSequencesList( std::vector< HNIrrigationSequence > &sequencesList );
         HNIS_RESULT_T getSequence( std::string sequenceID, HNIrrigationSequence &sequence );
         HNIS_RESULT_T getSequenceName( std::string id, std::string &name );
-
-        void getSequencesForZone( std::string zoneID, std::vector< HNIrrigationSequence > &sequencesList );
 
         HNIS_RESULT_T initSequencesListSection( HNodeConfig &cfg );
         HNIS_RESULT_T readSequencesListSection( HNodeConfig &cfg );

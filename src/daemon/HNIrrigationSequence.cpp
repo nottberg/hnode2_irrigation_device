@@ -6,6 +6,8 @@
 HNIrrigationSequence::HNIrrigationSequence()
 {
     m_type = HNISQ_TYPE_NOTSET;
+    m_onDuration  = 0;
+    m_offDuration = 0;
 }
 
 HNIrrigationSequence::~HNIrrigationSequence()
@@ -38,15 +40,42 @@ HNIrrigationSequence::setType( HNISQ_TYPE_T type )
 }
 
 void 
-HNIrrigationSequence::setValue( std::string value )
+HNIrrigationSequence::setOnDuration( uint seconds )
 {
-    m_value = value;
+    m_onDuration = seconds;
 }
 
 void 
-HNIrrigationSequence::setZoneID( std::string zoneid )
+HNIrrigationSequence::setOffDuration( uint seconds )
 {
-    m_zoneid = zoneid;
+    m_offDuration = seconds;
+}
+
+void 
+HNIrrigationSequence::clearObjList()
+{
+    m_objList.clear();
+}
+
+void 
+HNIrrigationSequence::addObj( std::string objID )
+{
+   m_objList.push_back( objID );
+}
+
+void 
+HNIrrigationSequence::setObjListFromStr( std::string objListStr )
+{
+    const std::regex ws_re("\\s+"); // whitespace
+
+    clearObjList();
+    std::sregex_token_iterator it( objListStr.begin(), objListStr.end(), ws_re, -1 );
+    const std::sregex_token_iterator end;
+    while( it != end )
+    {
+        addObj( *it );
+        it++;
+    }
 }
 
 std::string 
@@ -73,16 +102,39 @@ HNIrrigationSequence::getType()
     return m_type;
 }
 
-std::string 
-HNIrrigationSequence::getValue()
+uint
+HNIrrigationSequence::getOnDuration()
 {
-    return m_value;
+    return m_onDuration;
+}
+
+uint
+HNIrrigationSequence::getOffDuration()
+{
+    return m_offDuration;
+}
+
+std::list< std::string >& 
+HNIrrigationSequence::getObjListRef()
+{
+    return m_objList;
 }
 
 std::string 
-HNIrrigationSequence::getZoneID()
+HNIrrigationSequence::getObjListAsStr()
 {
-    return m_zoneid;
+    std::string rspStr;
+
+    bool first = true;
+    for( std::list<std::string>::iterator it = m_objList.begin(); it != m_objList.end(); it++ )
+    {
+        if( first == false )
+            rspStr += " ";
+        rspStr += *it;
+        first = false;
+    }
+
+    return rspStr;
 }
 
 HNIS_RESULT_T 
@@ -90,10 +142,10 @@ HNIrrigationSequence::setTypeFromStr( std::string typeStr )
 {
     m_type = HNISQ_TYPE_NOTSET;
     
-    if( typeStr == "local.duration" )
-        m_type = HNISQ_TYPE_LOCAL_DURATION;
-    else if( typeStr == "local.percent" )
-        m_type = HNISQ_TYPE_LOCAL_PERCENT;
+    if( typeStr == "uniform" )
+        m_type = HNISQ_TYPE_UNIFORM;
+    else if( typeStr == "chain" )
+        m_type = HNISQ_TYPE_CHAIN;
     else
         return HNIS_RESULT_FAILURE;
     
@@ -105,12 +157,12 @@ HNIrrigationSequence::getTypeAsStr()
 {
     switch( m_type )
     {
-        case HNISQ_TYPE_LOCAL_DURATION:
-            return "local.duration";
+        case HNISQ_TYPE_UNIFORM:
+            return "uniform";
         break;
         
-        case HNISQ_TYPE_LOCAL_PERCENT:
-            return "local.percent";
+        case HNISQ_TYPE_CHAIN:
+            return "chain";
         break;
         
         default:
@@ -125,42 +177,6 @@ HNIrrigationSequence::validateSettings()
 {
     // Add validation checking here
     return HNIS_RESULT_SUCCESS;
-}
-
-double
-HNIrrigationSequence::calculateDelta( uint baseDuration, std::string &appliedValue )
-{
-    double delta = 0;
-    char   avStr[256];
-    
-    switch( getType() )
-    {
-        case HNISQ_TYPE_LOCAL_DURATION:
-        {
-            double value = strtod( m_value.c_str(), NULL );
-            delta = value;
-            sprintf(avStr, "%f", delta);
-        }
-        break;
-    
-        case HNISQ_TYPE_LOCAL_PERCENT:
-        {
-            double value = strtod( m_value.c_str(), NULL );
-            
-            value /= 100.0;
-            delta = ((double)baseDuration) * value;
-            sprintf(avStr, "%f%%", delta);
-        }
-        break;
-        
-        default:
-            avStr[0] = '\0';
-        break;
-    }
-    
-    appliedValue = avStr;
-
-    return delta;
 }
 
 HNIrrigationSequenceSet::HNIrrigationSequenceSet()
@@ -282,21 +298,6 @@ HNIrrigationSequenceSet::getSequenceName( std::string id, std::string &name )
     return HNIS_RESULT_SUCCESS;
 }
 
-void 
-HNIrrigationSequenceSet::getSequencesForZone( std::string zoneID, std::vector< HNIrrigationSequence > &sequencesList )
-{
-    // Scope lock
-    const std::lock_guard<std::mutex> lock(m_accessMutex);
-
-    sequencesList.clear();
-    
-    for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
-    {
-        if( it->second.getZoneID() == zoneID )
-            sequencesList.push_back( it->second );
-    }
-}
-
 HNIS_RESULT_T 
 HNIrrigationSequenceSet::initSequencesListSection( HNodeConfig &cfg )
 {
@@ -365,14 +366,19 @@ HNIrrigationSequenceSet::readSequencesListSection( HNodeConfig &cfg )
             sequencePtr->setTypeFromStr( rstStr );
         }
 
-        if( objPtr->getValueByName( "value", rstStr ) == HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "onDuration", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            sequencePtr->setValue( rstStr );
+            sequencePtr->setOnDuration( strtol( rstStr.c_str(), NULL, 0) );
         }
 
-        if( objPtr->getValueByName( "zoneid", rstStr ) == HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "offDuration", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            sequencePtr->setZoneID( rstStr );
+            sequencePtr->setOffDuration( strtol( rstStr.c_str(), NULL, 0) );
+        }
+
+        if( objPtr->getValueByName( "objList", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            sequencePtr->setObjListFromStr( rstStr );
         }
 
     }
@@ -397,6 +403,7 @@ HNIrrigationSequenceSet::updateSequencesListSection( HNodeConfig &cfg )
     for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
     { 
         HNCObj *objPtr;
+        char tmpBuf[128];
 
         // Aquire a new list entry
         listPtr->appendObj( &objPtr );
@@ -407,8 +414,14 @@ HNIrrigationSequenceSet::updateSequencesListSection( HNodeConfig &cfg )
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "type", it->second.getTypeAsStr() );
-        objPtr->updateValue( "value", it->second.getValue() );
-        objPtr->updateValue( "zoneid", it->second.getZoneID() );
+
+        sprintf( tmpBuf, "%u", it->second.getOnDuration() );
+        objPtr->updateValue( "onDuration", tmpBuf );
+
+        sprintf( tmpBuf, "%u", it->second.getOffDuration() );        
+        objPtr->updateValue( "offDuration", tmpBuf );
+
+        objPtr->updateValue( "objList", it->second.getObjListAsStr() );
     }
 
     return HNIS_RESULT_SUCCESS;
