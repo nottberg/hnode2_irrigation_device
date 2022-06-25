@@ -16,6 +16,7 @@
 #include "HNIrrigationSchedule.h"
 #include "HNIrrigationSequence.h"
 #include "HNIrrigationInhibit.h"
+#include "HNIrrigationOperation.h"
 #include "HNSWDPacketClient.h"
 
 typedef enum HNIDActionRequestType 
@@ -51,7 +52,11 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_INHIBITINFO    = 28,
     HNID_AR_TYPE_INHIBITCREATE  = 29,
     HNID_AR_TYPE_INHIBITUPDATE  = 30,
-    HNID_AR_TYPE_INHIBITDELETE  = 31    
+    HNID_AR_TYPE_INHIBITDELETE  = 31,
+    HNID_AR_TYPE_OPERATIONSLIST  = 32,
+    HNID_AR_TYPE_OPERATIONINFO   = 33,
+    HNID_AR_TYPE_OPERATIONCREATE = 34,
+    HNID_AR_TYPE_OPERATIONCANCEL = 35    
 }HNID_AR_TYPE_T;
 
 // Change scheduling state. Enable/Disable/Inhibit
@@ -129,6 +134,15 @@ typedef enum HNIDActionInhibitUpdateMaskEnum
     HNID_INU_FLDMASK_ZONEID   = 0x00000010
 }HNID_INU_FLDMASK_T;
 
+typedef enum HNIDActionOperationUpdateMaskEnum
+{
+    HNID_OPU_FLDMASK_CLEAR    = 0x00000000,
+    HNID_OPU_FLDMASK_TYPE     = 0x00000002,
+    HNID_OPU_FLDMASK_ONDUR    = 0x00000004,
+    HNID_OPU_FLDMASK_OFFDUR   = 0x00000008,
+    HNID_OPU_FLDMASK_OBJLIST  = 0x00000010
+}HNID_OPU_FLDMASK_T;
+
 typedef enum HNIDActionRequestResult
 {
     HNID_AR_RESULT_SUCCESS,
@@ -145,19 +159,22 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string m_modifierID;
         std::string m_sequenceID;
         std::string m_inhibitID;
-
+        std::string m_operationID;
+        
         std::vector< HNIrrigationZone > m_zoneList;
         std::vector< HNIrrigationPlacement > m_placementsList;
         std::vector< HNIrrigationModifier > m_modifiersList;
         std::vector< HNIrrigationSequence > m_sequencesList;
-        std::vector< HNIrrigationInhibit > m_inhibitsList;        
+        std::vector< HNIrrigationInhibit > m_inhibitsList;
+        std::vector< HNIrrigationOperation > m_operationsList;
         std::vector< HNSWDSwitchInfo > m_swList;
 
         uint m_zoneUpdateMask;
         uint m_placementUpdateMask;
-        uint m_modifierUpdateMask;       
+        uint m_modifierUpdateMask;
         uint m_sequenceUpdateMask;
-        uint m_inhibitUpdateMask;  
+        uint m_inhibitUpdateMask;
+        uint m_operationUpdateMask;
 
         std::stringstream m_rspStream;
 
@@ -179,13 +196,14 @@ class HNIDActionRequest : public HNReqWaitAction
         void setModifierID( std::string value );
         void setSequenceID( std::string value );
         void setInhibitID( std::string value );
-
+        void setOperationID( std::string value );
 
         bool decodeZoneUpdate( std::istream& bodyStream );
         bool decodePlacementUpdate( std::istream& bodyStream );
         bool decodeModifierUpdate( std::istream& bodyStream );
         bool decodeSequenceUpdate( std::istream& bodyStream );
         bool decodeInhibitUpdate( std::istream& bodyStream );
+        bool decodeOperationUpdate( std::istream& bodyStream );
         bool decodeSchedulerState( std::istream& bodyStream );
         bool decodeZoneCtrl( std::istream& bodyStream );
 
@@ -202,6 +220,7 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string getModifierID();
         std::string getSequenceID();
         std::string getInhibitID();
+        std::string getOperationID();
 
         HNID_SSR_T getScheduleStateRequestType();
         HNID_ZCR_T getZoneControlRequestType();
@@ -215,12 +234,15 @@ class HNIDActionRequest : public HNReqWaitAction
         void applyModifierUpdate( HNIrrigationModifier *tgtModifier );
         void applySequenceUpdate( HNIrrigationSequence *tgtSequence );
         void applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit );
+        void applyOperationUpdate( HNIrrigationOperation *tgtOperation );
+
 
         std::vector< HNIrrigationZone > &refZoneList();
         std::vector< HNIrrigationPlacement > &refPlacementsList();
         std::vector< HNIrrigationModifier > &refModifiersList();
         std::vector< HNIrrigationSequence > &refSequencesList();
         std::vector< HNIrrigationInhibit > &refInhibitsList();
+        std::vector< HNIrrigationOperation > &refOperationsList();
 
         std::vector< HNSWDSwitchInfo > &refSwitchList();
 

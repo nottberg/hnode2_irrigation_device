@@ -659,10 +659,74 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
-      "/hnode2/irrigation/zonectl": {
-        "put": {
-          "summary": "Send manual control request for one or more zones.",
-          "operationId": "putZoneControlRequest",
+
+
+
+      "/hnode2/irrigation/operation": {
+        "get": {
+          "summary": "Get list of active and queued operations.",
+          "operationId": "getOperationsList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Queue a new operation.",
+          "operationId": "createOperation",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/operation/{operationid}": {
+        "get": {
+          "summary": "Get information about a specific operation.",
+          "operationId": "getOperation",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Cancel an active operation.",
+          "operationId": "cancelOperation",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -680,7 +744,6 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         }
       }
-    }
 }
 )";
 
@@ -1402,6 +1465,120 @@ HNIrrigationDevice::getUniqueInhibitID( HNIDActionRequest *action )
     }while( idNum < 2000 );
 
     return false;    
+}
+
+std::string 
+HNIrrigationDevice::buildUniformSequenceJSON( HNIrrigationOperation *opObj )
+{
+    std::stringstream ostr;
+
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    switch( opObj->getType() )
+    {
+        case HNOP_TYPE_EXEC_SEQUENCE:
+        {
+            HNIrrigationSequence seqObj;
+            if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
+            {
+                return ostr.str();
+            }
+            
+            switch( seqObj.getType() )
+            {
+                case HNISQ_TYPE_UNIFORM:
+                {
+                    jsRoot.set( "seqType", "uniform" );
+                    jsRoot.set( "onDuration", seqObj.getOnDuration() );
+                    jsRoot.set( "offDuration", seqObj.getOffDuration() );
+
+                    // Convert the zone references into switch references.   
+                    std::string swidStr;
+                    bool first = true;
+                    for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
+                    {
+                        HNIrrigationZone zone;
+
+                        if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+                            continue;
+
+                        if( first == false )
+                            swidStr += " ";
+                        swidStr += zone.getSWIDListStr();
+                        first = false;
+                    }
+
+                    jsRoot.set( "swidList", swidStr );          
+                }
+                break;
+
+                case HNISQ_TYPE_CHAIN:
+                {
+                    return ostr.str();
+                }
+                break;
+            }
+
+        }
+        break;
+
+        // Execute an onetime instaneous sequence as defined in this operation.
+        case HNOP_TYPE_EXEC_ONETIMESEQ:
+        {
+#if 0          
+            HNIrrigationSequence seqObj;
+            if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
+            {
+                return ostr.str();
+            }
+            
+            switch( seqObj.getType() )
+            {
+                case HNISQ_TYPE_UNIFORM:
+                {
+                    jsRoot.set( "seqType", "uniform" );
+                    jsRoot.set( "onDuration", seqObj.getOnDuration() );
+                    jsRoot.set( "offDuration", seqObj.getOffDuration() );
+
+                    // Convert the zone references into switch references.   
+                    std::string swidStr;
+                    bool first = true;
+                    for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
+                    {
+                        HNIrrigationZone zone;
+
+                        if( getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+                            continue;
+
+                        if( first == false )
+                            swidStr += " ";
+                        swidStr += zone.getSWIDListStr();
+                        first = false;
+                    }
+
+                    jsRoot.set( "swidList", swidStr );          
+                }
+                break;
+
+                case HNISQ_TYPE_CHAIN:
+                {
+                    return ostr.str();
+                }
+                break;
+            }
+#endif
+        }
+        break;
+
+        default:
+            return ostr.str();
+        break;
+    }
+
+    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return ""; }
+
+    return ostr.str();
 }
 
 typedef enum HNIDStartActionBitsEnum
@@ -2428,6 +2605,47 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 
         action.setType( HNID_AR_TYPE_INHIBITDELETE );
         action.setInhibitID( inhibitID );
+    }    
+    else if( "getOperationsList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_OPERATIONSLIST );
+    }
+    else if( "createOperation" == opID )
+    {
+        action.setType( HNID_AR_TYPE_OPERATIONCREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeOperationUpdate( bodyStream );
+    }
+    else if( "getOperation" == opID )
+    {
+        std::string operationID;
+
+        if( opData->getParam( "operationid", operationID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_OPERATIONINFO );
+        action.setOperationID( operationID );
+    }
+    else if( "cancelOperation" == opID )
+    {
+        std::string operationID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "operationid", operationID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_OPERATIONCANCEL );
+        action.setOperationID( operationID );
     }    
     else if( "getScheduleInfo" == opID )
     {

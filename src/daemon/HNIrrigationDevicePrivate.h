@@ -71,9 +71,12 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNIrrigationZoneSet      m_zones;
         HNIrrigationPlacementSet m_placements;
         HNIrrigationModifierSet  m_modifiers;
-        HNIrrigationSchedule     m_schedule;
         HNIrrigationSequenceSet  m_sequences;
         HNIrrigationInhibitSet   m_inhibits;
+
+        HNIrrigationSchedule     m_schedule;
+
+        HNIrrigationOperationQueue m_opQueue;
 
         bool m_sendSchedule;
 
@@ -92,6 +95,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         bool getUniqueModifierID( HNIDActionRequest *action );
         bool getUniqueSequenceID( HNIDActionRequest *action );
         bool getUniqueInhibitID( HNIDActionRequest *action );
+        bool getUniqueOperationID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 
@@ -108,7 +112,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void handleScheduleStateRsp( HNSWDPacketClient &packet );
         void handleZoneCtrlRsp( HNSWDPacketClient &packet );
 
-        //bool getIrrigationStatusJSON( std::ostream &ostr );
+       std::string buildUniformSequenceJSON( HNIrrigationOperation *opObj );
 
     protected:
         // HNDevice REST callback
