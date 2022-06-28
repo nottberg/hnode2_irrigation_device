@@ -33,6 +33,7 @@ typedef enum HNIrrigationDeviceProcessStateEnum
   HNID_STATE_WAIT_SET_SCHEDULE,
   HNID_STATE_WAIT_SWINFO,
   HNID_STATE_WAIT_SCHCTL,
+  HNID_STATE_WAIT_SEQSTART,
   HNID_STATE_WAIT_ZONECTL
 }HNID_STATE_T;
 
@@ -43,6 +44,16 @@ typedef enum HNIrrigationDeviceResultEnum
   HNID_RESULT_BAD_REQUEST,
   HNID_RESULT_SERVER_ERROR
 }HNID_RESULT_T;
+
+typedef enum HNIDStartActionBitsEnum
+{
+    HNID_ACTBIT_CLEAR     = 0x0000,
+    HNID_ACTBIT_COMPLETE  = 0x0001,
+    HNID_ACTBIT_UPDATE    = 0x0002,
+    HNID_ACTBIT_RECALCSCH = 0x0004,
+    HNID_ACTBIT_ERROR     = 0x0008,
+    HNID_ACTBIT_SENDREQ   = 0x0010
+} HNID_ACTBIT_T;
 
 class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNEPLoopCallbacks
 {
@@ -72,11 +83,17 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNIrrigationPlacementSet m_placements;
         HNIrrigationModifierSet  m_modifiers;
         HNIrrigationSequenceSet  m_sequences;
-        HNIrrigationInhibitSet   m_inhibits;
 
         HNIrrigationSchedule     m_schedule;
 
+        uint m_nextInhibitID;
+        HNIrrigationInhibitSet   m_inhibits;
+
+        uint m_nextOpID;
         HNIrrigationOperationQueue m_opQueue;
+
+        HNIrrigationOperation *m_lastMasterEnableOperation;
+        HNIrrigationOperation *m_currentActiveSequence;
 
         bool m_sendSchedule;
 
@@ -110,9 +127,13 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
         void handleSWDSwitchInfoRsp( HNSWDPacketClient &packet );
         void handleScheduleStateRsp( HNSWDPacketClient &packet );
-        void handleZoneCtrlRsp( HNSWDPacketClient &packet );
+        void handleSequenceStartRsp( HNSWDPacketClient &packet );
+        void handleSequenceCancelRsp( HNSWDPacketClient &packet );
 
-       std::string buildUniformSequenceJSON( HNIrrigationOperation *opObj );
+        HNID_RESULT_T buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr );
+        HNID_RESULT_T buildOnetimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr );
+
+        HNID_ACTBIT_T executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet );
 
     protected:
         // HNDevice REST callback

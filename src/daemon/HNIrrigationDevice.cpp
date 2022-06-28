@@ -806,7 +806,12 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     setState( HNID_STATE_NOINIT );
 
     m_getSWDHealthDetail = false;
-    m_sendSchedule = false;
+    m_sendSchedule       = false;
+    m_nextInhibitID      = 1;
+    m_nextOpID           = 1;
+
+    m_lastMasterEnableOperation = NULL;
+    m_currentActiveSequence     = NULL;
 
     m_instanceName = "default";
     if( _instancePresent == true )
@@ -1052,7 +1057,31 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
 }
 
 void
-HNIrrigationDevice::handleZoneCtrlRsp( HNSWDPacketClient &packet )
+HNIrrigationDevice::handleSequenceStartRsp( HNSWDPacketClient &packet )
+{
+    std::string msg;
+
+    std::cout << "Response RX: " << m_state << std::endl;
+    // If response was spurious then ignore it
+    if( m_state != HNID_STATE_WAIT_ZONECTL )
+    {
+        return;
+    }
+
+    // TODO error handling
+
+    // Finish the request
+    m_curAction->complete( true );
+
+    // Retire the request
+    m_curAction = NULL;
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+void
+HNIrrigationDevice::handleSequenceCancelRsp( HNSWDPacketClient &packet )
 {
     std::string msg;
 
@@ -1132,9 +1161,14 @@ HNIrrigationDevice::handleSWDPacket()
         break;
 
         case HNSWD_PTYPE_USEQ_ADD_RSP:
+        {
+            handleSequenceStartRsp( packet );
+        }
+        break;
+
         case HNSWD_PTYPE_SEQ_CANCEL_RSP:
         {
-            handleZoneCtrlRsp( packet );
+            handleSequenceCancelRsp( packet );
         }
         break;
     }
@@ -1448,148 +1482,179 @@ bool
 HNIrrigationDevice::getUniqueInhibitID( HNIDActionRequest *action )
 {
     char tmpID[ 64 ];
-    uint idNum = 1;
 
-    do
-    {
-        sprintf( tmpID, "in%d", idNum );
+    sprintf( tmpID, "in%d", m_nextInhibitID );
+    m_nextInhibitID += 1;
+    action->setInhibitID( tmpID );
 
-        if( m_inhibits.hasID( tmpID ) == false )
-        {
-            action->setInhibitID( tmpID );
-            return true;
-        }
-
-        idNum += 1;
-
-    }while( idNum < 2000 );
-
-    return false;    
+    return true;
 }
 
-std::string 
-HNIrrigationDevice::buildUniformSequenceJSON( HNIrrigationOperation *opObj )
+bool
+HNIrrigationDevice::getUniqueOperationID( HNIDActionRequest *action )
 {
-    std::stringstream ostr;
+    char tmpID[ 64 ];
 
+    sprintf( tmpID, "op%d", m_nextOpID );
+    m_nextOpID += 1;
+    action->setOperationID( tmpID );
+
+    return true;    
+}
+
+HNID_RESULT_T 
+HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
+{
     // Create a json root object
     pjs::Object jsRoot;
 
-    switch( opObj->getType() )
+    HNIrrigationSequence seqObj;
+    if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
     {
-        case HNOP_TYPE_EXEC_SEQUENCE:
-        {
-            HNIrrigationSequence seqObj;
-            if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
-            {
-                return ostr.str();
-            }
+        return HNID_RESULT_FAILURE;
+    }
             
-            switch( seqObj.getType() )
+    switch( seqObj.getType() )
+    {
+        case HNISQ_TYPE_UNIFORM:
+        {
+            jsRoot.set( "seqType", "uniform" );
+            jsRoot.set( "onDuration", seqObj.getOnDuration() );
+            jsRoot.set( "offDuration", seqObj.getOffDuration() );
+
+            // Convert the zone references into switch references.   
+            std::string swidStr;
+            bool first = true;
+            for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
             {
-                case HNISQ_TYPE_UNIFORM:
-                {
-                    jsRoot.set( "seqType", "uniform" );
-                    jsRoot.set( "onDuration", seqObj.getOnDuration() );
-                    jsRoot.set( "offDuration", seqObj.getOffDuration() );
+                HNIrrigationZone zone;
 
-                    // Convert the zone references into switch references.   
-                    std::string swidStr;
-                    bool first = true;
-                    for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
-                    {
-                        HNIrrigationZone zone;
+                if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+                    continue;
 
-                        if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
-                            continue;
-
-                        if( first == false )
-                            swidStr += " ";
-                        swidStr += zone.getSWIDListStr();
-                        first = false;
-                    }
-
-                    jsRoot.set( "swidList", swidStr );          
-                }
-                break;
-
-                case HNISQ_TYPE_CHAIN:
-                {
-                    return ostr.str();
-                }
-                break;
+                if( first == false )
+                    swidStr += " ";
+                swidStr += zone.getSWIDListStr();
+                first = false;
             }
 
+            jsRoot.set( "swidList", swidStr );          
         }
         break;
 
-        // Execute an onetime instaneous sequence as defined in this operation.
-        case HNOP_TYPE_EXEC_ONETIMESEQ:
+        case HNISQ_TYPE_CHAIN:
         {
-#if 0          
-            HNIrrigationSequence seqObj;
-            if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
-            {
-                return ostr.str();
-            }
-            
-            switch( seqObj.getType() )
-            {
-                case HNISQ_TYPE_UNIFORM:
-                {
-                    jsRoot.set( "seqType", "uniform" );
-                    jsRoot.set( "onDuration", seqObj.getOnDuration() );
-                    jsRoot.set( "offDuration", seqObj.getOffDuration() );
-
-                    // Convert the zone references into switch references.   
-                    std::string swidStr;
-                    bool first = true;
-                    for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
-                    {
-                        HNIrrigationZone zone;
-
-                        if( getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
-                            continue;
-
-                        if( first == false )
-                            swidStr += " ";
-                        swidStr += zone.getSWIDListStr();
-                        first = false;
-                    }
-
-                    jsRoot.set( "swidList", swidStr );          
-                }
-                break;
-
-                case HNISQ_TYPE_CHAIN:
-                {
-                    return ostr.str();
-                }
-                break;
-            }
-#endif
+            return HNID_RESULT_FAILURE;
         }
-        break;
-
-        default:
-            return ostr.str();
         break;
     }
 
-    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return ""; }
+    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return HNID_RESULT_FAILURE; }
 
-    return ostr.str();
+    return HNID_RESULT_SUCCESS;
 }
 
-typedef enum HNIDStartActionBitsEnum
+HNID_RESULT_T 
+HNIrrigationDevice::buildOnetimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
 {
-    HNID_ACTBIT_CLEAR     = 0x0000,
-    HNID_ACTBIT_COMPLETE  = 0x0001,
-    HNID_ACTBIT_UPDATE    = 0x0002,
-    HNID_ACTBIT_RECALCSCH = 0x0004,
-    HNID_ACTBIT_ERROR     = 0x0008,
-    HNID_ACTBIT_SENDREQ   = 0x0010
-} HNID_ACTBIT_T;
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_ACTBIT_T
+HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet )
+{
+    switch( opReq->getType() )
+    {
+        // Enable/Disable the scheduler
+        case HNOP_TYPE_MASTER_ENABLE:
+        {
+            std::stringstream msg;
+
+            // Wait for scheduling state change response
+            setState( HNID_STATE_WAIT_SCHCTL );
+          
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add the new requested state
+            if( opReq->getEnable() == true )
+                jsRoot.set( "state", "enable" );
+            else
+                jsRoot.set( "state", "disable" );
+
+            jsRoot.set( "inhibitDuration", "00:00:00" );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, msg );
+            }
+            catch( ... )
+            {
+                return HNID_ACTBIT_ERROR;
+            }
+
+            std::cout << "Sending a SCHEDULING STATE request..." << std::endl;
+            packet.setType( HNSWD_PTYPE_SCH_STATE_REQ );
+            packet.setMsg( msg.str() );
+       
+            // Keep track of the newest request
+            if( m_lastMasterEnableOperation != NULL )
+            {
+                m_opQueue.deleteOperation( m_lastMasterEnableOperation->getID() );
+                m_lastMasterEnableOperation = NULL;
+            }
+            m_lastMasterEnableOperation = opReq;
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
+        }
+        break;
+
+        // Execute a stored sequence
+        case HNOP_TYPE_EXEC_SEQUENCE:
+        {
+            std::stringstream msg;
+ 
+            // If there is already an active sequence then reject
+            // this new sequence?
+            if( m_currentActiveSequence != NULL )
+            {
+                return HNID_ACTBIT_ERROR;  
+            }
+             
+            // Wait for sequence start response
+            setState( HNID_STATE_WAIT_SEQSTART );
+          
+            // Build the payload message
+            // Create a json root object
+            pjs::Object jsRoot;
+
+            // Add the new requested state
+            HNID_RESULT_T result = buildStoredSequenceJSON( opReq, msg );
+            if( result != HNID_RESULT_SUCCESS )
+            {
+                return HNID_ACTBIT_ERROR;
+            }
+
+            std::cout << "Sending a Sequence Start request..." << std::endl;
+            packet.setType( HNSWD_PTYPE_USEQ_ADD_REQ );
+            packet.setMsg( msg.str() );
+       
+            // Keep track of this current sequence request
+            m_currentActiveSequence = opReq;
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        // Execute a onetime sequence
+        case HNOP_TYPE_EXEC_ONETIMESEQ:
+        break;
+    }
+
+    return HNID_ACTBIT_COMPLETE;
+}
 
 void
 HNIrrigationDevice::startAction()
@@ -2030,7 +2095,67 @@ HNIrrigationDevice::startAction()
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
-        break;                
+        break;
+
+        case HNID_AR_TYPE_OPERATIONSLIST:
+            // Populate the event list in the action
+            m_opQueue.getOperationsList( m_curAction->refOperationsList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_OPERATIONINFO:
+        {
+            HNIrrigationOperation event;
+
+            if( m_opQueue.getOperation( m_curAction->getOperationID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the operation list in the action
+            m_curAction->refOperationsList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONCREATE:
+        {
+            // Allocate a unique operation identifier
+            if( getUniqueOperationID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the operation record
+            HNIrrigationOperation *event = m_opQueue.addOperation( m_curAction->getOperationID() );
+
+            // Update the fields of the operation record.
+            m_curAction->applyOperationUpdate( event );
+
+            // Execute the requested local operation
+            actBits = executeOperation( event, packet );
+
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONCANCEL:
+        {
+            // Cancel any ongoing operation
+            m_opQueue.deleteOperation( m_curAction->getOperationID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_COMPLETE);
+        }
+        break; 
+
+
         // Get detailed health information
         //HNSWD_PTYPE_HEALTH_REQ,
         //HNSWD_PTYPE_HEALTH_RSP,
