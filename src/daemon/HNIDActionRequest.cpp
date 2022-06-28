@@ -1217,10 +1217,23 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             for( std::vector< HNIrrigationSequence >::iterator sit = refSequencesList().begin(); sit != refSequencesList().end(); sit++ )
             { 
                 pjs::Object sObj;
+                pjs::Array objIDList;
 
-                sObj.set( "modifierid", sit->getID() );
+                sObj.set( "sequenceid", sit->getID() );
                 sObj.set( "name", sit->getName() );
                 sObj.set( "description", sit->getDesc() );
+                sObj.set( "type", sit->getTypeAsStr() );
+                sObj.set( "onDuration", sit->getOnDuration() );
+                sObj.set( "offDuration", sit->getOffDuration() );
+                
+                // Compose Object ID List
+                for( std::list< std::string >::iterator oit = sit->getObjListRef().begin(); oit != sit->getObjListRef().end(); oit++ )
+                {
+                    objIDList.add( *oit );
+                }
+
+                // Add Zonelist field
+                sObj.set( "objIDList", objIDList );
 
                 // Add new placement object to return list
                 jsRoot.add( sObj );
@@ -1233,13 +1246,27 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         case HNID_AR_TYPE_SEQUENCEINFO:
         {
             // Create a json root object
-            pjs::Object      jsRoot;
+            pjs::Object jsRoot;
+            pjs::Array  objIDList;
 
             std::vector< HNIrrigationSequence >::iterator sequence = refSequencesList().begin();
 
             jsRoot.set( "sequenceid", sequence->getID() );
             jsRoot.set( "name", sequence->getName() );
             jsRoot.set( "description", sequence->getDesc() );
+
+            jsRoot.set( "type", sequence->getTypeAsStr() );
+            jsRoot.set( "onDuration", sequence->getOnDuration() );
+            jsRoot.set( "offDuration", sequence->getOffDuration() );
+                
+            // Compose Object ID List
+            for( std::list< std::string >::iterator oit = sequence->getObjListRef().begin(); oit != sequence->getObjListRef().end(); oit++ )
+            {
+                objIDList.add( *oit );
+            }
+
+            // Add Zonelist field
+            jsRoot.set( "objIDList", objIDList );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }
