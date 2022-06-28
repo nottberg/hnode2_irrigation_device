@@ -744,6 +744,7 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         }
       }
+  }
 }
 )";
 
