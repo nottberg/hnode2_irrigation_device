@@ -5,7 +5,7 @@
 
 HNIrrigationSequence::HNIrrigationSequence()
 {
-    m_type = HNISQ_TYPE_NOTSET;
+    m_type = HNISQ_TYPE_UNIFORM;
     m_onDuration  = 0;
     m_offDuration = 0;
 }

@@ -1989,7 +1989,7 @@ HNIrrigationDevice::startAction()
             // Update the fields of the zone record.
             m_curAction->applySequenceUpdate( event );
 
-            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
         }
         break;
 
@@ -2009,7 +2009,7 @@ HNIrrigationDevice::startAction()
             // Update the fields of the zone record.
             m_curAction->applySequenceUpdate( event );
 
-            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
         }
         break;
 
@@ -2018,7 +2018,7 @@ HNIrrigationDevice::startAction()
             // Remove the zone record
             m_sequences.deleteSequence( m_curAction->getSequenceID() );
 
-            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
         }
         break;
 
