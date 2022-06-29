@@ -29,8 +29,8 @@ class HNIrrigationSequence
         std::string  m_desc;
 
         HNISQ_TYPE_T  m_type;
-        uint          m_onDuration;
-        uint          m_offDuration;
+        HNI24HTime    m_onDuration;
+        HNI24HTime    m_offDuration;
 
         std::list< std::string > m_objList;
         
@@ -46,12 +46,15 @@ class HNIrrigationSequence
         HNIS_RESULT_T setTypeFromStr( std::string typeStr );
         
         void setOnDuration( uint seconds );
-        void setOffDuration( uint seconds );
+        HNIS_RESULT_T setOnDurationFromStr( std::string value );
 
-        void clearObjList();
-        void addObj( std::string objID );
-        void setObjListFromStr( std::string objListStr );
-        
+        void setOffDuration( uint seconds );
+        HNIS_RESULT_T setOffDurationFromStr( std::string value );
+
+        void clearObjIDList();
+        void addObjID( std::string objID );
+        void setObjIDListFromStr( std::string objListStr );
+
         std::string getID();
         std::string getName();
         std::string getDesc();
@@ -60,10 +63,13 @@ class HNIrrigationSequence
         std::string  getTypeAsStr();
 
         uint getOnDuration();
-        uint getOffDuration();
+        std::string getOnDurationAsStr();
 
-        std::list< std::string >& getObjListRef();
-        std::string getObjListAsStr();
+        uint getOffDuration();
+        std::string getOffDurationAsStr();
+
+        std::list< std::string >& getObjIDListRef();
+        std::string getObjIDListAsStr();
 
         HNIS_RESULT_T validateSettings();
         

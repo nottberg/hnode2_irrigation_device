@@ -6,8 +6,6 @@
 HNIrrigationSequence::HNIrrigationSequence()
 {
     m_type = HNISQ_TYPE_UNIFORM;
-    m_onDuration  = 0;
-    m_offDuration = 0;
 }
 
 HNIrrigationSequence::~HNIrrigationSequence()
@@ -42,38 +40,50 @@ HNIrrigationSequence::setType( HNISQ_TYPE_T type )
 void 
 HNIrrigationSequence::setOnDuration( uint seconds )
 {
-    m_onDuration = seconds;
+    m_onDuration.setFromSeconds( seconds );
+}
+
+HNIS_RESULT_T 
+HNIrrigationSequence::setOnDurationFromStr( std::string value )
+{
+    return m_onDuration.parseTime( value );
 }
 
 void 
 HNIrrigationSequence::setOffDuration( uint seconds )
 {
-    m_offDuration = seconds;
+    m_offDuration.setFromSeconds( seconds );
+}
+
+HNIS_RESULT_T 
+HNIrrigationSequence::setOffDurationFromStr( std::string value )
+{
+    return m_offDuration.parseTime( value );
 }
 
 void 
-HNIrrigationSequence::clearObjList()
+HNIrrigationSequence::clearObjIDList()
 {
     m_objList.clear();
 }
 
 void 
-HNIrrigationSequence::addObj( std::string objID )
+HNIrrigationSequence::addObjID( std::string objID )
 {
    m_objList.push_back( objID );
 }
 
 void 
-HNIrrigationSequence::setObjListFromStr( std::string objListStr )
+HNIrrigationSequence::setObjIDListFromStr( std::string objListStr )
 {
     const std::regex ws_re("\\s+"); // whitespace
 
-    clearObjList();
+    clearObjIDList();
     std::sregex_token_iterator it( objListStr.begin(), objListStr.end(), ws_re, -1 );
     const std::sregex_token_iterator end;
     while( it != end )
     {
-        addObj( *it );
+        addObjID( *it );
         it++;
     }
 }
@@ -105,23 +115,35 @@ HNIrrigationSequence::getType()
 uint
 HNIrrigationSequence::getOnDuration()
 {
-    return m_onDuration;
+    return m_onDuration.getSeconds();
+}
+
+std::string
+HNIrrigationSequence::getOnDurationAsStr()
+{
+    return m_onDuration.getHMSStr();
 }
 
 uint
 HNIrrigationSequence::getOffDuration()
 {
-    return m_offDuration;
+    return m_offDuration.getSeconds();
+}
+
+std::string
+HNIrrigationSequence::getOffDurationAsStr()
+{
+    return m_offDuration.getHMSStr();
 }
 
 std::list< std::string >& 
-HNIrrigationSequence::getObjListRef()
+HNIrrigationSequence::getObjIDListRef()
 {
     return m_objList;
 }
 
 std::string 
-HNIrrigationSequence::getObjListAsStr()
+HNIrrigationSequence::getObjIDListAsStr()
 {
     std::string rspStr;
 
@@ -368,17 +390,17 @@ HNIrrigationSequenceSet::readSequencesListSection( HNodeConfig &cfg )
 
         if( objPtr->getValueByName( "onDuration", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            sequencePtr->setOnDuration( strtol( rstStr.c_str(), NULL, 0) );
+            sequencePtr->setOnDurationFromStr( rstStr );
         }
 
         if( objPtr->getValueByName( "offDuration", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            sequencePtr->setOffDuration( strtol( rstStr.c_str(), NULL, 0) );
+            sequencePtr->setOffDurationFromStr( rstStr );
         }
 
-        if( objPtr->getValueByName( "objList", rstStr ) == HNC_RESULT_SUCCESS )
+        if( objPtr->getValueByName( "objIDList", rstStr ) == HNC_RESULT_SUCCESS )
         {
-            sequencePtr->setObjListFromStr( rstStr );
+            sequencePtr->setObjIDListFromStr( rstStr );
         }
 
     }
@@ -403,7 +425,6 @@ HNIrrigationSequenceSet::updateSequencesListSection( HNodeConfig &cfg )
     for( std::map< std::string, HNIrrigationSequence >::iterator it = m_sequencesMap.begin(); it != m_sequencesMap.end(); it++ )
     { 
         HNCObj *objPtr;
-        char tmpBuf[128];
 
         // Aquire a new list entry
         listPtr->appendObj( &objPtr );
@@ -414,14 +435,9 @@ HNIrrigationSequenceSet::updateSequencesListSection( HNodeConfig &cfg )
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "type", it->second.getTypeAsStr() );
-
-        sprintf( tmpBuf, "%u", it->second.getOnDuration() );
-        objPtr->updateValue( "onDuration", tmpBuf );
-
-        sprintf( tmpBuf, "%u", it->second.getOffDuration() );        
-        objPtr->updateValue( "offDuration", tmpBuf );
-
-        objPtr->updateValue( "objList", it->second.getObjListAsStr() );
+        objPtr->updateValue( "onDuration", it->second.getOnDurationAsStr() );
+        objPtr->updateValue( "offDuration", it->second.getOffDurationAsStr() );
+        objPtr->updateValue( "objIDList", it->second.getObjIDListAsStr() );
     }
 
     return HNIS_RESULT_SUCCESS;

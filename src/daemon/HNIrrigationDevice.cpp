@@ -1520,13 +1520,13 @@ HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::
         case HNISQ_TYPE_UNIFORM:
         {
             jsRoot.set( "seqType", "uniform" );
-            jsRoot.set( "onDuration", seqObj.getOnDuration() );
-            jsRoot.set( "offDuration", seqObj.getOffDuration() );
+            jsRoot.set( "onDuration", seqObj.getOnDurationAsStr() );
+            jsRoot.set( "offDuration", seqObj.getOffDurationAsStr() );
 
             // Convert the zone references into switch references.   
             std::string swidStr;
             bool first = true;
-            for( std::list< std::string >::iterator oit = seqObj.getObjListRef().begin(); oit != seqObj.getObjListRef().end(); oit++ )
+            for( std::list< std::string >::iterator oit = seqObj.getObjIDListRef().begin(); oit != seqObj.getObjIDListRef().end(); oit++ )
             {
                 HNIrrigationZone zone;
 

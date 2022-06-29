@@ -549,29 +549,29 @@ HNIDActionRequest::decodeSequenceUpdate( std::istream& bodyStream )
 
         if( jsRoot->has( "onDuration" ) )
         {
-            sequence.setOnDuration( strtol( jsRoot->getValue<std::string>( "onDuration" ).c_str(), NULL, 0 ) );
+            sequence.setOnDurationFromStr( jsRoot->getValue<std::string>( "onDuration" ) );
             m_sequenceUpdateMask |= HNID_SQU_FLDMASK_ONDUR;
         }
 
         if( jsRoot->has( "offDuration" ) )
         {
-            sequence.setOffDuration( strtol( jsRoot->getValue<std::string>( "offDuration" ).c_str(), NULL, 0 ) );
+            sequence.setOffDurationFromStr( jsRoot->getValue<std::string>( "offDuration" ) );
             m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OFFDUR;
         }
 
-        if( jsRoot->has( "objList" ) )
+        if( jsRoot->has( "objIDList" ) )
         {
-            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objList" );
+            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objIDList" );
 
-            sequence.clearObjList();
+            sequence.clearObjIDList();
             
             for( uint index = 0; index < jsObjList->size(); index++ )
             {
                 std::string value = jsObjList->getElement<std::string>(index);
-                sequence.addObj( value );
+                sequence.addObjID( value );
             }
             
-            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OBJLIST;
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OBJIDLIST;
         }
 
         if( sequence.validateSettings() != HNIS_RESULT_SUCCESS )
@@ -616,9 +616,9 @@ HNIDActionRequest::applySequenceUpdate( HNIrrigationSequence *tgtSequence )
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OFFDUR )
         tgtSequence->setOffDuration( srcSequence->getOffDuration() );
 
-    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OBJLIST )
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OBJIDLIST )
     {
-        tgtSequence->setObjListFromStr( srcSequence->getObjListAsStr() );
+        tgtSequence->setObjIDListFromStr( srcSequence->getObjIDListAsStr() );
     }
 }
 
@@ -1223,11 +1223,11 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 sObj.set( "name", sit->getName() );
                 sObj.set( "description", sit->getDesc() );
                 sObj.set( "type", sit->getTypeAsStr() );
-                sObj.set( "onDuration", sit->getOnDuration() );
-                sObj.set( "offDuration", sit->getOffDuration() );
+                sObj.set( "onDuration", sit->getOnDurationAsStr() );
+                sObj.set( "offDuration", sit->getOffDurationAsStr() );
                 
                 // Compose Object ID List
-                for( std::list< std::string >::iterator oit = sit->getObjListRef().begin(); oit != sit->getObjListRef().end(); oit++ )
+                for( std::list< std::string >::iterator oit = sit->getObjIDListRef().begin(); oit != sit->getObjIDListRef().end(); oit++ )
                 {
                     objIDList.add( *oit );
                 }
@@ -1256,11 +1256,11 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "description", sequence->getDesc() );
 
             jsRoot.set( "type", sequence->getTypeAsStr() );
-            jsRoot.set( "onDuration", sequence->getOnDuration() );
-            jsRoot.set( "offDuration", sequence->getOffDuration() );
+            jsRoot.set( "onDuration", sequence->getOnDurationAsStr() );
+            jsRoot.set( "offDuration", sequence->getOffDurationAsStr() );
                 
             // Compose Object ID List
-            for( std::list< std::string >::iterator oit = sequence->getObjListRef().begin(); oit != sequence->getObjListRef().end(); oit++ )
+            for( std::list< std::string >::iterator oit = sequence->getObjIDListRef().begin(); oit != sequence->getObjIDListRef().end(); oit++ )
             {
                 objIDList.add( *oit );
             }

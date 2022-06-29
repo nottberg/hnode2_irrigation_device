@@ -115,13 +115,13 @@ typedef enum HNIDActionModifierUpdateMaskEnum
 
 typedef enum HNIDActionSequenceUpdateMaskEnum
 {
-    HNID_SQU_FLDMASK_CLEAR    = 0x00000000,
-    HNID_SQU_FLDMASK_NAME     = 0x00000001,
-    HNID_SQU_FLDMASK_DESC     = 0x00000002,
-    HNID_SQU_FLDMASK_TYPE     = 0x00000004,
-    HNID_SQU_FLDMASK_ONDUR    = 0x00000008,
-    HNID_SQU_FLDMASK_OFFDUR   = 0x00000010,
-    HNID_SQU_FLDMASK_OBJLIST  = 0x00000020
+    HNID_SQU_FLDMASK_CLEAR      = 0x00000000,
+    HNID_SQU_FLDMASK_NAME       = 0x00000001,
+    HNID_SQU_FLDMASK_DESC       = 0x00000002,
+    HNID_SQU_FLDMASK_TYPE       = 0x00000004,
+    HNID_SQU_FLDMASK_ONDUR      = 0x00000008,
+    HNID_SQU_FLDMASK_OFFDUR     = 0x00000010,
+    HNID_SQU_FLDMASK_OBJIDLIST  = 0x00000020
 }HNID_SQU_FLDMASK_T;
 
 typedef enum HNIDActionInhibitUpdateMaskEnum
@@ -160,7 +160,7 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string m_sequenceID;
         std::string m_inhibitID;
         std::string m_operationID;
-        
+
         std::vector< HNIrrigationZone > m_zoneList;
         std::vector< HNIrrigationPlacement > m_placementsList;
         std::vector< HNIrrigationModifier > m_modifiersList;
