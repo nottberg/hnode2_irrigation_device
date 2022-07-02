@@ -1101,6 +1101,10 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
     // Finish the request
     m_sendSchedulerState = false;
 
+    // Since we know our request succeeded update the status block
+    // with the expected value, without waiting for a status update
+    m_swdStatus.setSchedulerState( m_targetSchedulerState );
+
     // Retire the request
     setState( HNID_STATE_READY );
 

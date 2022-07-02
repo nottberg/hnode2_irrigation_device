@@ -46,6 +46,8 @@ class HNSWDStatus
         bool hasActiveSequence();
         std::string getActiveSequenceID();
 
+        void setSchedulerState( std::string value );
+
         void setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones );
         HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
 };

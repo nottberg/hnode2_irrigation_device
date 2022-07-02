@@ -69,6 +69,12 @@ HNSWDStatus::getActiveSequenceID()
     return m_activeSequenceID;
 }
 
+void 
+HNSWDStatus::setSchedulerState( std::string value )
+{
+    m_schState = value;
+}
+
 void
 HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones )
 {
