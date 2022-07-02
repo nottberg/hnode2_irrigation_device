@@ -1662,6 +1662,13 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
             else
                 m_targetSchedulerState = "disabled";
        
+            // Check if we think the scheduler state needs to be updated
+            if( m_targetSchedulerState != m_swdStatus.getSchedulerState() )
+            {
+                std::cout << "=== Operation Check schedulerState - " << m_swdStatus.getSchedulerState() << " : " << m_targetSchedulerState << std::endl;
+                m_sendSchedulerState = true;
+            }
+
             // Get rid of operation record
             std::string opID = opReq->getID();
             m_opQueue.deleteOperation( opID );
