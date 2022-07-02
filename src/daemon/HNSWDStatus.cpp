@@ -48,6 +48,27 @@ HNSWDStatus::healthDegraded()
     return false;
 }
 
+std::string
+HNSWDStatus::getSchedulerState()
+{
+    return m_schState;
+}
+
+bool
+HNSWDStatus::hasActiveSequence()
+{
+    return ( m_activeSequenceID.empty() == false );
+}
+
+std::string
+HNSWDStatus::getActiveSequenceID()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_activeSequenceID;
+}
+
 void
 HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones )
 {
@@ -77,6 +98,8 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
 
         m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
         m_schCRC32 = strtoul( m_schCRC32Str.c_str(), NULL, 0 );
+
+        m_activeSequenceID = jsRoot->optValue( "activeSequenceID", empty );
 
         pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
                             

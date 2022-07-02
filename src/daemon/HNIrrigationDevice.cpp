@@ -808,11 +808,14 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     m_getSWDHealthDetail = false;
     m_sendSchedule       = false;
+    m_sendSchedulerState = false;
+
     m_nextInhibitID      = 1;
     m_nextOpID           = 1;
 
-    m_lastMasterEnableOperation = NULL;
     m_currentActiveSequence     = NULL;
+
+    m_targetSchedulerState = "disabled";
 
     m_instanceName = "default";
     if( _instancePresent == true )
@@ -910,6 +913,46 @@ HNIrrigationDevice::sendScheduleUpdate()
     std::cout << "Schedule Sent" << std::endl;
 }
 
+void 
+HNIrrigationDevice::sendSchedulerStateUpdate()
+{
+    HNSWDPacketClient packet;
+    pjs::Object       jsRoot;
+    std::stringstream msg;
+
+    // Build the payload message
+    // Add the new requested state
+    if( m_targetSchedulerState == "enabled" )
+    {
+        jsRoot.set( "state", "enable" );
+        jsRoot.set( "inhibitDuration", "00:00:00" );
+    }
+    else if( m_targetSchedulerState == "disabled" )
+    {
+        jsRoot.set( "state", "disable" );
+        jsRoot.set( "inhibitDuration", "00:00:00" );
+    }
+    else if( m_targetSchedulerState == "inhibit" )
+    {
+        jsRoot.set( "state", "inhibit" );
+        jsRoot.set( "inhibitDuration", "00:10:00" );
+    }
+    else
+    {
+        std::cout << "ERROR - target schedule state is not understood: " << m_targetSchedulerState << std::endl;
+        return;
+    }
+
+    // Render into a json string.
+    try { pjs::Stringifier::stringify( jsRoot, msg ); } catch( ... ) { return; }
+
+    packet.setType( HNSWD_PTYPE_SCH_STATE_REQ );
+    packet.setMsg( msg.str() );
+    packet.sendAll( m_swdFD );
+
+    std::cout << "Scheduler State Update Sent" << std::endl;
+}
+
 void
 HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
 {
@@ -929,6 +972,34 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
         m_sendSchedule = true;
     }
 
+    // If the scheduler state is not as desired then setup
+    // to correct that.
+    if( m_targetSchedulerState != m_swdStatus.getSchedulerState() )
+    {
+        std::cout << "=== Daemon Status schedulerState - " << m_swdStatus.getSchedulerState() << " : " << m_targetSchedulerState << std::endl;
+        m_sendSchedulerState = true;
+    }
+
+    // If there is a running sequence operation then check
+    // if it is still executing
+    if( m_currentActiveSequence != NULL )
+    {
+        if( (m_swdStatus.hasActiveSequence() == false) || (m_swdStatus.getActiveSequenceID() != m_currentActiveSequence->getID()) )
+        {
+            // The switch daemon is no longer running our active sequence so,
+            // cleanup as it has completed.
+            std::string oid = m_currentActiveSequence->getID();
+            m_opQueue.deleteOperation( oid );
+            m_currentActiveSequence = NULL;
+
+            std::cout << "=== Daemon Status Active Sequence Completed: " << oid << std::endl;
+        }
+        else
+        {
+            std::cout << "=== Daemon Status Active Sequence: " << m_swdStatus.getActiveSequenceID() << std::endl;
+        }
+    }
+
     // Check if the switch daemon is unhealthy,
     // if so collect additional health information
     if( m_swdStatus.healthDegraded() )
@@ -944,22 +1015,6 @@ HNIrrigationDevice::handleSWDEvent( HNSWDPacketClient &packet )
 
     packet.getMsg( msg );
     std::cout << "=== Daemon Event Recieved - result code: " << packet.getResult() << " ===" << std::endl;
-}
-
-void
-HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
-{
-    if( m_state != HNID_STATE_WAIT_SET_SCHEDULE )
-    {
-        return;
-    }
-
-    // Clear the action
-    m_sendSchedule = false;
-
-    setState( HNID_STATE_READY );
-
-    return;
 }
 
 void
@@ -1032,6 +1087,22 @@ HNIrrigationDevice::handleSWDSwitchInfoRsp( HNSWDPacketClient &packet )
 }
 
 void
+HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
+{
+    if( m_state != HNID_STATE_WAIT_SET_SCHEDULE )
+    {
+        return;
+    }
+
+    // Clear the action
+    m_sendSchedule = false;
+
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+void
 HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
 {
     std::string msg;
@@ -1048,10 +1119,9 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
     // TODO error handling
 
     // Finish the request
-    m_curAction->complete( true );
+    m_sendSchedulerState = false;
 
     // Retire the request
-    m_curAction = NULL;
     setState( HNID_STATE_READY );
 
     return;
@@ -1260,6 +1330,19 @@ HNIrrigationDevice::loopIteration()
                 return;
             }
 
+            // Schedule State Update?
+            if( m_sendSchedulerState == true )
+            {
+                // Wait for reply before further action
+                setState( HNID_STATE_WAIT_SCHCTL );
+
+                // Send schedule update request
+                sendSchedulerStateUpdate();
+
+                return;
+            }
+
+
             // Check if health state should be aquired
 
         break;
@@ -1289,8 +1372,13 @@ HNIrrigationDevice::configExists()
 HNID_RESULT_T
 HNIrrigationDevice::initConfig()
 {
-    HNodeConfigFile cfgFile;
-    HNodeConfig     cfg;
+    HNodeConfigFile  cfgFile;
+    HNodeConfig      cfg;
+    HNCSection      *secPtr;
+
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    secPtr->updateValue("targetSchedulerState", m_targetSchedulerState );
 
     m_hnodeDev.initConfigSections( cfg );
 
@@ -1321,6 +1409,7 @@ HNIrrigationDevice::readConfig()
 {
     HNodeConfigFile cfgFile;
     HNodeConfig     cfg;
+    HNCSection      *secPtr;
 
     if( configExists() == false )
         return HNID_RESULT_FAILURE;
@@ -1333,6 +1422,14 @@ HNIrrigationDevice::readConfig()
         return HNID_RESULT_FAILURE;
     }
   
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    // Get a list pointer
+    secPtr->getValueByName( "targetSchedulerState", m_targetSchedulerState );
+    if( m_targetSchedulerState.empty() )
+        m_targetSchedulerState = "disabled";
+
     std::cout << "cl1" << std::endl;
     m_hnodeDev.readConfigSections( cfg );
 
@@ -1359,8 +1456,15 @@ HNIrrigationDevice::readConfig()
 HNID_RESULT_T
 HNIrrigationDevice::updateConfig()
 {
-    HNodeConfigFile cfgFile;
-    HNodeConfig     cfg;
+    HNodeConfigFile  cfgFile;
+    HNodeConfig      cfg;
+    HNCSection      *secPtr;
+
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    // Get a list pointer
+    secPtr->updateValue( "targetSchedulerState", m_targetSchedulerState );
 
     m_hnodeDev.updateConfigSections( cfg );
 
@@ -1519,6 +1623,7 @@ HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::
     {
         case HNISQ_TYPE_UNIFORM:
         {
+            jsRoot.set( "requestID", seqObj.getID() );
             jsRoot.set( "seqType", "uniform" );
             jsRoot.set( "onDuration", seqObj.getOnDurationAsStr() );
             jsRoot.set( "offDuration", seqObj.getOffDurationAsStr() );
@@ -1564,51 +1669,24 @@ HNIrrigationDevice::buildOnetimeSequenceJSON( HNIrrigationOperation *opObj, std:
 HNID_ACTBIT_T
 HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet )
 {
+    std::cout << "Start Execute Operation - type: " << opReq->getType() << std::endl;
+
     switch( opReq->getType() )
     {
         // Enable/Disable the scheduler
         case HNOP_TYPE_MASTER_ENABLE:
         {
-            std::stringstream msg;
-
-            // Wait for scheduling state change response
-            setState( HNID_STATE_WAIT_SCHCTL );
-          
-            // Build the payload message
-            // Create a json root object
-            pjs::Object jsRoot;
-
             // Add the new requested state
             if( opReq->getEnable() == true )
-                jsRoot.set( "state", "enable" );
+                m_targetSchedulerState = "enabled";
             else
-                jsRoot.set( "state", "disable" );
-
-            jsRoot.set( "inhibitDuration", "00:00:00" );
-
-            // Render into a json string.
-            try
-            {
-                pjs::Stringifier::stringify( jsRoot, msg );
-            }
-            catch( ... )
-            {
-                return HNID_ACTBIT_ERROR;
-            }
-
-            std::cout << "Sending a SCHEDULING STATE request..." << std::endl;
-            packet.setType( HNSWD_PTYPE_SCH_STATE_REQ );
-            packet.setMsg( msg.str() );
+                m_targetSchedulerState = "disabled";
        
-            // Keep track of the newest request
-            if( m_lastMasterEnableOperation != NULL )
-            {
-                m_opQueue.deleteOperation( m_lastMasterEnableOperation->getID() );
-                m_lastMasterEnableOperation = NULL;
-            }
-            m_lastMasterEnableOperation = opReq;
+            // Get rid of operation record
+            std::string opID = opReq->getID();
+            m_opQueue.deleteOperation( opID );
 
-            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
         }
         break;
 
@@ -1645,6 +1723,8 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
             // Keep track of this current sequence request
             m_currentActiveSequence = opReq;
 
+            std::cout << "=== Starting Active Sequence: " << m_currentActiveSequence->getID() << std::endl;
+
             return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
         }
         break;
@@ -1654,7 +1734,10 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
         break;
     }
 
-    return HNID_ACTBIT_COMPLETE;
+    // Unrecognized operation
+    std::cout << "ERROR: Unrecognized operation." << std::endl;
+
+    return HNID_ACTBIT_ERROR;
 }
 
 void
@@ -2164,7 +2247,27 @@ HNIrrigationDevice::startAction()
         // Implement Me
         case HNID_AR_TYPE_GETSCHSTATE:
         {
-            actBits = HNID_ACTBIT_ERROR;
+            // Build the payload message
+            // Create a json root object          
+            std::stringstream msg;
+            pjs::Object jsRoot;
+
+            jsRoot.set( "state", m_swdStatus.getSchedulerState() );
+            jsRoot.set( "inhibitDuration", "00:00:00" );
+
+            // Render into a json string.
+            try
+            {
+                pjs::Stringifier::stringify( jsRoot, msg );
+            }
+            catch( ... )
+            {
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
         }
         break;
 

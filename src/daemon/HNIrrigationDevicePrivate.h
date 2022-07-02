@@ -92,10 +92,12 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         uint m_nextOpID;
         HNIrrigationOperationQueue m_opQueue;
 
-        HNIrrigationOperation *m_lastMasterEnableOperation;
         HNIrrigationOperation *m_currentActiveSequence;
 
+        std::string            m_targetSchedulerState;
+
         bool m_sendSchedule;
+        bool m_sendSchedulerState;
 
         void displayHelp();
 
@@ -121,6 +123,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void startAction();
 
         void sendScheduleUpdate();
+        void sendSchedulerStateUpdate();
 
         void handleSWDStatus( HNSWDPacketClient &packet );
         void handleSWDEvent( HNSWDPacketClient &packet );
