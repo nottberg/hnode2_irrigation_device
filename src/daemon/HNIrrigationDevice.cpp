@@ -228,27 +228,7 @@ const std::string g_HNode2IrrigationRest = R"(
               "description": "Invalid status value"
             }
           }
-        },
-        "put": {
-          "summary": "Set scheduler to a specific state.",
-          "operationId": "setSchedulerState",
-          "responses": {
-            "200": {
-              "description": "successful operation",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid status value"
-            }
-          }
         }
-
       },
 
       "/hnode2/irrigation/placement": {
@@ -1674,7 +1654,7 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
     switch( opReq->getType() )
     {
         // Enable/Disable the scheduler
-        case HNOP_TYPE_MASTER_ENABLE:
+        case HNOP_TYPE_SCHEDULER_STATE:
         {
             // Add the new requested state
             if( opReq->getEnable() == true )
@@ -2271,6 +2251,7 @@ HNIrrigationDevice::startAction()
         }
         break;
 
+#if 0
         case HNID_AR_TYPE_SETSCHSTATE:
         {
             std::stringstream msg;
@@ -2330,7 +2311,7 @@ HNIrrigationDevice::startAction()
             // HNSWD_PTYPE_SEQ_CANCEL_REQ, // Cancel all future sequence actions.
             // HNSWD_PTYPE_SCH_STATE_REQ,  // Change scheduling state. Enable/Disable/Inhibit
 
-#if 0
+
                 HNSWDPacketClient packet;
                 uint32_t length;
 
@@ -2447,12 +2428,12 @@ HNIrrigationDevice::startAction()
 
                 packet.sendAll( sockfd );
             }
-#endif
 
             packet.setType( HNSWD_PTYPE_SWINFO_REQ );
             actBits = HNID_ACTBIT_SENDREQ;
         }
         break;
+#endif
 
         default:
             actBits = HNID_ACTBIT_ERROR;
@@ -2884,6 +2865,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     {
         action.setType( HNID_AR_TYPE_GETSCHSTATE );
     }
+#if 0    
     else if( "setSchedulerState" == opID )
     {
         action.setType( HNID_AR_TYPE_SETSCHSTATE );
@@ -2898,6 +2880,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         std::istream& bodyStream = opData->requestBody();
         action.decodeZoneCtrl( bodyStream );
     }
+#endif
     else
     {
         // Send back not implemented

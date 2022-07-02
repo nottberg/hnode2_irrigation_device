@@ -59,6 +59,7 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_OPERATIONCANCEL = 35    
 }HNID_AR_TYPE_T;
 
+#if 0
 // Change scheduling state. Enable/Disable/Inhibit
 typedef enum HNIDScheduleStateRequestTypeEnum
 {
@@ -78,6 +79,7 @@ typedef enum HNIDZoneControlRequestTypeEnum
     HNID_ZCR_DISABLE,   
     HNID_ZCR_INHIBIT    
 }HNID_ZCR_T;
+#endif
 
 typedef enum HNIDActionZoneUpdateMaskEnum
 {
@@ -136,11 +138,12 @@ typedef enum HNIDActionInhibitUpdateMaskEnum
 
 typedef enum HNIDActionOperationUpdateMaskEnum
 {
-    HNID_OPU_FLDMASK_CLEAR    = 0x00000000,
-    HNID_OPU_FLDMASK_TYPE     = 0x00000002,
-    HNID_OPU_FLDMASK_ONDUR    = 0x00000004,
-    HNID_OPU_FLDMASK_OFFDUR   = 0x00000008,
-    HNID_OPU_FLDMASK_OBJLIST  = 0x00000010
+    HNID_OPU_FLDMASK_CLEAR           = 0x00000000,
+    HNID_OPU_FLDMASK_TYPE            = 0x00000002,
+    HNID_OPU_FLDMASK_ONDUR           = 0x00000004,
+    HNID_OPU_FLDMASK_OFFDUR          = 0x00000008,
+    HNID_OPU_FLDMASK_OBJLIST         = 0x00000010,
+    HNID_OPU_FLDMASK_SCHEDULER_STATE = 0x00000020
 }HNID_OPU_FLDMASK_T;
 
 typedef enum HNIDActionRequestResult
@@ -178,13 +181,13 @@ class HNIDActionRequest : public HNReqWaitAction
 
         std::stringstream m_rspStream;
 
-        HNID_SSR_T m_schReqType;
-        HNID_ZCR_T m_zoneReqType;
+//        HNID_SSR_T m_schReqType;
+//        HNID_ZCR_T m_zoneReqType;
 
-        std::string m_inhibitDuration;
+//        std::string m_inhibitDuration;
 
-        std::string m_onDuration;
-        std::string m_offDuration;
+//        std::string m_onDuration;
+//        std::string m_offDuration;
 
     public:
         HNIDActionRequest();
@@ -204,15 +207,15 @@ class HNIDActionRequest : public HNReqWaitAction
         bool decodeSequenceUpdate( std::istream& bodyStream );
         bool decodeInhibitUpdate( std::istream& bodyStream );
         bool decodeOperationUpdate( std::istream& bodyStream );
-        bool decodeSchedulerState( std::istream& bodyStream );
-        bool decodeZoneCtrl( std::istream& bodyStream );
+//        bool decodeSchedulerState( std::istream& bodyStream );
+//        bool decodeZoneCtrl( std::istream& bodyStream );
 
-        void setScheduleStateRequestType( HNID_SSR_T value );
-        void setZoneControlRequestType( HNID_ZCR_T value );
+//        void setScheduleStateRequestType( HNID_SSR_T value );
+//        void setZoneControlRequestType( HNID_ZCR_T value );
 
-        void setInhibitDuration( std::string value );
-        void setOnDuration( std::string value );
-        void setOffDuration( std::string value );
+//        void setInhibitDuration( std::string value );
+//        void setOnDuration( std::string value );
+//        void setOffDuration( std::string value );
 
         HNID_AR_TYPE_T getType();
         std::string getZoneID();
@@ -222,12 +225,12 @@ class HNIDActionRequest : public HNReqWaitAction
         std::string getInhibitID();
         std::string getOperationID();
 
-        HNID_SSR_T getScheduleStateRequestType();
-        HNID_ZCR_T getZoneControlRequestType();
+//        HNID_SSR_T getScheduleStateRequestType();
+//        HNID_ZCR_T getZoneControlRequestType();
 
-        std::string getInhibitDuration();
-        std::string getOnDuration();
-        std::string getOffDuration();
+//        std::string getInhibitDuration();
+//        std::string getOnDuration();
+//        std::string getOffDuration();
 
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
         void applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement );

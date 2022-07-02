@@ -120,8 +120,8 @@ HNIrrigationOperation::setTypeFromStr( std::string typeStr )
 {
     m_type = HNOP_TYPE_NOTSET;
     
-    if( typeStr == "master_enable" )
-        m_type = HNOP_TYPE_MASTER_ENABLE;
+    if( typeStr == "scheduler_state" )
+        m_type = HNOP_TYPE_SCHEDULER_STATE;
     else if( typeStr == "exec_sequence" )
         m_type = HNOP_TYPE_EXEC_SEQUENCE;
     else
@@ -135,8 +135,8 @@ HNIrrigationOperation::getTypeAsStr()
 {
     switch( m_type )
     {
-        case HNOP_TYPE_MASTER_ENABLE:
-            return "master_enable";
+        case HNOP_TYPE_SCHEDULER_STATE:
+            return "scheduler_state";
         break;
         
         case HNOP_TYPE_EXEC_SEQUENCE:

@@ -15,7 +15,7 @@
 typedef enum HNIrrigationOperationTypeEnum
 {
     HNOP_TYPE_NOTSET          = 0x00,
-    HNOP_TYPE_MASTER_ENABLE   = 0x01,  // Change the scheduler enable/disable state
+    HNOP_TYPE_SCHEDULER_STATE = 0x01,  // Change the scheduler enable/disable state
     HNOP_TYPE_EXEC_SEQUENCE   = 0x02,  // Execute a stored sequence
     HNOP_TYPE_EXEC_ONETIMESEQ = 0x03   // Execute a onetime instantaneous sequence    
 }HNOP_TYPE_T;

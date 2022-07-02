@@ -60,6 +60,7 @@ HNIDActionRequest::setOperationID( std::string value )
     m_operationID = value;
 }
 
+#if 0
 void 
 HNIDActionRequest::setScheduleStateRequestType( HNID_SSR_T value )
 {
@@ -89,6 +90,7 @@ HNIDActionRequest::setOffDuration( std::string value )
 {
    m_offDuration = value;
 }
+#endif
 
 HNID_AR_TYPE_T
 HNIDActionRequest::getType()
@@ -132,6 +134,7 @@ HNIDActionRequest::getOperationID()
     return m_operationID;
 }
 
+#if 0
 HNID_SSR_T 
 HNIDActionRequest::getScheduleStateRequestType()
 {
@@ -161,6 +164,7 @@ HNIDActionRequest::getOffDuration()
 {
    return m_offDuration;
 }
+#endif
 
 bool
 HNIDActionRequest::decodeZoneUpdate( std::istream& bodyStream )
@@ -743,9 +747,24 @@ HNIDActionRequest::decodeOperationUpdate( std::istream& bodyStream )
             m_operationUpdateMask |= HNID_OPU_FLDMASK_TYPE;
         }
 
-        if( jsRoot->has( "objList" ) )
+        if( jsRoot->has( "schedulerState" ) )
         {
-            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objList" );
+            std::string stateStr = jsRoot->getValue<std::string>( "schedulerState" );
+            if( stateStr == "enabled" )
+            {
+                operation.setEnable( true );
+                m_operationUpdateMask |= HNID_OPU_FLDMASK_SCHEDULER_STATE;
+            }
+            else if( stateStr == "disable" )
+            {
+                operation.setEnable( false );
+                m_operationUpdateMask |= HNID_OPU_FLDMASK_SCHEDULER_STATE;
+            }
+        }
+        
+        if( jsRoot->has( "objIDList" ) )
+        {
+            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objIDList" );
 
             operation.clearObjIDList();
             
@@ -788,6 +807,9 @@ HNIDActionRequest::applyOperationUpdate( HNIrrigationOperation *tgtOperation )
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_TYPE )
         tgtOperation->setType( srcOperation->getType() );
 
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_SCHEDULER_STATE )
+        tgtOperation->setEnable( srcOperation->getEnable() );
+
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_OBJLIST )
     {
         tgtOperation->clearObjIDList();
@@ -795,6 +817,7 @@ HNIDActionRequest::applyOperationUpdate( HNIrrigationOperation *tgtOperation )
     }
 }
 
+#if 0
 bool
 HNIDActionRequest::decodeSchedulerState( std::istream& bodyStream )
 {
@@ -905,6 +928,7 @@ HNIDActionRequest::decodeZoneCtrl( std::istream& bodyStream )
     // Done
     return false;
 }
+#endif
 
 bool 
 HNIDActionRequest::hasRspContent( std::string &contentType )
