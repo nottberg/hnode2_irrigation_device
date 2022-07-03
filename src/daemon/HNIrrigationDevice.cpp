@@ -1138,8 +1138,6 @@ HNIrrigationDevice::handleSequenceStartRsp( HNSWDPacketClient &packet )
 
     // Finish the request
     m_curAction->complete( true );
-
-    // Retire the request
     m_curAction = NULL;
     setState( HNID_STATE_READY );
 
@@ -1162,8 +1160,6 @@ HNIrrigationDevice::handleSequenceCancelRsp( HNSWDPacketClient &packet )
 
     // Finish the request
     m_curAction->complete( true );
-
-    // Retire the request
     m_curAction = NULL;
     setState( HNID_STATE_READY );
 
@@ -1752,7 +1748,7 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
 
             std::cout << "=== Starting Active Sequence: " << m_pendingActiveSequence->getFirstObjID() << std::endl;
 
-            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
         }
         break;
 
@@ -1788,7 +1784,7 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
 
             std::cout << "=== Starting One Time Sequence: " << m_pendingActiveSequence->getID() << std::endl;
 
-            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
         }        
         break;
     }
