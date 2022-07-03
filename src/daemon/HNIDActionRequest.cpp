@@ -820,7 +820,11 @@ HNIDActionRequest::applyOperationUpdate( HNIrrigationOperation *tgtOperation )
     HNIrrigationOperation *srcOperation = &m_operationsList[0];
 
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_TYPE )
+    {
+        std::cout << "Src Op: " << srcOperation << std::endl;
+        std::cout << "Op Src Type: " << srcOperation->getType() << std::endl;
         tgtOperation->setType( srcOperation->getType() );
+    }
 
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_SCHEDULER_STATE )
         tgtOperation->setEnable( srcOperation->getEnable() );
