@@ -761,7 +761,21 @@ HNIDActionRequest::decodeOperationUpdate( std::istream& bodyStream )
                 m_operationUpdateMask |= HNID_OPU_FLDMASK_SCHEDULER_STATE;
             }
         }
-        
+
+        if( jsRoot->has( "onDuration" ) )
+        {
+            std::string durStr = jsRoot->getValue<std::string>( "onDuration" );
+            operation.setOnDurationFromStr( durStr );
+            m_operationUpdateMask = HNID_OPU_FLDMASK_ONDUR;
+        }
+
+        if( jsRoot->has( "offDuration" ) )
+        {
+            std::string durStr = jsRoot->getValue<std::string>( "offDuration" );
+            operation.setOffDurationFromStr( durStr );
+            m_operationUpdateMask = HNID_OPU_FLDMASK_OFFDUR;
+        }
+
         if( jsRoot->has( "objIDList" ) )
         {
             pjs::Array::Ptr jsObjList = jsRoot->getArray( "objIDList" );
@@ -809,6 +823,12 @@ HNIDActionRequest::applyOperationUpdate( HNIrrigationOperation *tgtOperation )
 
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_SCHEDULER_STATE )
         tgtOperation->setEnable( srcOperation->getEnable() );
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_ONDUR )
+        tgtOperation->setOnDuration( srcOperation->getOnDuration() );
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_OFFDUR )
+        tgtOperation->setOffDuration( srcOperation->getOffDuration() );
 
     if( m_operationUpdateMask & HNID_OPU_FLDMASK_OBJLIST )
     {

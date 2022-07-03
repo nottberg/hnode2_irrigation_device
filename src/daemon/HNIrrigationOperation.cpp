@@ -33,6 +33,30 @@ HNIrrigationOperation::setEnable( bool value )
 }
 
 void 
+HNIrrigationOperation::setOnDuration( uint seconds )
+{
+    m_onDuration.setFromSeconds( seconds );
+}
+
+HNIS_RESULT_T 
+HNIrrigationOperation::setOnDurationFromStr( std::string value )
+{
+    return m_onDuration.parseTime( value );
+}
+
+void 
+HNIrrigationOperation::setOffDuration( uint seconds )
+{
+    m_offDuration.setFromSeconds( seconds );
+}
+
+HNIS_RESULT_T 
+HNIrrigationOperation::setOffDurationFromStr( std::string value )
+{
+    return m_offDuration.parseTime( value );
+}
+
+void 
 HNIrrigationOperation::clearObjIDList()
 {
     m_objIDList.clear();
@@ -69,6 +93,30 @@ bool
 HNIrrigationOperation::getEnable()
 {
     return m_enable;
+}
+
+uint
+HNIrrigationOperation::getOnDuration()
+{
+    return m_onDuration.getSeconds();
+}
+
+std::string
+HNIrrigationOperation::getOnDurationAsStr()
+{
+    return m_onDuration.getHMSStr();
+}
+
+uint
+HNIrrigationOperation::getOffDuration()
+{
+    return m_offDuration.getSeconds();
+}
+
+std::string
+HNIrrigationOperation::getOffDurationAsStr()
+{
+    return m_offDuration.getHMSStr();
 }
 
 bool 

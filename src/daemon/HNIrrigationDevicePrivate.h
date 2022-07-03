@@ -92,6 +92,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         uint m_nextOpID;
         HNIrrigationOperationQueue m_opQueue;
 
+        HNIrrigationOperation *m_pendingActiveSequence;
         HNIrrigationOperation *m_currentActiveSequence;
 
         std::string            m_targetSchedulerState;
@@ -134,7 +135,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void handleSequenceCancelRsp( HNSWDPacketClient &packet );
 
         HNID_RESULT_T buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr );
-        HNID_RESULT_T buildOnetimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr );
+        HNID_RESULT_T buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr );
 
         HNID_ACTBIT_T executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet );
 

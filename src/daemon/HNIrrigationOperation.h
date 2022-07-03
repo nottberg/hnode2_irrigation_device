@@ -23,13 +23,21 @@ typedef enum HNIrrigationOperationTypeEnum
 class HNIrrigationOperation
 {
     private:
+        // The operation object id
         std::string  m_id;
-   
-        HNOP_TYPE_T  m_type;   // The requested operation type
 
-        bool         m_enable; // Request enable/disable flag
+        // The requested operation type   
+        HNOP_TYPE_T  m_type;   
 
-        std::vector< std::string > m_objIDList;
+        // Scheduler Request - enable/disable state
+        bool         m_enable; 
+
+        // One-Time Sequence request - Durations
+        HNI24HTime    m_onDuration;  
+        HNI24HTime    m_offDuration;
+
+        // Sequence Request object IDs
+        std::vector< std::string > m_objIDList; 
 
     public:
         HNIrrigationOperation();
@@ -42,6 +50,12 @@ class HNIrrigationOperation
         
         void setEnable( bool value );   
     
+        void setOnDuration( uint seconds );
+        HNIS_RESULT_T setOnDurationFromStr( std::string value );
+
+        void setOffDuration( uint seconds );
+        HNIS_RESULT_T setOffDurationFromStr( std::string value );
+
         void clearObjIDList();
         void addObjID( std::string id );
         void addObjIDList( std::vector<std::string> &srcList );
@@ -52,6 +66,12 @@ class HNIrrigationOperation
         std::string getTypeAsStr();
         
         bool getEnable();  
+
+        uint getOnDuration();
+        std::string getOnDurationAsStr();
+
+        uint getOffDuration();
+        std::string getOffDurationAsStr();
 
         bool hasObjID( std::string objID );
         std::string getFirstObjID();

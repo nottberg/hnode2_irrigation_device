@@ -793,7 +793,8 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     m_nextInhibitID      = 1;
     m_nextOpID           = 1;
 
-    m_currentActiveSequence     = NULL;
+    m_pendingActiveSequence = NULL;
+    m_currentActiveSequence = NULL;
 
     m_targetSchedulerState = "disabled";
 
@@ -960,8 +961,18 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
         m_sendSchedulerState = true;
     }
 
-    // If there is a running sequence operation then check
-    // if it is still executing
+    // If there is a pending sequence watch for the switch daemon to acknowledge it is running.
+    if( m_pendingActiveSequence != NULL )
+    {
+        if( m_swdStatus.hasActiveSequence() && (m_swdStatus.getActiveSequenceID() == m_pendingActiveSequence->getID()) )
+        {
+            std::cout << "=== Moving pending sequence to active sequence - " << m_pendingActiveSequence->getID() << std::endl;
+            m_currentActiveSequence = m_pendingActiveSequence;
+            m_pendingActiveSequence = NULL;
+        }
+    }
+
+    // If there is a running sequence operation watch for its completion
     if( m_currentActiveSequence != NULL )
     {
         if( (m_swdStatus.hasActiveSequence() == false) || (m_swdStatus.getActiveSequenceID() != m_currentActiveSequence->getID()) )
@@ -1118,7 +1129,7 @@ HNIrrigationDevice::handleSequenceStartRsp( HNSWDPacketClient &packet )
 
     std::cout << "Response RX: " << m_state << std::endl;
     // If response was spurious then ignore it
-    if( m_state != HNID_STATE_WAIT_ZONECTL )
+    if( m_state != HNID_STATE_WAIT_SEQSTART )
     {
         return;
     }
@@ -1645,8 +1656,36 @@ HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::
 }
 
 HNID_RESULT_T 
-HNIrrigationDevice::buildOnetimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
+HNIrrigationDevice::buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
 {
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    jsRoot.set( "requestID", opObj->getID() );
+    jsRoot.set( "seqType", "uniform" );
+    jsRoot.set( "onDuration", opObj->getOnDurationAsStr() );
+    jsRoot.set( "offDuration", opObj->getOffDurationAsStr() );
+
+    // Convert the zone references into switch references. 
+    std::string swidStr;
+    bool first = true;
+    for( std::vector< std::string >::iterator oit = opObj->getObjIDListRef().begin(); oit != opObj->getObjIDListRef().end(); oit++ )
+    {
+        HNIrrigationZone zone;
+
+        if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+            continue;
+
+        if( first == false )
+            swidStr += " ";
+        swidStr += zone.getSWIDListStr();
+        first = false;
+    }
+
+    jsRoot.set( "swidList", swidStr );
+
+    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return HNID_RESULT_FAILURE; }
+
     return HNID_RESULT_SUCCESS;
 }
 
@@ -1685,36 +1724,33 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
         case HNOP_TYPE_EXEC_SEQUENCE:
         {
             std::stringstream msg;
- 
+            pjs::Object       jsRoot;
+
             // If there is already an active sequence then reject
             // this new sequence?
-            if( m_currentActiveSequence != NULL )
+            if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
             {
                 return HNID_ACTBIT_ERROR;  
             }
              
-            // Wait for sequence start response
-            setState( HNID_STATE_WAIT_SEQSTART );
-          
             // Build the payload message
-            // Create a json root object
-            pjs::Object jsRoot;
-
-            // Add the new requested state
             HNID_RESULT_T result = buildStoredSequenceJSON( opReq, msg );
             if( result != HNID_RESULT_SUCCESS )
             {
                 return HNID_ACTBIT_ERROR;
             }
 
+            // Wait for sequence start response
+            setState( HNID_STATE_WAIT_SEQSTART );
+
             std::cout << "Sending a Sequence Start request..." << std::endl;
             packet.setType( HNSWD_PTYPE_USEQ_ADD_REQ );
             packet.setMsg( msg.str() );
        
             // Keep track of this current sequence request
-            m_currentActiveSequence = opReq;
+            m_pendingActiveSequence = opReq;
 
-            std::cout << "=== Starting Active Sequence: " << m_currentActiveSequence->getID() << std::endl;
+            std::cout << "=== Starting Active Sequence: " << m_pendingActiveSequence->getFirstObjID() << std::endl;
 
             return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
         }
@@ -1722,6 +1758,38 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
 
         // Execute a onetime sequence
         case HNOP_TYPE_EXEC_ONETIMESEQ:
+        {
+            std::stringstream msg;
+            pjs::Object       jsRoot;
+
+            // If there is already an active sequence then reject
+            // this new sequence?
+            if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
+            {
+                return HNID_ACTBIT_ERROR;  
+            }
+             
+            // Build the payload message
+            HNID_RESULT_T result = buildOneTimeSequenceJSON( opReq, msg );
+            if( result != HNID_RESULT_SUCCESS )
+            {
+                return HNID_ACTBIT_ERROR;
+            }
+
+            // Wait for sequence start response
+            setState( HNID_STATE_WAIT_SEQSTART );
+
+            std::cout << "Sending a One Time Sequence Start request..." << std::endl;
+            packet.setType( HNSWD_PTYPE_USEQ_ADD_REQ );
+            packet.setMsg( msg.str() );
+       
+            // Keep track of this current sequence request
+            m_pendingActiveSequence = opReq;
+
+            std::cout << "=== Starting One Time Sequence: " << m_pendingActiveSequence->getID() << std::endl;
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ | HNID_ACTBIT_COMPLETE);
+        }        
         break;
     }
 
