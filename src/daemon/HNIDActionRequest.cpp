@@ -743,6 +743,7 @@ HNIDActionRequest::decodeOperationUpdate( std::istream& bodyStream )
 
         if( jsRoot->has( "type" ) )
         {
+            std::cout << "type string: " << jsRoot->getValue<std::string>( "type" ) << std::endl;
             operation.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
             m_operationUpdateMask |= HNID_OPU_FLDMASK_TYPE;
         }
