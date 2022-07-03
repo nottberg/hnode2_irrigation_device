@@ -26,6 +26,23 @@ HNIrrigationOperation::setType( HNOP_TYPE_T type )
     m_type = type;
 }
 
+HNIS_RESULT_T 
+HNIrrigationOperation::setTypeFromStr( std::string typeStr )
+{
+    m_type = HNOP_TYPE_NOTSET;
+    
+    if( typeStr == "scheduler_state" )
+        m_type = HNOP_TYPE_SCHEDULER_STATE;
+    else if( typeStr == "exec_sequence" )
+        m_type = HNOP_TYPE_EXEC_SEQUENCE;
+    else if( typeStr == "exec_onetimeseq" )
+        m_type = HNOP_TYPE_EXEC_ONETIMESEQ;
+    else
+        return HNIS_RESULT_FAILURE;
+    
+    return HNIS_RESULT_SUCCESS;
+}
+
 void 
 HNIrrigationOperation::setEnable( bool value )
 {
@@ -87,6 +104,30 @@ HNOP_TYPE_T
 HNIrrigationOperation::getType()
 {
     return m_type;
+}
+
+std::string 
+HNIrrigationOperation::getTypeAsStr()
+{
+    switch( m_type )
+    {
+        case HNOP_TYPE_SCHEDULER_STATE:
+            return "scheduler_state";
+        break;
+        
+        case HNOP_TYPE_EXEC_SEQUENCE:
+            return "exec_sequence";
+        break;
+
+        case HNOP_TYPE_EXEC_ONETIMESEQ:
+            return "exec_onetimeseq";
+        break;
+
+        default:
+        break;
+    }
+    
+    return "notset";
 }
 
 bool 
@@ -161,41 +202,6 @@ std::vector< std::string >&
 HNIrrigationOperation::getObjIDListRef()
 {
     return m_objIDList;
-}
-
-HNIS_RESULT_T 
-HNIrrigationOperation::setTypeFromStr( std::string typeStr )
-{
-    m_type = HNOP_TYPE_NOTSET;
-    
-    if( typeStr == "scheduler_state" )
-        m_type = HNOP_TYPE_SCHEDULER_STATE;
-    else if( typeStr == "exec_sequence" )
-        m_type = HNOP_TYPE_EXEC_SEQUENCE;
-    else
-        return HNIS_RESULT_FAILURE;
-    
-    return HNIS_RESULT_SUCCESS;
-}
-
-std::string 
-HNIrrigationOperation::getTypeAsStr()
-{
-    switch( m_type )
-    {
-        case HNOP_TYPE_SCHEDULER_STATE:
-            return "scheduler_state";
-        break;
-        
-        case HNOP_TYPE_EXEC_SEQUENCE:
-            return "exec_sequence";
-        break;
-        
-        default:
-        break;
-    }
-    
-    return "notset";
 }
 
 HNIS_RESULT_T 
