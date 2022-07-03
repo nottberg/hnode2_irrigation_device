@@ -964,9 +964,9 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
     // If there is a pending sequence watch for the switch daemon to acknowledge it is running.
     if( m_pendingActiveSequence != NULL )
     {
-        if( m_swdStatus.hasActiveSequence() && (m_swdStatus.getActiveSequenceID() == m_pendingActiveSequence->getID()) )
+        if( m_swdStatus.hasActiveSequence() && (m_swdStatus.getActiveSequenceID() == m_pendingActiveSequence->getSeqReqID()) )
         {
-            std::cout << "=== Moving pending sequence to active sequence - " << m_pendingActiveSequence->getID() << std::endl;
+            std::cout << "=== Moving pending sequence to active sequence - " << m_pendingActiveSequence->getSeqReqID() << std::endl;
             m_currentActiveSequence = m_pendingActiveSequence;
             m_pendingActiveSequence = NULL;
         }
@@ -975,15 +975,15 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
     // If there is a running sequence operation watch for its completion
     if( m_currentActiveSequence != NULL )
     {
-        if( (m_swdStatus.hasActiveSequence() == false) || (m_swdStatus.getActiveSequenceID() != m_currentActiveSequence->getID()) )
+        if( (m_swdStatus.hasActiveSequence() == false) || (m_swdStatus.getActiveSequenceID() != m_currentActiveSequence->getSeqReqID()) )
         {
+            std::cout << "=== Daemon Status Active Sequence Completed: " << m_currentActiveSequence->getSeqReqID() << std::endl;
+
             // The switch daemon is no longer running our active sequence so,
             // cleanup as it has completed.
             std::string oid = m_currentActiveSequence->getID();
             m_opQueue.deleteOperation( oid );
             m_currentActiveSequence = NULL;
-
-            std::cout << "=== Daemon Status Active Sequence Completed: " << oid << std::endl;
         }
         else
         {
@@ -1614,7 +1614,7 @@ HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::
     {
         case HNISQ_TYPE_UNIFORM:
         {
-            jsRoot.set( "requestID", seqObj.getID() );
+            jsRoot.set( "requestID", opObj->getSeqReqID() );
             jsRoot.set( "seqType", "uniform" );
             jsRoot.set( "onDuration", seqObj.getOnDurationAsStr() );
             jsRoot.set( "offDuration", seqObj.getOffDurationAsStr() );
@@ -1657,7 +1657,7 @@ HNIrrigationDevice::buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std:
     // Create a json root object
     pjs::Object jsRoot;
 
-    jsRoot.set( "requestID", opObj->getID() );
+    jsRoot.set( "requestID", opObj->getSeqReqID() );
     jsRoot.set( "seqType", "uniform" );
     jsRoot.set( "onDuration", opObj->getOnDurationAsStr() );
     jsRoot.set( "offDuration", opObj->getOffDurationAsStr() );

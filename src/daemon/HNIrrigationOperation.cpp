@@ -136,6 +136,15 @@ HNIrrigationOperation::getEnable()
     return m_enable;
 }
 
+std::string 
+HNIrrigationOperation::getSeqReqID()
+{
+    if( m_type == HNOP_TYPE_EXEC_SEQUENCE )
+        return getFirstObjID();
+
+    return getID();
+}
+
 uint
 HNIrrigationOperation::getOnDuration()
 {

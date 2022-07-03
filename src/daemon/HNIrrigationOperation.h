@@ -67,6 +67,8 @@ class HNIrrigationOperation
         
         bool getEnable();  
 
+        std::string getSeqReqID();
+
         uint getOnDuration();
         std::string getOnDurationAsStr();
 
