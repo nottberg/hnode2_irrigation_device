@@ -767,14 +767,14 @@ HNIDActionRequest::decodeOperationUpdate( std::istream& bodyStream )
         {
             std::string durStr = jsRoot->getValue<std::string>( "onDuration" );
             operation.setOnDurationFromStr( durStr );
-            m_operationUpdateMask = HNID_OPU_FLDMASK_ONDUR;
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_ONDUR;
         }
 
         if( jsRoot->has( "offDuration" ) )
         {
             std::string durStr = jsRoot->getValue<std::string>( "offDuration" );
             operation.setOffDurationFromStr( durStr );
-            m_operationUpdateMask = HNID_OPU_FLDMASK_OFFDUR;
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_OFFDUR;
         }
 
         if( jsRoot->has( "objIDList" ) )
