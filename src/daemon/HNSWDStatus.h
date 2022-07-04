@@ -46,10 +46,17 @@ class HNSWDStatus
         bool hasActiveSequence();
         std::string getActiveSequenceID();
 
+        std::string getDateStr();
+        std::string getTimeStr();
+        std::string getTimezoneStr();
+
+        std::string getOverallHealthStatus();
+        std::string getOverallHealthMessage();
+        
         void setSchedulerState( std::string value );
 
         void setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones );
-        HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
+        //HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
 };
 
 #endif // __HN_SWD_STATUS_H__

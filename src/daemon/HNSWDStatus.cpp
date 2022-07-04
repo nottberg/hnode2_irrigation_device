@@ -69,9 +69,57 @@ HNSWDStatus::getActiveSequenceID()
     return m_activeSequenceID;
 }
 
+std::string 
+HNSWDStatus::getDateStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_date;
+}
+
+std::string 
+HNSWDStatus::getTimeStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_time;
+}
+
+std::string 
+HNSWDStatus::getTimezoneStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_tz;
+}
+
+std::string 
+HNSWDStatus::getOverallHealthStatus()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_ohstat;
+}
+
+std::string 
+HNSWDStatus::getOverallHealthMessage()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_ohmsg;
+}
+
 void 
 HNSWDStatus::setSchedulerState( std::string value )
 {
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
     m_schState = value;
 }
 
@@ -134,6 +182,7 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
 
 }
 
+#if 0
 HNIS_RESULT_T
 HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones )
 {
@@ -218,4 +267,4 @@ HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones
     // Success
     return HNIS_RESULT_SUCCESS;
 }
-
+#endif

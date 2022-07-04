@@ -1599,7 +1599,7 @@ HNIrrigationDevice::getUniqueOperationID( HNIDActionRequest *action )
 }
 
 HNID_RESULT_T 
-HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
+HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr )
 {
     // Create a json root object
     pjs::Object jsRoot;
@@ -1652,7 +1652,7 @@ HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::
 }
 
 HNID_RESULT_T 
-HNIrrigationDevice::buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::stringstream &ostr )
+HNIrrigationDevice::buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr )
 {
     // Create a json root object
     pjs::Object jsRoot;
@@ -1795,6 +1795,97 @@ HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketC
     return HNID_ACTBIT_ERROR;
 }
 
+HNIS_RESULT_T
+HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
+{
+    std::string seqIDStr;
+    std::string seqNameStr;
+    pjs::Object jsRoot;
+
+    // Create a json root object
+    jsRoot.set( "date", m_swdStatus.getDateStr() );
+    jsRoot.set( "time", m_swdStatus.getTimeStr() );
+    jsRoot.set( "timezone", m_swdStatus.getTimezoneStr() );
+
+    jsRoot.set( "schedulerState", m_targetSchedulerState );
+    jsRoot.set( "inhibitUntil", "" );
+
+    pjs::Object ovHealth;
+
+    ovHealth.set( "status", m_swdStatus.getOverallHealthStatus() );
+    ovHealth.set( "msg", m_swdStatus.getOverallHealthMessage() );
+
+    jsRoot.set( "overallHealth", ovHealth );
+
+    if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
+    {
+        HNIrrigationOperation *curSeq = (m_pendingActiveSequence) ? m_pendingActiveSequence : m_currentActiveSequence;
+        if( curSeq->getType() == HNOP_TYPE_EXEC_ONETIMESEQ )
+        {
+            seqNameStr = "One-Time Sequence (" + curSeq->getSeqReqID() + ")";
+        }
+        else
+        {
+            if( m_sequences.getSequenceName( curSeq->getSeqReqID(), seqNameStr ) == HNIS_RESULT_SUCCESS )
+                seqIDStr = curSeq->getSeqReqID();
+            else
+                seqNameStr = "Unknown Sequence";
+        }
+    }
+
+    jsRoot.set( "activeSequenceName", seqNameStr );
+    jsRoot.set( "activeSequenceID", seqIDStr );
+
+    pjs::Array activeZones;
+    std::vector< HNIrrigationZone > azoneList;
+    m_zones.getActiveZones( azoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = azoneList.begin(); it != azoneList.end(); it++ )
+    {
+        pjs::Object azone;
+        azone.set( "id", it->getID() );
+        azone.set( "name", it->getName() );
+        activeZones.add( azone );
+    }
+    jsRoot.set( "activeZones", activeZones );
+
+    pjs::Array inhibitedZones;
+    std::vector< HNIrrigationZone > izoneList;
+    m_zones.getInhibitedZones( izoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = izoneList.begin(); it != izoneList.end(); it++ )
+    {
+        pjs::Object izone;
+        izone.set( "id", it->getID() );
+        izone.set( "name", it->getName() );
+        izone.set( "until", it->getInhibitedUntil() );
+        inhibitedZones.add( izone );
+    }
+    jsRoot.set( "inhibitedZones", inhibitedZones );
+
+    try
+    {
+        // Write out the generated json
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+    }
+    catch( Poco::Exception& ex )
+    {
+        std::cerr << "Stringify Exception: " << ex.displayText() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "Standard Exception: " << ex.what() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( ... )
+    {
+        std::cerr << "Stringify Exception: Uncaught Type" << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+
+    // Success
+    return HNIS_RESULT_SUCCESS;
+}
+
 void
 HNIrrigationDevice::startAction()
 {
@@ -1817,7 +1908,7 @@ HNIrrigationDevice::startAction()
         case HNID_AR_TYPE_IRRSTATUS:
         {
             // Get current device status as JSON
-            if( m_swdStatus.getAsIrrigationJSON( m_curAction->refRspStream(), &m_zones ) != HNIS_RESULT_SUCCESS )
+            if( buildIrrigationStatusResponse( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
             {
                 //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
                 actBits = HNID_ACTBIT_ERROR;
