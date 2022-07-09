@@ -6,6 +6,7 @@
 HNIrrigationInhibit::HNIrrigationInhibit()
 {
     m_type = HNII_TYPE_NOTSET;
+    m_expiration = 0;
 }
 
 HNIrrigationInhibit::~HNIrrigationInhibit()
@@ -38,15 +39,26 @@ HNIrrigationInhibit::setType( HNII_TYPE_T type )
 }
 
 void 
-HNIrrigationInhibit::setValue( std::string value )
-{
-    m_value = value;
-}
-
-void 
 HNIrrigationInhibit::setZoneID( std::string zoneid )
 {
     m_zoneid = zoneid;
+}
+
+void
+HNIrrigationInhibit::setExpiration( time_t timeVal )
+{
+    m_expiration = timeVal;
+}
+    
+void 
+HNIrrigationInhibit::setExpirationFromDurationStr( time_t curTime, std::string durationStr )
+{
+    HNI24HTime duration;
+
+    m_expiration = curTime;
+
+    if( duration.parseTime( durationStr ) == HNIS_RESULT_SUCCESS )
+        m_expiration += duration.getSeconds();
 }
 
 std::string 
@@ -74,15 +86,15 @@ HNIrrigationInhibit::getType()
 }
 
 std::string 
-HNIrrigationInhibit::getValue()
-{
-    return m_value;
-}
-
-std::string 
 HNIrrigationInhibit::getZoneID()
 {
     return m_zoneid;
+}
+
+time_t
+HNIrrigationInhibit::getExpiration()
+{
+    return m_expiration;
 }
 
 HNIS_RESULT_T 
@@ -90,10 +102,14 @@ HNIrrigationInhibit::setTypeFromStr( std::string typeStr )
 {
     m_type = HNII_TYPE_NOTSET;
     
-    if( typeStr == "local.duration" )
-        m_type = HNII_TYPE_LOCAL_DURATION;
-    else if( typeStr == "local.percent" )
-        m_type = HNII_TYPE_LOCAL_PERCENT;
+    if( typeStr == "scheduler" )
+        m_type = HNII_TYPE_SCHEDULER;
+    else if( typeStr == "scheduler_noexpire" )
+        m_type = HNII_TYPE_SCHEDULER_NOEXPIRE;
+    else if( typeStr == "zone" )
+        m_type = HNII_TYPE_ZONE;
+    else if( typeStr == "zone_noexpire" )
+        m_type = HNII_TYPE_ZONE_NOEXPIRE;
     else
         return HNIS_RESULT_FAILURE;
     
@@ -105,14 +121,22 @@ HNIrrigationInhibit::getTypeAsStr()
 {
     switch( m_type )
     {
-        case HNII_TYPE_LOCAL_DURATION:
-            return "local.duration";
+        case HNII_TYPE_SCHEDULER:
+            return "scheduler";
         break;
-        
-        case HNII_TYPE_LOCAL_PERCENT:
-            return "local.percent";
+
+        case HNII_TYPE_SCHEDULER_NOEXPIRE:
+            return "scheduler_noexpire";
         break;
-        
+
+        case HNII_TYPE_ZONE:
+            return "zone";
+        break;
+
+        case HNII_TYPE_ZONE_NOEXPIRE:
+            return "zone_noexpire";
+        break;
+
         default:
         break;
     }
@@ -127,45 +151,9 @@ HNIrrigationInhibit::validateSettings()
     return HNIS_RESULT_SUCCESS;
 }
 
-double
-HNIrrigationInhibit::calculateDelta( uint baseDuration, std::string &appliedValue )
-{
-    double delta = 0;
-    char   avStr[256];
-    
-    switch( getType() )
-    {
-        case HNII_TYPE_LOCAL_DURATION:
-        {
-            double value = strtod( m_value.c_str(), NULL );
-            delta = value;
-            sprintf(avStr, "%f", delta);
-        }
-        break;
-    
-        case HNII_TYPE_LOCAL_PERCENT:
-        {
-            double value = strtod( m_value.c_str(), NULL );
-            
-            value /= 100.0;
-            delta = ((double)baseDuration) * value;
-            sprintf(avStr, "%f%%", delta);
-        }
-        break;
-        
-        default:
-            avStr[0] = '\0';
-        break;
-    }
-    
-    appliedValue = avStr;
-
-    return delta;
-}
-
 HNIrrigationInhibitSet::HNIrrigationInhibitSet()
 {
-
+    m_curSchedulerInhibit = NULL;
 }
 
 HNIrrigationInhibitSet::~HNIrrigationInhibitSet()
@@ -178,6 +166,9 @@ HNIrrigationInhibitSet::clear()
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    m_curSchedulerInhibit = NULL;
+    m_zoneIDMap.clear();
 
     m_inhibitsMap.clear();
 }
@@ -205,6 +196,7 @@ HNIrrigationInhibitSet::internalUpdateInhibit( std::string id )
     {
         HNIrrigationInhibit nSpec;
         nSpec.setID( id );
+
         m_inhibitsMap.insert( std::pair< std::string, HNIrrigationInhibit >( id, nSpec ) );\
         return &( m_inhibitsMap[ id ] );
     }
@@ -219,6 +211,15 @@ HNIrrigationInhibitSet::updateInhibit( std::string id )
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
     return internalUpdateInhibit( id );
+}
+
+void
+HNIrrigationInhibitSet::performPostUpdateProcessing( std::string newID )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+
 }
 
 void 
@@ -282,19 +283,66 @@ HNIrrigationInhibitSet::getInhibitName( std::string id, std::string &name )
     return HNIS_RESULT_SUCCESS;
 }
 
-void 
-HNIrrigationInhibitSet::getInhibitsForZone( std::string zoneID, std::vector< HNIrrigationInhibit > &inhibitsList )
+HNII_INHIBIT_ACTION_T 
+HNIrrigationInhibitSet::checkSchedulerAction( time_t curTime, std::string &inhibitID )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+  
+    // Clear the inhibitID return value
+    inhibitID.clear();
+
+    // If no scheduler inbibit is in place then
+    // return no action. 
+    if( m_curSchedulerInhibit == NULL )
+        return HNII_INHIBIT_ACTION_NONE;
+
+    // Set the inhibit ID return value
+    inhibitID = m_curSchedulerInhibit->getID(); 
+
+    // If the inhibit has no expiration then
+    // always return active.
+    if( m_curSchedulerInhibit->getType() == HNII_TYPE_SCHEDULER_NOEXPIRE )
+        return HNII_INHIBIT_ACTION_ACTIVE;
+
+    // Check if the inhibit is still in effect, if so then
+    // return active.
+    if( m_curSchedulerInhibit->getExpiration() > curTime )
+        return HNII_INHIBIT_ACTION_ACTIVE;
+
+    // Inhibit has finished, signal expired for removal.
+    return HNII_INHIBIT_ACTION_EXPIRED;
+}
+
+HNII_INHIBIT_ACTION_T 
+HNIrrigationInhibitSet::checkZoneAction( time_t curTime, std::string zoneID, std::string &inhibitID )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    inhibitsList.clear();
-    
-    for( std::map< std::string, HNIrrigationInhibit >::iterator it = m_inhibitsMap.begin(); it != m_inhibitsMap.end(); it++ )
-    {
-        if( it->second.getZoneID() == zoneID )
-            inhibitsList.push_back( it->second );
-    }
+    // Clear the inhibitID return value
+    inhibitID.clear();
+
+    // Check if there is an inhibit that cooresponds to the requested zoneID
+    std::map< std::string, HNIrrigationInhibit* >::iterator it = m_zoneIDMap.find( zoneID );
+    if( it == m_zoneIDMap.end() )
+        return HNII_INHIBIT_ACTION_NONE;
+
+    // Set the inhibit ID return value
+    inhibitID = it->second->getID(); 
+
+    // If the inhibit has no expiration then
+    // always return active.
+    if( it->second->getType() == HNII_TYPE_ZONE_NOEXPIRE )
+        return HNII_INHIBIT_ACTION_ACTIVE;
+
+    // Check if the inhibit is still in effect, if so then
+    // return active.
+    if( it->second->getExpiration() > curTime )
+        return HNII_INHIBIT_ACTION_ACTIVE;
+
+    // Inhibit has finished, signal expired for removal.
+    return HNII_INHIBIT_ACTION_EXPIRED;
 }
 
 HNIS_RESULT_T 
@@ -365,11 +413,6 @@ HNIrrigationInhibitSet::readInhibitsListSection( HNodeConfig &cfg )
             inhibitPtr->setTypeFromStr( rstStr );
         }
 
-        if( objPtr->getValueByName( "value", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            inhibitPtr->setValue( rstStr );
-        }
-
         if( objPtr->getValueByName( "zoneid", rstStr ) == HNC_RESULT_SUCCESS )
         {
             inhibitPtr->setZoneID( rstStr );
@@ -407,7 +450,6 @@ HNIrrigationInhibitSet::updateInhibitsListSection( HNodeConfig &cfg )
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "type", it->second.getTypeAsStr() );
-        objPtr->updateValue( "value", it->second.getValue() );
         objPtr->updateValue( "zoneid", it->second.getZoneID() );
     }
 

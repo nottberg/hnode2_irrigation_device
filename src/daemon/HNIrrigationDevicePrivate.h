@@ -95,7 +95,7 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNIrrigationOperation *m_pendingActiveSequence;
         HNIrrigationOperation *m_currentActiveSequence;
 
-        std::string            m_targetSchedulerState;
+        bool m_targetSchedulerEnabled;
 
         bool m_sendSchedule;
         bool m_sendSchedulerState;
@@ -140,6 +140,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNID_RESULT_T buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr );
 
         HNID_ACTBIT_T executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet );
+
+        bool checkForInhibitChanges( time_t curTime );
 
     protected:
         // HNDevice REST callback

@@ -658,33 +658,34 @@ HNIDActionRequest::decodeInhibitUpdate( std::istream& bodyStream )
             inhibit.setDesc( jsRoot->getValue<std::string>( "description" ) );
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_DESC;
         }
-/*
+
         if( jsRoot->has( "type" ) )
         {
-            modifier.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_TYPE;
+            inhibit.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_TYPE;
         }
 
-        if( jsRoot->has( "value" ) )
+        if( jsRoot->has( "duration" ) )
         {
-            modifier.setValue( jsRoot->getValue<std::string>( "value" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_VALUE;
+            time_t curTime = time(NULL);
+            inhibit.setExpirationFromDurationStr( curTime, jsRoot->getValue<std::string>( "duration" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_EXPIRATION;
         }
 
         if( jsRoot->has( "zoneid" ) )
         {
-            modifier.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
-            m_modifierUpdateMask |= HNID_MU_FLDMASK_ZONEID;
+            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_ZONEID;
         }
    
-        if( modifier.validateSettings() != HNIS_RESULT_SUCCESS )
+        if( inhibit.validateSettings() != HNIS_RESULT_SUCCESS )
         {
-            std::cout << "updateModifier validate failed" << std::endl;
+            std::cout << "updateInhibit validate failed" << std::endl;
             // zoneid parameter is required
             //return HNID_RESULT_BAD_REQUEST;
             return true;
         }
-*/   
+  
     }
     catch( Poco::Exception ex )
     {
@@ -710,16 +711,15 @@ HNIDActionRequest::applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit )
 
     if( m_inhibitUpdateMask & HNID_INU_FLDMASK_DESC )
         tgtInhibit->setDesc( srcInhibit->getDesc() );
-/*        
+       
     if( m_inhibitUpdateMask & HNID_INU_FLDMASK_TYPE )
         tgtInhibit->setType( srcInhibit->getType() );
         
-    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_VALUE )
-        tgtInhibit->setValue( srcInhibit->getValue() );
+    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_EXPIRATION )
+        tgtInhibit->setExpiration( srcInhibit->getExpiration() );
         
     if( m_inhibitUpdateMask & HNID_INU_FLDMASK_ZONEID )
-        tgtInhibit->setZoneID( srcInhibit->getZoneID() );
-*/        
+        tgtInhibit->setZoneID( srcInhibit->getZoneID() );        
 }
 
 bool

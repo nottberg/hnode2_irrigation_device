@@ -37,26 +37,24 @@ typedef enum HNIDActionRequestType
     HNID_AR_TYPE_PLACEUPDATE    = 13,
     HNID_AR_TYPE_PLACEDELETE    = 14,
     HNID_AR_TYPE_IRRSTATUS      = 15,
-    HNID_AR_TYPE_ZONECTL        = 16,
-    HNID_AR_TYPE_MODIFIERSLIST  = 17,
-    HNID_AR_TYPE_MODIFIERINFO   = 18,
-    HNID_AR_TYPE_MODIFIERCREATE = 19,
-    HNID_AR_TYPE_MODIFIERUPDATE = 20,
-    HNID_AR_TYPE_MODIFIERDELETE = 21,
-    HNID_AR_TYPE_SEQUENCESLIST  = 22,
-    HNID_AR_TYPE_SEQUENCEINFO   = 23,
-    HNID_AR_TYPE_SEQUENCECREATE = 24,
-    HNID_AR_TYPE_SEQUENCEUPDATE = 25,
-    HNID_AR_TYPE_SEQUENCEDELETE = 26,
-    HNID_AR_TYPE_INHIBITSLIST   = 27,
-    HNID_AR_TYPE_INHIBITINFO    = 28,
-    HNID_AR_TYPE_INHIBITCREATE  = 29,
-    HNID_AR_TYPE_INHIBITUPDATE  = 30,
-    HNID_AR_TYPE_INHIBITDELETE  = 31,
-    HNID_AR_TYPE_OPERATIONSLIST  = 32,
-    HNID_AR_TYPE_OPERATIONINFO   = 33,
-    HNID_AR_TYPE_OPERATIONCREATE = 34,
-    HNID_AR_TYPE_OPERATIONCANCEL = 35    
+    HNID_AR_TYPE_MODIFIERSLIST  = 16,
+    HNID_AR_TYPE_MODIFIERINFO   = 17,
+    HNID_AR_TYPE_MODIFIERCREATE = 18,
+    HNID_AR_TYPE_MODIFIERUPDATE = 19,
+    HNID_AR_TYPE_MODIFIERDELETE = 20,
+    HNID_AR_TYPE_SEQUENCESLIST  = 21,
+    HNID_AR_TYPE_SEQUENCEINFO   = 22,
+    HNID_AR_TYPE_SEQUENCECREATE = 23,
+    HNID_AR_TYPE_SEQUENCEUPDATE = 24,
+    HNID_AR_TYPE_SEQUENCEDELETE = 25,
+    HNID_AR_TYPE_INHIBITSLIST   = 26,
+    HNID_AR_TYPE_INHIBITINFO    = 27,
+    HNID_AR_TYPE_INHIBITCREATE  = 28,
+    HNID_AR_TYPE_INHIBITDELETE  = 29,
+    HNID_AR_TYPE_OPERATIONSLIST  = 30,
+    HNID_AR_TYPE_OPERATIONINFO   = 31,
+    HNID_AR_TYPE_OPERATIONCREATE = 32,
+    HNID_AR_TYPE_OPERATIONCANCEL = 33    
 }HNID_AR_TYPE_T;
 
 #if 0
@@ -128,12 +126,12 @@ typedef enum HNIDActionSequenceUpdateMaskEnum
 
 typedef enum HNIDActionInhibitUpdateMaskEnum
 {
-    HNID_INU_FLDMASK_CLEAR    = 0x00000000,
-    HNID_INU_FLDMASK_NAME     = 0x00000001,
-    HNID_INU_FLDMASK_DESC     = 0x00000002,
-    HNID_INU_FLDMASK_TYPE     = 0x00000004,
-    HNID_INU_FLDMASK_VALUE    = 0x00000008,
-    HNID_INU_FLDMASK_ZONEID   = 0x00000010
+    HNID_INU_FLDMASK_CLEAR      = 0x00000000,
+    HNID_INU_FLDMASK_NAME       = 0x00000001,
+    HNID_INU_FLDMASK_DESC       = 0x00000002,
+    HNID_INU_FLDMASK_TYPE       = 0x00000004,
+    HNID_INU_FLDMASK_EXPIRATION = 0x00000008,
+    HNID_INU_FLDMASK_ZONEID     = 0x00000010
 }HNID_INU_FLDMASK_T;
 
 typedef enum HNIDActionOperationUpdateMaskEnum
@@ -181,19 +179,12 @@ class HNIDActionRequest : public HNReqWaitAction
 
         std::stringstream m_rspStream;
 
-//        HNID_SSR_T m_schReqType;
-//        HNID_ZCR_T m_zoneReqType;
-
-//        std::string m_inhibitDuration;
-
-//        std::string m_onDuration;
-//        std::string m_offDuration;
-
     public:
         HNIDActionRequest();
        ~HNIDActionRequest();
 
         void setType( HNID_AR_TYPE_T type );
+
         void setZoneID( std::string value );
         void setPlacementID( std::string value );
         void setModifierID( std::string value );
@@ -207,30 +198,15 @@ class HNIDActionRequest : public HNReqWaitAction
         bool decodeSequenceUpdate( std::istream& bodyStream );
         bool decodeInhibitUpdate( std::istream& bodyStream );
         bool decodeOperationUpdate( std::istream& bodyStream );
-//        bool decodeSchedulerState( std::istream& bodyStream );
-//        bool decodeZoneCtrl( std::istream& bodyStream );
-
-//        void setScheduleStateRequestType( HNID_SSR_T value );
-//        void setZoneControlRequestType( HNID_ZCR_T value );
-
-//        void setInhibitDuration( std::string value );
-//        void setOnDuration( std::string value );
-//        void setOffDuration( std::string value );
 
         HNID_AR_TYPE_T getType();
+
         std::string getZoneID();
         std::string getPlacementID();
         std::string getModifierID();
         std::string getSequenceID();
-        std::string getInhibitID();
         std::string getOperationID();
-
-//        HNID_SSR_T getScheduleStateRequestType();
-//        HNID_ZCR_T getZoneControlRequestType();
-
-//        std::string getInhibitDuration();
-//        std::string getOnDuration();
-//        std::string getOffDuration();
+        std::string getInhibitID();
 
         void applyZoneUpdate( HNIrrigationZone *tgtZone );
         void applyPlacementUpdate( HNIrrigationPlacement *tgtPlacement );
@@ -238,7 +214,6 @@ class HNIDActionRequest : public HNReqWaitAction
         void applySequenceUpdate( HNIrrigationSequence *tgtSequence );
         void applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit );
         void applyOperationUpdate( HNIrrigationOperation *tgtOperation );
-
 
         std::vector< HNIrrigationZone > &refZoneList();
         std::vector< HNIrrigationPlacement > &refPlacementsList();

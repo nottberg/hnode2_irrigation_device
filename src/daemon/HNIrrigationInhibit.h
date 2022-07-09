@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include <string>
-#include <vector>
+#include <list>
 #include <map>
 #include <set>
 #include <mutex>
@@ -13,11 +13,20 @@
 
 #include "HNIrrigationTypes.h"
 
+typedef enum HNIrrigationInhibitActionEnum
+{
+    HNII_INHIBIT_ACTION_NONE     = 1,
+    HNII_INHIBIT_ACTION_ACTIVE   = 2,
+    HNII_INHIBIT_ACTION_EXPIRED  = 3
+}HNII_INHIBIT_ACTION_T;
+
 typedef enum HNIrrigationInhibitTypeEnum
 {
-    HNII_TYPE_NOTSET          = 0x00,
-    HNII_TYPE_LOCAL_DURATION  = 0x01,
-    HNII_TYPE_LOCAL_PERCENT   = 0x02    
+    HNII_TYPE_NOTSET              = 0x00,
+    HNII_TYPE_SCHEDULER           = 0x01,
+    HNII_TYPE_SCHEDULER_NOEXPIRE  = 0x02,    
+    HNII_TYPE_ZONE                = 0x03, 
+    HNII_TYPE_ZONE_NOEXPIRE       = 0x04       
 }HNII_TYPE_T;
 
 class HNIrrigationInhibit
@@ -26,10 +35,9 @@ class HNIrrigationInhibit
         std::string  m_id;
         std::string  m_name;
         std::string  m_desc;
-
         HNII_TYPE_T  m_type;
-        std::string  m_value;
         std::string  m_zoneid;
+        time_t       m_expiration;
 
     public:
         HNIrrigationInhibit();
@@ -41,9 +49,11 @@ class HNIrrigationInhibit
 
         void setType( HNII_TYPE_T type );
         HNIS_RESULT_T setTypeFromStr( std::string typeStr );
-        
-        void setValue( std::string value );         
+              
         void setZoneID( std::string zone );
+        void setExpiration( time_t timeVal );
+
+        void setExpirationFromDurationStr( time_t curTime, std::string durationStr );
 
         std::string getID();
         std::string getName();
@@ -51,13 +61,11 @@ class HNIrrigationInhibit
 
         HNII_TYPE_T getType();
         std::string getTypeAsStr();
-        
-        std::string getValue();        
+            
         std::string getZoneID();
+        time_t getExpiration();
         
         HNIS_RESULT_T validateSettings();
-        
-        double calculateDelta( uint baseDuration, std::string &appliedValue );
 };
 
 class HNIrrigationInhibitSet
@@ -67,6 +75,10 @@ class HNIrrigationInhibitSet
         std::mutex m_accessMutex;
 
         std::map< std::string, HNIrrigationInhibit > m_inhibitsMap;
+
+        HNIrrigationInhibit *m_curSchedulerInhibit;
+
+        std::map< std::string, HNIrrigationInhibit* > m_zoneIDMap;
 
         HNIrrigationInhibit* internalUpdateInhibit( std::string id );
 
@@ -79,12 +91,17 @@ class HNIrrigationInhibitSet
         void clear();
 
         HNIrrigationInhibit* updateInhibit( std::string id );
+        
+        void performPostUpdateProcessing( std::string newID );
+
         void deleteInhibit( std::string inhibitID );
+
         void getInhibitsList( std::vector< HNIrrigationInhibit > &inhibitsList );
         HNIS_RESULT_T getInhibit( std::string inhibitID, HNIrrigationInhibit &inhibit );
         HNIS_RESULT_T getInhibitName( std::string id, std::string &name );
 
-        void getInhibitsForZone( std::string zoneID, std::vector< HNIrrigationInhibit > &inhibitsList );
+        HNII_INHIBIT_ACTION_T checkSchedulerAction( time_t curTime, std::string &inhibitID );
+        HNII_INHIBIT_ACTION_T checkZoneAction( time_t curTime, std::string zoneID, std::string &inhibitID );
 
         HNIS_RESULT_T initInhibitsListSection( HNodeConfig &cfg );
         HNIS_RESULT_T readInhibitsListSection( HNodeConfig &cfg );
