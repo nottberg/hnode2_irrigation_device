@@ -1256,6 +1256,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
         case HNII_INHIBIT_ACTION_NONE:
             if( m_targetSchedulerEnabled == false )
             {
+                std::cout << "== Inhibit - no-action - scheduler change to enabled" << std::endl;
                 m_targetSchedulerEnabled = true;
                 sendSchedulerStateUpdate();
                 rtnValue = true;
@@ -1265,6 +1266,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
         case HNII_INHIBIT_ACTION_ACTIVE:
             if( m_targetSchedulerEnabled == true )
             {
+                std::cout << "== Inhibit - active - scheduler change to disabled: " << inhibitID << std::endl;
                 m_targetSchedulerEnabled = false;
                 sendSchedulerStateUpdate();
                 rtnValue = true;
@@ -1274,6 +1276,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
         case HNII_INHIBIT_ACTION_EXPIRED:
             if( m_targetSchedulerEnabled == false )
             {
+                std::cout << "== Inhibit - expired - scheduler change to enabled: " << inhibitID << std::endl;
                 m_targetSchedulerEnabled = true;
                 sendSchedulerStateUpdate();
                 rtnValue = true;
@@ -1292,6 +1295,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
             case HNII_INHIBIT_ACTION_NONE:
                 if( zit->isInhibited() == true )
                 {
+                    std::cout << "== Inhibit - none - zone " << zit->getID() << " inhibit cleared" << std::endl;
                     m_zones.clearInhibited( zit->getID() );
                     rtnValue = true;
                 }
@@ -1300,6 +1304,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
             case HNII_INHIBIT_ACTION_ACTIVE:
                 if( zit->isInhibited() == false )
                 {
+                    std::cout << "== Inhibit - active - zone " << zit->getID() << " inhibit set : " << inhibitID << std::endl;
                     m_zones.setInhibited( zit->getID(), inhibitID );
                     rtnValue = true;
                 }
@@ -1308,6 +1313,7 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
             case HNII_INHIBIT_ACTION_EXPIRED:
                 if( zit->isInhibited() == true )
                 {
+                    std::cout << "== Inhibit - expired - zone " << zit->getID() << " inhibit set : " << inhibitID << std::endl;
                     m_zones.clearInhibited( zit->getID() );
                     rtnValue = true;
                 }
@@ -1374,6 +1380,8 @@ HNIrrigationDevice::loopIteration()
             // zone scheduling.
             if( checkForInhibitChanges( ltime ) == true )
             {
+                std::cout << "Rebuilding schedule due to inhibit change." << std::endl;
+                
                 // Rebuild the schedule
                 m_schedule.buildSchedule( m_targetSchedulerEnabled );
             }
