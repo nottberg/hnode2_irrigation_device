@@ -250,7 +250,10 @@ class HNISZoneTracker
     public:
       HNISZoneTracker();
      ~HNISZoneTracker();
-     
+
+      void setInhibited( bool value );
+      bool isInhibited();
+
       void setDuration( uint durSec );
       uint getDuration();
       
@@ -258,20 +261,33 @@ class HNISZoneTracker
       std::string getZoneID();
       
     private:
+      bool        m_inhibited;
       uint        m_duration;
       std::string m_zoneID;
 };
 
 HNISZoneTracker::HNISZoneTracker()
 {
-
+    m_inhibited = false;
 }
 
 HNISZoneTracker::~HNISZoneTracker()
 {
 
 }
-     
+
+void 
+HNISZoneTracker::setInhibited( bool value )
+{
+    m_inhibited = value;
+}
+
+bool 
+HNISZoneTracker::isInhibited()
+{
+    return m_inhibited;
+}
+
 void 
 HNISZoneTracker::setDuration( uint durSec )
 {
@@ -518,6 +534,10 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
     // Try to allocate a slot for each zone.
     for( std::vector<HNISZoneTracker>::iterator zit = zoneTrackers.begin(); zit != zoneTrackers.end(); zit++ )
     {
+        // Skip zones that are inhibited
+        if( zit->isInhibited() )
+            continue; 
+
         // Skip zones that have been fully placed.
         if( zit->getDuration() == 0 )
             continue;
@@ -699,7 +719,8 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
         
         ztrack.setDuration( finalDur );
         ztrack.setZoneID( zit->getID() );
-        
+        ztrack.setInhibited( zit->isInhibited() );
+
         m_zoneTrackers.push_back(ztrack);
     }  
     
@@ -742,6 +763,9 @@ HNISPlacer::checkForUnplacedZones( std::string &zoneStr )
     
     for( std::vector< HNISZoneTracker >::iterator it = m_zoneTrackers.begin(); it != m_zoneTrackers.end(); it++ ) 
     {
+        if( it->isInhibited() )
+            continue;
+
         if( it->getDuration() != 0 )
         {
             zoneStr += it->getZoneID() + " ";
@@ -1410,7 +1434,7 @@ HNIrrigationSchedule::getSMCRC32Str()
 }
 
 HNIS_RESULT_T
-HNIrrigationSchedule::buildSchedule()
+HNIrrigationSchedule::buildSchedule( bool schedulerEnabled )
 {
     std::string checkStr;
     HNISPlacer  placer;
@@ -1420,6 +1444,10 @@ HNIrrigationSchedule::buildSchedule()
     // Clear existing schedule data.
     m_schedule.clear();
     
+    // If the scheduler is not enabled then no need to go on.
+    if( schedulerEnabled == false )
+        return HNIS_RESULT_SUCCESS;
+
     // Get placementList for later usage.
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {

@@ -165,12 +165,12 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
         std::string swONStr = jsRoot->optValue( "swOnList", empty );
 
         // Set zone status
-        zones->clearStatus();
+        zones->clearAllActive();
         std::sregex_token_iterator it( swONStr.begin(), swONStr.end(), ws_re, -1 );
         const std::sregex_token_iterator end;
         while( it != end )
         {
-            zones->setStatusActive( *it );
+            zones->setActive( *it );
             it++;
         }
 

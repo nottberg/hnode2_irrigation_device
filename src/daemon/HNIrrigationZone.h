@@ -17,8 +17,7 @@ typedef enum HNIrrigationZoneStatusFlags
 {
     HNIZ_STATUS_NOTSET    = 0x0,
     HNIZ_STATUS_ACTIVE    = 0x1,
-    HNIZ_STATUS_DISABLED  = 0x2,
-    HNIZ_STATUS_INHIBITED = 0x4
+    HNIZ_STATUS_INHIBITED = 0x2
 }HNIZ_STATUS_T;
 
 class HNIrrigationZone
@@ -35,7 +34,7 @@ class HNIrrigationZone
         std::set< std::string > m_swidSet;
 
         uint32_t    m_statusFlags;
-        std::string m_inhibitUntil;
+        std::string m_inhibitBy;
 
     public:
         HNIrrigationZone();
@@ -56,10 +55,11 @@ class HNIrrigationZone
 
         HNIS_RESULT_T validateSettings();
 
-        void clearStatus();
-        void setStatusActive();
-        void setStatusDisabled();
-        void setStatusInhibited( std::string until );
+        void setActive();
+        void clearActive();
+
+        void setInhibited( std::string inhibitID );
+        void clearInhibited();
 
         std::string getID();
         std::string getName();
@@ -72,11 +72,10 @@ class HNIrrigationZone
         uint getMinimumCycleTimeSeconds();
         uint getMaximumCycleTimeSeconds();
 
-        std::string getInhibitedUntil();
-
         bool isActive();
-        bool isDisabled();
         bool isInhibited();
+
+        std::string getInhibitedByID();
 };
 
 class HNIrrigationZoneSet
@@ -106,13 +105,17 @@ class HNIrrigationZoneSet
         HNIS_RESULT_T getZone( std::string id, HNIrrigationZone &event );
         HNIS_RESULT_T getZoneName( std::string id, std::string &name );
 
-        void clearStatus();
-        void setStatusActive( std::string swid );
-        void setStatusDisabled( std::string swid );
-        void setStatusInhibited( std::string swid, std::string until );
+        void setActive( std::string zoneid );
+        void clearActive( std::string zoneid );
+
+        void clearAllActive();
+        void setActiveFromSWID( std::string swid );
+        void clearActiveFromSWID( std::string swid );
+
+        void setInhibited( std::string zoneid, std::string inhibitid );
+        void clearInhibited( std::string zoneid );
 
         void getActiveZones( std::vector< HNIrrigationZone > &zoneList );
-        void getDisabledZones( std::vector< HNIrrigationZone > &zoneList );
         void getInhibitedZones( std::vector< HNIrrigationZone > &zoneList );
         
         uint getMaxCycleTimeForZoneSet( std::set< std::string > &zoneIDSet );

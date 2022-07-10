@@ -76,9 +76,9 @@ class HNIrrigationInhibitSet
 
         std::map< std::string, HNIrrigationInhibit > m_inhibitsMap;
 
-        HNIrrigationInhibit *m_curSchedulerInhibit;
+        std::string m_curSchInhibitID;
 
-        std::map< std::string, HNIrrigationInhibit* > m_zoneIDMap;
+        std::map< std::string, std::string > m_zoneIDMap;
 
         HNIrrigationInhibit* internalUpdateInhibit( std::string id );
 
@@ -92,7 +92,7 @@ class HNIrrigationInhibitSet
 
         HNIrrigationInhibit* updateInhibit( std::string id );
         
-        void performPostUpdateProcessing( std::string newID );
+        void reconcileNewObject( std::string newID );
 
         void deleteInhibit( std::string inhibitID );
 

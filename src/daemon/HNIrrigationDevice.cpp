@@ -1247,22 +1247,40 @@ bool
 HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
 {
     std::string inhibitID;
+    std::vector< std::string > inhibitDeleteList;
     bool rtnValue = false;
 
     // Get the current time to check for inhibit expirations
     switch( m_inhibits.checkSchedulerAction( curTime, inhibitID ) )
     {
-       case HNII_INHIBIT_ACTION_NONE:
-       break;
+        case HNII_INHIBIT_ACTION_NONE:
+            if( m_targetSchedulerEnabled == false )
+            {
+                m_targetSchedulerEnabled = true;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            } 
+        break;
 
-       case HNII_INHIBIT_ACTION_ACTIVE:
-       break;
+        case HNII_INHIBIT_ACTION_ACTIVE:
+            if( m_targetSchedulerEnabled == true )
+            {
+                m_targetSchedulerEnabled = false;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            }
+        break;
 
-       case HNII_INHIBIT_ACTION_EXPIRED:
-       break;
+        case HNII_INHIBIT_ACTION_EXPIRED:
+            if( m_targetSchedulerEnabled == false )
+            {
+                m_targetSchedulerEnabled = true;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            }
+            inhibitDeleteList.push_back( inhibitID );
+        break;
     }
-
-    //if( m_targetSchedulerEnabled == )
 
     // Scan through each zone and check for an inhibit
     std::vector< HNIrrigationZone > zoneList;
@@ -1272,19 +1290,35 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
         switch( m_inhibits.checkZoneAction( curTime, zit->getID(), inhibitID ) )
         {
             case HNII_INHIBIT_ACTION_NONE:
+                if( zit->isInhibited() == true )
+                {
+                    m_zones.clearInhibited( zit->getID() );
+                    rtnValue = true;
+                }
             break;
 
             case HNII_INHIBIT_ACTION_ACTIVE:
+                if( zit->isInhibited() == false )
+                {
+                    m_zones.setInhibited( zit->getID(), inhibitID );
+                    rtnValue = true;
+                }
             break;
 
             case HNII_INHIBIT_ACTION_EXPIRED:
+                if( zit->isInhibited() == true )
+                {
+                    m_zones.clearInhibited( zit->getID() );
+                    rtnValue = true;
+                }
+                inhibitDeleteList.push_back( inhibitID );
             break;
         }
     }
 
-    // Check if they are 
-
     // Cleanup expired inhibits
+    for( std::vector< std::string >::iterator it = inhibitDeleteList.begin(); it != inhibitDeleteList.end(); it++ )
+        m_inhibits.deleteInhibit( inhibitID );
 
     // No update needed.
     return rtnValue;
@@ -1306,7 +1340,7 @@ HNIrrigationDevice::loopIteration()
         // Finish with the startup
         case HNID_STATE_INITIALIZED:
             // Calculate an initial schedule
-            m_schedule.buildSchedule();
+            m_schedule.buildSchedule( m_targetSchedulerEnabled );
 
             // Temporary output of switch manager schedule
             std::cout << "===Switch Manager JSON===" << std::endl;
@@ -1341,7 +1375,7 @@ HNIrrigationDevice::loopIteration()
             if( checkForInhibitChanges( ltime ) == true )
             {
                 // Rebuild the schedule
-                m_schedule.buildSchedule();
+                m_schedule.buildSchedule( m_targetSchedulerEnabled );
             }
 
             // Schedule Update?
@@ -1909,7 +1943,7 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
         pjs::Object izone;
         izone.set( "id", it->getID() );
         izone.set( "name", it->getName() );
-        izone.set( "until", it->getInhibitedUntil() );
+        izone.set( "inhibitByID", it->getInhibitedByID() );
         inhibitedZones.add( izone );
     }
     jsRoot.set( "inhibitedZones", inhibitedZones );
@@ -2348,7 +2382,7 @@ HNIrrigationDevice::startAction()
             m_curAction->applyInhibitUpdate( event );
 
             // Special processing to update the inhibit maps.
-            m_inhibits.performPostUpdateProcessing( m_curAction->getInhibitID() );
+            m_inhibits.reconcileNewObject( m_curAction->getInhibitID() );
 
             actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
         }
@@ -2471,7 +2505,7 @@ HNIrrigationDevice::startAction()
     if( actBits & HNID_ACTBIT_RECALCSCH )
     {
         // Calculate the new schedule
-        HNIS_RESULT_T result = m_schedule.buildSchedule();
+        HNIS_RESULT_T result = m_schedule.buildSchedule( m_targetSchedulerEnabled );
         if( result != HNIS_RESULT_SUCCESS )
         {
             actBits = HNID_ACTBIT_ERROR;

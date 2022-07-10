@@ -216,7 +216,7 @@ class HNIrrigationSchedule
 
         void clear();
 
-        HNIS_RESULT_T buildSchedule();
+        HNIS_RESULT_T buildSchedule( bool schedulerEnabled );
 
         HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
 

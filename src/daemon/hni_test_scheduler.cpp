@@ -203,7 +203,7 @@ HNIrrigationTest::test1()
     mod->setZoneID( "z3" );
 
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule();
+    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
 
 }
 
@@ -322,7 +322,7 @@ HNIrrigationTest::test2()
     place->addZone( "z17" );
       
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule();
+    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
 }
 
 void
@@ -349,7 +349,7 @@ HNIrrigationTest::testUnplacedZone()
     place->addZone( "z1" );
       
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule();
+    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
 }
 
 
