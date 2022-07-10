@@ -137,8 +137,12 @@ HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedVal
     {
         case HNIM_TYPE_LOCAL_DURATION:
         {
-            double value = strtod( m_value.c_str(), NULL );
-            delta = value;
+            HNI24HTime duration;
+            if( duration.parseTime( m_value ) == HNIS_RESULT_SUCCESS )
+                delta = duration.getSeconds();
+            else
+                delta = 0;
+
             sprintf(avStr, "%f", delta);
         }
         break;
