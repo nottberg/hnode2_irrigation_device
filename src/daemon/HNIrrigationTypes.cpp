@@ -1,3 +1,4 @@
+#include <iostream>
 #include <regex>
 
 #include "HNIrrigationTypes.h"
@@ -76,14 +77,18 @@ HNI24HTime::parseTime( std::string value )
 
     if( std::regex_match( value, matchRec, secRegEx ) == true )
     {
+        std::cout << "parseTime sec match: " << matchRec[1] << std::endl;
         m_secOfDay = strtol( matchRec[1].str().c_str(), NULL, 10 );
         return HNIS_RESULT_SUCCESS;
     }
     else if( std::regex_match( value, matchRec, durRegEx ) == true )
     {
-        uint hour = strtol( matchRec[3].str().c_str(), NULL, 10 );
+        uint hour = strtol( matchRec[1].str().c_str(), NULL, 10 );
         uint min = strtol( matchRec[2].str().c_str(), NULL, 10 );
-        uint sec = strtol( matchRec[1].str().c_str(), NULL, 10 );
+        uint sec = strtol( matchRec[3].str().c_str(), NULL, 10 );
+
+        std::cout << "parseTime dur match - h: " << hour << " m: " << min << " s: " << sec << std::endl;
+
         return setFromHMS( hour, min, sec );
     }
 
