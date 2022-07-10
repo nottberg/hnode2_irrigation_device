@@ -560,14 +560,14 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                         
             if( (it->hasZone( zid ) == true) && (it->getDuration() >= minCycle) )
             {                        
-                printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
+                //printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
 
                 // If the period immediately proceeding this slot is for this same zone,
                 // then skip this slot so that the zone is not on continuously for more than
                 // zones max cycle time.
                 if( tgtSched.proceedingZonePeriod( m_dayIndx, zit->getZoneID(), it->getStartSec() ) == true )
                 {
-                    printf( "  Slot is immediatly proceeded by same zone -- skipping\n" );
+                    //printf( "  Slot is immediatly proceeded by same zone -- skipping\n" );
                     continue;
                 } 
 
@@ -1615,7 +1615,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
     {
         pjs::Array jsActions;
 
-        std::cout << "js chk day: " << indx << std::endl;
+        //std::cout << "js chk day: " << indx << std::endl;
 
         std::vector< HNISPeriod > periodList;
         m_schedule.getPeriodList( (HNIS_DAY_INDX_T) indx, periodList );       
@@ -1625,16 +1625,16 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
         {
             pjs::Object jsSWAction;
 
-            std::cout << "js add action" << std::endl;
+            //std::cout << "js add action" << std::endl;
 
             jsSWAction.set( "action", "swon" );
 
-            std::cout << "act st: " << it->getStartTimeStr() << std::endl;
+            //std::cout << "act st: " << it->getStartTimeStr() << std::endl;
 
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
 
-            std::cout << "zone id: " << it->getID() << std::endl;
+            //std::cout << "zone id: " << it->getID() << std::endl;
 
             HNIrrigationZone zone;
             m_zones->getZone( it->getZoneSetAsStr(), zone );
