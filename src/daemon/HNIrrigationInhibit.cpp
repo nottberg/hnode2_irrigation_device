@@ -27,12 +27,6 @@ HNIrrigationInhibit::setName( std::string value )
 }
 
 void 
-HNIrrigationInhibit::setDesc( std::string value )
-{
-    m_desc = value;
-}
-
-void 
 HNIrrigationInhibit::setType( HNII_TYPE_T type )
 {
     m_type = type;
@@ -73,12 +67,6 @@ HNIrrigationInhibit::getName()
     return m_name;
 }
 
-std::string 
-HNIrrigationInhibit::getDesc()
-{
-    return m_desc;
-}
-
 HNII_TYPE_T 
 HNIrrigationInhibit::getType()
 {
@@ -95,6 +83,14 @@ time_t
 HNIrrigationInhibit::getExpiration()
 {
     return m_expiration;
+}
+
+std::string 
+HNIrrigationInhibit::getExpirationDateStr()
+{
+    char strBuf[64];
+    ctime_r( &m_expiration, strBuf );
+    return strBuf;
 }
 
 HNIS_RESULT_T 
@@ -336,6 +332,23 @@ HNIrrigationInhibitSet::getInhibitName( std::string id, std::string &name )
     return HNIS_RESULT_SUCCESS;
 }
 
+HNIS_RESULT_T 
+HNIrrigationInhibitSet::getInhibitExpirationDateStr( std::string id, std::string &dateStr )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationInhibit >::iterator it = m_inhibitsMap.find( id );
+
+    dateStr.clear();
+
+    if( it == m_inhibitsMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    dateStr = it->second.getExpirationDateStr();
+    return HNIS_RESULT_SUCCESS;
+}
+
 HNII_INHIBIT_ACTION_T 
 HNIrrigationInhibitSet::checkSchedulerAction( time_t curTime, std::string &inhibitID )
 {
@@ -476,11 +489,6 @@ HNIrrigationInhibitSet::readInhibitsListSection( HNodeConfig &cfg )
             inhibitPtr->setName( rstStr );
         }
 
-        if( objPtr->getValueByName( "description", rstStr ) == HNC_RESULT_SUCCESS )
-        {
-            inhibitPtr->setDesc( rstStr );
-        }
-
         if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
         {
             inhibitPtr->setTypeFromStr( rstStr );
@@ -527,7 +535,6 @@ HNIrrigationInhibitSet::updateInhibitsListSection( HNodeConfig &cfg )
         objPtr->updateValue( "inhibitid", it->second.getID() );
 
         objPtr->updateValue( "name", it->second.getName() );
-        objPtr->updateValue( "description", it->second.getDesc() );
         objPtr->updateValue( "type", it->second.getTypeAsStr() );
         objPtr->updateValue( "zoneid", it->second.getZoneID() );
 

@@ -607,10 +607,10 @@ HNIDActionRequest::applySequenceUpdate( HNIrrigationSequence *tgtSequence )
 
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_NAME )
         tgtSequence->setName( srcSequence->getName() );
-
+       
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_DESC )
         tgtSequence->setDesc( srcSequence->getDesc() );
-        
+
     if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_TYPE )
         tgtSequence->setType( srcSequence->getType() );
         
@@ -651,12 +651,6 @@ HNIDActionRequest::decodeInhibitUpdate( std::istream& bodyStream )
         {
             inhibit.setName( jsRoot->getValue<std::string>( "name" ) );
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_NAME;
-        }
-
-        if( jsRoot->has( "description" ) )
-        {
-            inhibit.setDesc( jsRoot->getValue<std::string>( "description" ) );
-            m_inhibitUpdateMask |= HNID_INU_FLDMASK_DESC;
         }
 
         if( jsRoot->has( "type" ) )
@@ -708,10 +702,7 @@ HNIDActionRequest::applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit )
 
     if( m_inhibitUpdateMask & HNID_INU_FLDMASK_NAME )
         tgtInhibit->setName( srcInhibit->getName() );
-
-    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_DESC )
-        tgtInhibit->setDesc( srcInhibit->getDesc() );
-       
+     
     if( m_inhibitUpdateMask & HNID_INU_FLDMASK_TYPE )
         tgtInhibit->setType( srcInhibit->getType() );
         
@@ -1332,7 +1323,9 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
 
                 iObj.set( "inhibitid", iit->getID() );
                 iObj.set( "name", iit->getName() );
-                iObj.set( "description", iit->getDesc() );
+                iObj.set( "type", iit->getTypeAsStr() );
+                iObj.set( "expirationDateStr", iit->getExpirationDateStr() );
+                iObj.set( "zoneID", iit->getZoneID() );
 
                 // Add new placement object to return list
                 jsRoot.add( iObj );
@@ -1351,7 +1344,9 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
 
             jsRoot.set( "inhibitid", inhibit->getID() );
             jsRoot.set( "name", inhibit->getName() );
-            jsRoot.set( "description", inhibit->getDesc() );
+            jsRoot.set( "type", inhibit->getTypeAsStr() );
+            jsRoot.set( "expirationDateStr", inhibit->getExpirationDateStr() );
+            jsRoot.set( "zoneID", inhibit->getZoneID() );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }

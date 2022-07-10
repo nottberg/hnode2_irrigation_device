@@ -34,7 +34,6 @@ class HNIrrigationInhibit
     private:
         std::string  m_id;
         std::string  m_name;
-        std::string  m_desc;
         HNII_TYPE_T  m_type;
         std::string  m_zoneid;
         time_t       m_expiration;
@@ -45,8 +44,7 @@ class HNIrrigationInhibit
 
         void setID( std::string id );
         void setName( std::string value );
-        void setDesc( std::string value );
-
+    
         void setType( HNII_TYPE_T type );
         HNIS_RESULT_T setTypeFromStr( std::string typeStr );
               
@@ -57,13 +55,13 @@ class HNIrrigationInhibit
 
         std::string getID();
         std::string getName();
-        std::string getDesc();
-
+    
         HNII_TYPE_T getType();
         std::string getTypeAsStr();
             
         std::string getZoneID();
         time_t getExpiration();
+        std::string getExpirationDateStr();
         
         HNIS_RESULT_T validateSettings();
 };
@@ -99,6 +97,7 @@ class HNIrrigationInhibitSet
         void getInhibitsList( std::vector< HNIrrigationInhibit > &inhibitsList );
         HNIS_RESULT_T getInhibit( std::string inhibitID, HNIrrigationInhibit &inhibit );
         HNIS_RESULT_T getInhibitName( std::string id, std::string &name );
+        HNIS_RESULT_T getInhibitExpirationDateStr( std::string id, std::string &dateStr );
 
         HNII_INHIBIT_ACTION_T checkSchedulerAction( time_t curTime, std::string &inhibitID );
         HNII_INHIBIT_ACTION_T checkZoneAction( time_t curTime, std::string zoneID, std::string &inhibitID );
