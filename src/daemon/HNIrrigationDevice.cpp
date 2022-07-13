@@ -1325,8 +1325,8 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
     // Cleanup expired inhibits
     for( std::vector< std::string >::iterator it = inhibitDeleteList.begin(); it != inhibitDeleteList.end(); it++ )
     {
-        std::cout << "Deleting inhibit: " << inhibitID << std::endl;
-        m_inhibits.deleteInhibit( inhibitID );
+        std::cout << "Deleting inhibit: " << *it << std::endl;
+        m_inhibits.deleteInhibit( *it );
         rtnValue = true;
     }
 
