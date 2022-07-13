@@ -1324,7 +1324,11 @@ HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
 
     // Cleanup expired inhibits
     for( std::vector< std::string >::iterator it = inhibitDeleteList.begin(); it != inhibitDeleteList.end(); it++ )
+    {
+        std::cout << "Deleting inhibit: " << inhibitID << std::endl;
         m_inhibits.deleteInhibit( inhibitID );
+        rtnValue = true;
+    }
 
     // No update needed.
     return rtnValue;
@@ -1380,8 +1384,11 @@ HNIrrigationDevice::loopIteration()
             // zone scheduling.
             if( checkForInhibitChanges( ltime ) == true )
             {
-                std::cout << "Rebuilding schedule due to inhibit change." << std::endl;
-                
+                std::cout << "Update config and rebuilding schedule due to inhibit change." << std::endl;
+
+                // Commit config update since inhibit state changed.
+                updateConfig();
+
                 // Rebuild the schedule
                 m_schedule.buildSchedule( m_targetSchedulerEnabled );
             }
