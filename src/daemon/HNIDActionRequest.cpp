@@ -666,9 +666,9 @@ HNIDActionRequest::decodeInhibitUpdate( std::istream& bodyStream )
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_EXPIRATION;
         }
 
-        if( jsRoot->has( "zoneid" ) )
+        if( jsRoot->has( "zoneID" ) )
         {
-            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
+            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneID" ) );
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_ZONEID;
         }
    
