@@ -1491,7 +1491,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() );
     
     // Add statistics data for each zone
-    pjs::Object jzsStats;
+    pjs::Array jzsStats;
 
     std::vector< HNISZoneStats > zsList;
     m_schedule.getZoneStatList( zsList );
@@ -1538,7 +1538,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         }
         jzoneStats.set( "secondsPerDay", zspdObj );
 
-        jzsStats.set( zit->getZoneID(), jzoneStats );
+        jzsStats.add( jzoneStats );
     }
 
     jsRoot.set( "zoneStatistics", jzsStats );
@@ -1562,7 +1562,6 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             {
                 std::string zoneid = *zsit;
                 
-                //jsSWAction.set( "action", "on" );
                 jsSWAction.set( "startTime", it->getStartTimeStr() );
                 jsSWAction.set( "endTime", it->getEndTimeStr() );
                 jsSWAction.set( "zoneid", zoneid );
