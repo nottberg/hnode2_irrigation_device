@@ -349,6 +349,13 @@ HNIrrigationInhibitSet::getInhibitExpirationDateStr( std::string id, std::string
     return HNIS_RESULT_SUCCESS;
 }
 
+HNIS_RESULT_T 
+HNIrrigationInhibitSet::getSchedulerInhibitID( std::string &idStr )
+{
+    idStr = m_curSchInhibitID;
+    return HNIS_RESULT_SUCCESS;
+}
+
 HNII_INHIBIT_ACTION_T 
 HNIrrigationInhibitSet::checkSchedulerAction( time_t curTime, std::string &inhibitID )
 {

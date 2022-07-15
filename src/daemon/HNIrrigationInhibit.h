@@ -99,6 +99,8 @@ class HNIrrigationInhibitSet
         HNIS_RESULT_T getInhibitName( std::string id, std::string &name );
         HNIS_RESULT_T getInhibitExpirationDateStr( std::string id, std::string &dateStr );
 
+        HNIS_RESULT_T getSchedulerInhibitID( std::string &idStr );
+
         HNII_INHIBIT_ACTION_T checkSchedulerAction( time_t curTime, std::string &inhibitID );
         HNII_INHIBIT_ACTION_T checkZoneAction( time_t curTime, std::string zoneID, std::string &inhibitID );
 

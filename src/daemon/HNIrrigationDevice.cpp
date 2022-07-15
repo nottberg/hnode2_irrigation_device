@@ -1910,7 +1910,15 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
     jsRoot.set( "timezone", m_swdStatus.getTimezoneStr() );
 
     jsRoot.set( "schedulerState", (m_targetSchedulerEnabled == true) ? "enabled" : "disabled" );
-    jsRoot.set( "inhibitUntil", "" );
+    
+    std::string schInhibitID;
+    m_inhibits.getSchedulerInhibitID( schInhibitID );
+    jsRoot.set( "schedulerInhibitID", schInhibitID );
+
+    std::string schExpireStr;
+    if( schInhibitID.empty() == false )
+      m_inhibits.getInhibitExpirationDateStr( schInhibitID, schExpireStr );
+    jsRoot.set( "schedulerInhibitExpirationDateStr", schExpireStr );
 
     pjs::Object ovHealth;
 
@@ -1955,10 +1963,15 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
     m_zones.getInhibitedZones( izoneList );
     for( std::vector< HNIrrigationZone >::iterator it = izoneList.begin(); it != izoneList.end(); it++ )
     {
+        std::string expireStr;
         pjs::Object izone;
         izone.set( "id", it->getID() );
         izone.set( "name", it->getName() );
         izone.set( "inhibitByID", it->getInhibitedByID() );
+
+        m_inhibits.getInhibitExpirationDateStr( it->getInhibitedByID(), expireStr );
+        izone.set( "inhibitExpirationDateStr", expireStr );
+        
         inhibitedZones.add( izone );
     }
     jsRoot.set( "inhibitedZones", inhibitedZones );
