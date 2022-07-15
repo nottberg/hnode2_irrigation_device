@@ -184,8 +184,6 @@ HNIDActionRequest::decodeZoneUpdate( std::istream& bodyStream )
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
 
-        //HNIrrigationZone *zone = m_schedule.updateZone( zoneID );
-
         if( jsRoot->has( "name" ) )
         {
             zone.setName( jsRoot->getValue<std::string>( "name" ) );
@@ -666,9 +664,9 @@ HNIDActionRequest::decodeInhibitUpdate( std::istream& bodyStream )
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_EXPIRATION;
         }
 
-        if( jsRoot->has( "zoneID" ) )
+        if( jsRoot->has( "zoneid" ) )
         {
-            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneID" ) );
+            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
             m_inhibitUpdateMask |= HNID_INU_FLDMASK_ZONEID;
         }
    
@@ -1325,7 +1323,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
                 iObj.set( "name", iit->getName() );
                 iObj.set( "type", iit->getTypeAsStr() );
                 iObj.set( "expirationDateStr", iit->getExpirationDateStr() );
-                iObj.set( "zoneID", iit->getZoneID() );
+                iObj.set( "zoneid", iit->getZoneID() );
 
                 // Add new placement object to return list
                 jsRoot.add( iObj );
@@ -1346,7 +1344,7 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
             jsRoot.set( "name", inhibit->getName() );
             jsRoot.set( "type", inhibit->getTypeAsStr() );
             jsRoot.set( "expirationDateStr", inhibit->getExpirationDateStr() );
-            jsRoot.set( "zoneID", inhibit->getZoneID() );
+            jsRoot.set( "zoneid", inhibit->getZoneID() );
 
             try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
         }
