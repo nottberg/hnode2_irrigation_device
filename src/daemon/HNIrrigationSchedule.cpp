@@ -579,7 +579,7 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                     tgtSched.addPeriodZoneOn( m_dayIndx, zit->getZoneID(), it->getStartSec(), secNeeded );
                             
                     // Track the zone statistics
-                    tgtSched.addToZoneStatDailyTime( zit->getZoneID(), m_dayIndx, it->getDuration() );
+                    tgtSched.addToZoneStatDailyTime( zit->getZoneID(), m_dayIndx, secNeeded );
 
                     // Account for allocated time
                     zit->setDuration( zit->getDuration() - secNeeded );
