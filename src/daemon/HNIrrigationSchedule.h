@@ -22,20 +22,20 @@ class HNISZoneAppliedModifier
 {
     public:
        HNISZoneAppliedModifier();
-       HNISZoneAppliedModifier( std::string modID, std::string appliedValue, int deltaSec );
+       HNISZoneAppliedModifier( std::string modID, std::string calculationStr, int deltaSec );
       ~HNISZoneAppliedModifier();
 
        void setID( std::string modID );
-       void setAppliedValue( std::string appliedValue );
+       void setCalculationStr( std::string calculationStr );
        void setDeltaSeconds( int deltaSec );
 
        std::string getID();
-       std::string getAppliedValue();
+       std::string getCalculationStr();
        int getDeltaSeconds();
 
     private:
        std::string m_id;
-       std::string m_appliedValue;
+       std::string m_calcStr;
        int         m_deltaSec;
 };
 

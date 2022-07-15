@@ -1,5 +1,6 @@
 #include <iostream>
 #include <regex>
+#include <cmath>
 
 #include "HNIrrigationModifier.h"
 
@@ -128,11 +129,13 @@ HNIrrigationModifier::validateSettings()
 }
 
 double
-HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedValue )
+HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &calculationStr )
 {
     double delta = 0;
-    char   avStr[256];
+    char   calcStr[512];
     
+    calculationStr.clear();
+
     switch( getType() )
     {
         case HNIM_TYPE_LOCAL_DURATION:
@@ -143,7 +146,7 @@ HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedVal
             else
                 delta = 0;
 
-            sprintf(avStr, "%f", delta);
+            sprintf(calcStr, "%s %.0f seconds", ((delta < 0) ? "Subtract" : "Add"), delta);
         }
         break;
     
@@ -152,17 +155,28 @@ HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &appliedVal
             double value = strtod( m_value.c_str(), NULL );
             
             value /= 100.0;
-            delta = ((double)baseDuration) * value;
-            sprintf(avStr, "%f%%", delta);
+            if( value < 0 )
+            {
+                delta = ((double)baseDuration) * value;
+
+                sprintf(calcStr, "Subtract %.0f%% of %d sec base duration", (double)std::abs(value), baseDuration);
+
+            }
+            else
+            {
+                delta = ((double)baseDuration) * value;
+
+                sprintf(calcStr, "Add %.0f%% of %d sec base duration", value, baseDuration);
+            }
         }
         break;
         
         default:
-            avStr[0] = '\0';
+            calcStr[0] = '\0';
         break;
     }
     
-    appliedValue = avStr;
+    calculationStr = calcStr;
 
     return delta;
 }

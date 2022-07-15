@@ -57,7 +57,7 @@ class HNIrrigationModifier
         
         HNIS_RESULT_T validateSettings();
         
-        double calculateDelta( uint baseDuration, std::string &appliedValue );
+        double calculateDelta( uint baseDuration, std::string &calculationStr );
 };
 
 class HNIrrigationModifierSet

@@ -698,10 +698,10 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
         modifiers->getModifiersForZone( zit->getID(), modifierList );
         for( std::vector< HNIrrigationModifier >::iterator mit = modifierList.begin(); mit != modifierList.end(); mit++ )
         {
-            std::string modValue;
-            double delta = mit->calculateDelta( baseDur, modValue );
+            std::string calcStr;
+            double delta = mit->calculateDelta( baseDur, calcStr );
 
-            zStats->addAppliedModifier( mit->getID(), modValue, delta );
+            zStats->addAppliedModifier( mit->getID(), calcStr, delta );
 
             duration += delta;
                         
@@ -781,11 +781,11 @@ HNISZoneAppliedModifier::HNISZoneAppliedModifier()
     m_deltaSec = 0;
 }
 
-HNISZoneAppliedModifier::HNISZoneAppliedModifier( std::string modID, std::string appliedValue, int deltaSec )
+HNISZoneAppliedModifier::HNISZoneAppliedModifier( std::string modID, std::string calculationStr, int deltaSec )
 {
-    m_id           = modID;
-    m_appliedValue = appliedValue;
-    m_deltaSec     = deltaSec;
+    m_id        = modID;
+    m_calcStr   = calculationStr;
+    m_deltaSec  = deltaSec;
 }
 
 HNISZoneAppliedModifier::~HNISZoneAppliedModifier()
@@ -800,9 +800,9 @@ HNISZoneAppliedModifier::setID( std::string modID )
 }
 
 void 
-HNISZoneAppliedModifier::setAppliedValue( std::string appliedValue )
+HNISZoneAppliedModifier::setCalculationStr( std::string calculationStr )
 {
-    m_appliedValue = appliedValue;
+    m_calcStr = calculationStr;
 }
 
 void 
@@ -818,9 +818,9 @@ HNISZoneAppliedModifier::getID()
 }
 
 std::string 
-HNISZoneAppliedModifier::getAppliedValue()
+HNISZoneAppliedModifier::getCalculationStr()
 {
-    return m_appliedValue;
+    return m_calcStr;
 }
 
 int 
@@ -894,9 +894,9 @@ HNISZoneStats::addToSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value )
 }
 
 void 
-HNISZoneStats::addAppliedModifier( std::string modID, std::string appliedValue, double deltaSeconds )
+HNISZoneStats::addAppliedModifier( std::string modID, std::string calculationStr, double deltaSeconds )
 {
-    HNISZoneAppliedModifier amod( modID, appliedValue, deltaSeconds );
+    HNISZoneAppliedModifier amod( modID, calculationStr, deltaSeconds );
     m_appliedModList.push_back( amod );
 }
 
@@ -1523,7 +1523,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
 
             amObj.set( "modifierid", mit->getID() );
             amObj.set( "modifierName", mName );
-            amObj.set( "appliedValue", mit->getAppliedValue() );
+            amObj.set( "calculationStr", mit->getCalculationStr() );
             amObj.set( "deltaSeconds", mit->getDeltaSeconds() );
 
             zamArray.add( amObj );
