@@ -464,6 +464,10 @@ HNIrrigationInhibitSet::readInhibitsListSection( HNodeConfig &cfg )
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
+    // Clear any existing datastructure state
+    m_curSchInhibitID.clear();
+    m_zoneIDMap.clear();
+
     // Aquire a pointer to the "device" section
     cfg.updateSection( "irrInhibitsInfo", &secPtr );
 
@@ -511,6 +515,8 @@ HNIrrigationInhibitSet::readInhibitsListSection( HNodeConfig &cfg )
             inhibitPtr->setExpiration( strtol( rstStr.c_str(), NULL, 0 ) );
         }
 
+        // Update any zone records, etc
+        reconcileNewObject( inhibitID );
     }
           
     return HNIS_RESULT_SUCCESS;
