@@ -79,6 +79,7 @@ class HNIrrigationInhibitSet
         std::map< std::string, std::string > m_zoneIDMap;
 
         HNIrrigationInhibit* internalUpdateInhibit( std::string id );
+        void internalReconcileNewObject( std::string newID );
 
     public:
         HNIrrigationInhibitSet();

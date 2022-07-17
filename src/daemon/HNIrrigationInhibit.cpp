@@ -210,11 +210,8 @@ HNIrrigationInhibitSet::updateInhibit( std::string id )
 }
 
 void
-HNIrrigationInhibitSet::reconcileNewObject( std::string newID )
+HNIrrigationInhibitSet::internalReconcileNewObject( std::string newID )
 {
-    // Scope lock
-    const std::lock_guard<std::mutex> lock(m_accessMutex);
-
     // Find the referenced zone
     std::map< std::string, HNIrrigationInhibit >::iterator it = m_inhibitsMap.find( newID );
 
@@ -248,6 +245,15 @@ HNIrrigationInhibitSet::reconcileNewObject( std::string newID )
         }
         break;
     }
+}
+
+void
+HNIrrigationInhibitSet::reconcileNewObject( std::string newID )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    internalReconcileNewObject( newID );
 }
 
 void 
@@ -516,7 +522,7 @@ HNIrrigationInhibitSet::readInhibitsListSection( HNodeConfig &cfg )
         }
 
         // Update any zone records, etc
-        reconcileNewObject( inhibitID );
+        internalReconcileNewObject( inhibitID );
     }
           
     return HNIS_RESULT_SUCCESS;
