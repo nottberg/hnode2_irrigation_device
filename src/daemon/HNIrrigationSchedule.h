@@ -48,6 +48,7 @@ class HNISZoneStats
        ~HNISZoneStats();
 
         void setZoneID( std::string zoneID );
+        void setInhibitedByID( std::string inhibitID );
         void setBaseSeconds( uint value );
         void setTotalSeconds( uint value );
         void setSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value );
@@ -55,6 +56,7 @@ class HNISZoneStats
         void addAppliedModifier( std::string modID, std::string appliedValue, double deltaSeconds );
 
         std::string getZoneID();
+        std::string getInhibitedByID();
         uint getBaseSeconds();
         uint getTotalSeconds();
         double getAverageSecondsPerDay();
@@ -62,10 +64,14 @@ class HNISZoneStats
 
         void getAppliedModifiersList( std::vector< HNISZoneAppliedModifier > &amList );
 
+        bool isInhibited();
+
         void finalize();
 
     private:
         std::string m_zoneID;
+
+        std::string m_inhibitByID;
 
         uint m_baseSeconds;
         uint m_totalSeconds;

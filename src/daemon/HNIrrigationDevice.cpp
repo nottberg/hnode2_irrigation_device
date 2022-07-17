@@ -1969,10 +1969,14 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
     for( std::vector< HNIrrigationZone >::iterator it = izoneList.begin(); it != izoneList.end(); it++ )
     {
         std::string expireStr;
+        std::string nameStr;
         pjs::Object izone;
         izone.set( "id", it->getID() );
         izone.set( "name", it->getName() );
         izone.set( "inhibitByID", it->getInhibitedByID() );
+
+        m_inhibits.getInhibitName( it->getInhibitedByID(), nameStr );
+        izone.set( "inhibitName", nameStr );
 
         m_inhibits.getInhibitExpirationDateStr( it->getInhibitedByID(), expireStr );
         izone.set( "inhibitExpirationDateStr", expireStr );

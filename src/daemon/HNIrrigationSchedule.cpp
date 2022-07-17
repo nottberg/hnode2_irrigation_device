@@ -694,6 +694,9 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
         // Start a zone statistic tracker entry
         HNISZoneStats *zStats = tgtSched.createZoneStatsTracker( zit->getID(), baseDur );
 
+        // Check if the zone is currently inhibited
+        zStats->setInhibitedByID( zit->getInhibitedByID() );
+
         std::vector< HNIrrigationModifier > modifierList;
         modifiers->getModifiersForZone( zit->getID(), modifierList );
         for( std::vector< HNIrrigationModifier >::iterator mit = modifierList.begin(); mit != modifierList.end(); mit++ )
@@ -864,6 +867,12 @@ HNISZoneStats::setZoneID( std::string zoneID )
 }
 
 void 
+HNISZoneStats::setInhibitedByID( std::string inhibitID )
+{
+    m_inhibitByID = inhibitID;
+}
+
+void 
 HNISZoneStats::setBaseSeconds( uint value )
 {
     m_baseSeconds = value;
@@ -906,6 +915,12 @@ HNISZoneStats::getZoneID()
     return m_zoneID;
 }
 
+std::string 
+HNISZoneStats::getInhibitedByID()
+{
+    return m_inhibitByID;
+}
+
 uint
 HNISZoneStats::getBaseSeconds()
 {
@@ -942,6 +957,12 @@ HNISZoneStats::getAppliedModifiersList( std::vector< HNISZoneAppliedModifier > &
     {
         amList.push_back( *it );
     }
+}
+
+bool 
+HNISZoneStats::isInhibited()
+{
+    return (m_inhibitByID.empty() == false);
 }
 
 void 
@@ -1519,6 +1540,21 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         jzoneStats.set( "baseSeconds", zit->getBaseSeconds() );
         jzoneStats.set( "totalSeconds", zit->getTotalSeconds() );
         jzoneStats.set( "avgSecondsPerDay", zit->getAverageSecondsPerDay() );
+
+        if( zit->isInhibited() == true )
+        {
+            jzoneStats.set( "inhibitedByID", zit->getInhibitedByID() );
+
+            std::string nameStr;
+            m_inhibits->getInhibitName( zit->getInhibitedByID(), nameStr );
+            jzoneStats.set( "inhibitName", nameStr );
+
+            std::string expireStr;
+            m_inhibits->getInhibitExpirationDateStr( zit->getInhibitedByID(), expireStr );
+            jzoneStats.set( "inhibitExpirationDateStr", expireStr );
+        }
+        else
+            jzoneStats.set( "inhibitedByID", "");
 
         pjs::Array zamArray;
 
