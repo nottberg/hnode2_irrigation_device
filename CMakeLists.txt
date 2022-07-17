@@ -42,6 +42,7 @@ SET( HNI_TEST_SCHEDULER_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationZone.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationPlacement.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationModifier.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationInhibit.cpp     
      ${CMAKE_SOURCE_DIR}/src/daemon/HNIrrigationTypes.cpp
 )
 

@@ -15,6 +15,7 @@
 #include "HNIrrigationPlacement.h"
 #include "HNIrrigationZone.h"
 #include "HNIrrigationModifier.h"
+#include "HNIrrigationInhibit.h"
 
 // Track some zone statitics
 // that result from building a schedule
@@ -202,12 +203,13 @@ class HNIrrigationSchedule
         HNIrrigationPlacementSet *m_placements;
         HNIrrigationZoneSet      *m_zones;
         HNIrrigationModifierSet  *m_modifiers;
+        HNIrrigationInhibitSet   *m_inhibits;
 
     public:
         HNIrrigationSchedule();
        ~HNIrrigationSchedule();
 
-        void init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers );
+        void init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers, HNIrrigationInhibitSet *inhibits );
 
         std::string getTimezoneStr();
 
@@ -216,7 +218,7 @@ class HNIrrigationSchedule
 
         void clear();
 
-        HNIS_RESULT_T buildSchedule( bool schedulerEnabled );
+        HNIS_RESULT_T buildSchedule();
 
         HNIS_RESULT_T getScheduleInfoJSON( std::ostream &ostr );
 

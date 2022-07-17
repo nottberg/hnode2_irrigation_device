@@ -2,6 +2,8 @@
 
 #include "HNIrrigationZone.h"
 #include "HNIrrigationPlacement.h"
+#include "HNIrrigationModifier.h"
+#include "HNIrrigationInhibit.h"
 #include "HNIrrigationSchedule.h"
 
 class HNIrrigationTest
@@ -10,6 +12,7 @@ class HNIrrigationTest
         HNIrrigationPlacementSet m_placements;
         HNIrrigationZoneSet      m_zones;
         HNIrrigationModifierSet  m_modifiers;
+        HNIrrigationInhibitSet   m_inhibits;
         HNIrrigationSchedule     m_schedule;
 
         void init();
@@ -28,7 +31,7 @@ class HNIrrigationTest
 void
 HNIrrigationTest::init()
 {
-    m_schedule.init( &m_placements, &m_zones, &m_modifiers );
+    m_schedule.init( &m_placements, &m_zones, &m_modifiers, &m_inhibits );
 }
 
 void 
@@ -203,7 +206,7 @@ HNIrrigationTest::test1()
     mod->setZoneID( "z3" );
 
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
 
 }
 
@@ -322,7 +325,7 @@ HNIrrigationTest::test2()
     place->addZone( "z17" );
       
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
 }
 
 void
@@ -349,7 +352,7 @@ HNIrrigationTest::testUnplacedZone()
     place->addZone( "z1" );
       
     // Calculate the new schedule
-    HNIS_RESULT_T result = m_schedule.buildSchedule( true );
+    HNIS_RESULT_T result = m_schedule.buildSchedule();
 }
 
 

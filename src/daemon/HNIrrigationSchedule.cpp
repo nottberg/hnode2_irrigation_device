@@ -1397,13 +1397,14 @@ HNIrrigationSchedule::~HNIrrigationSchedule()
 }
 
 void
-HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers )
+HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers, HNIrrigationInhibitSet *inhibits )
 {
     std::cout << "HNIrrigationSchedule -- init" << std::endl;
 
     m_placements = placements;
     m_zones = zones;
     m_modifiers = modifiers;
+    m_inhibits = inhibits;
 }
 
 void 
@@ -1434,7 +1435,7 @@ HNIrrigationSchedule::getSMCRC32Str()
 }
 
 HNIS_RESULT_T
-HNIrrigationSchedule::buildSchedule( bool schedulerEnabled )
+HNIrrigationSchedule::buildSchedule()
 {
     std::string checkStr;
     HNISPlacer  placer;
@@ -1444,10 +1445,6 @@ HNIrrigationSchedule::buildSchedule( bool schedulerEnabled )
     // Clear existing schedule data.
     m_schedule.clear();
     
-    // If the scheduler is not enabled then no need to go on.
-    if( schedulerEnabled == false )
-        return HNIS_RESULT_SUCCESS;
-
     // Get placementList for later usage.
     for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
     {
@@ -1490,6 +1487,20 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     // Add the timezone name field
     jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() );
     
+    std::string schInhibitID;
+    m_inhibits->getSchedulerInhibitID( schInhibitID );
+    jsRoot.set( "schedulerInhibitID", schInhibitID );
+
+    std::string schInhibitName;
+    if( schInhibitID.empty() == false )
+      m_inhibits->getInhibitName( schInhibitID, schInhibitName );
+    jsRoot.set( "scehdulerInhibitName", schInhibitName );
+
+    std::string schExpireStr;
+    if( schInhibitID.empty() == false )
+      m_inhibits->getInhibitExpirationDateStr( schInhibitID, schExpireStr );
+    jsRoot.set( "schedulerInhibitExpirationDateStr", schExpireStr );
+
     // Add statistics data for each zone
     pjs::Array jzsStats;
 

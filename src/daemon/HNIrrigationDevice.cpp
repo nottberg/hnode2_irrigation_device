@@ -795,7 +795,7 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     m_hnodeDev.addEndpoint( hndEP );
 
-    m_schedule.init( &m_placements, &m_zones, &m_modifiers );
+    m_schedule.init( &m_placements, &m_zones, &m_modifiers, &m_inhibits );
 
     std::cout << "Looking for config file" << std::endl;
     
@@ -1350,7 +1350,7 @@ HNIrrigationDevice::loopIteration()
         // Finish with the startup
         case HNID_STATE_INITIALIZED:
             // Calculate an initial schedule
-            m_schedule.buildSchedule( m_targetSchedulerEnabled );
+            m_schedule.buildSchedule();
 
             // Temporary output of switch manager schedule
             std::cout << "===Switch Manager JSON===" << std::endl;
@@ -1390,7 +1390,7 @@ HNIrrigationDevice::loopIteration()
                 updateConfig();
 
                 // Rebuild the schedule
-                m_schedule.buildSchedule( m_targetSchedulerEnabled );
+                m_schedule.buildSchedule();
             }
 
             // Schedule Update?
@@ -1914,6 +1914,11 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
     std::string schInhibitID;
     m_inhibits.getSchedulerInhibitID( schInhibitID );
     jsRoot.set( "schedulerInhibitID", schInhibitID );
+
+    std::string schInhibitName;
+    if( schInhibitID.empty() == false )
+      m_inhibits.getInhibitName( schInhibitID, schInhibitName );
+    jsRoot.set( "scehdulerInhibitName", schInhibitName );
 
     std::string schExpireStr;
     if( schInhibitID.empty() == false )
@@ -2533,7 +2538,7 @@ HNIrrigationDevice::startAction()
     if( actBits & HNID_ACTBIT_RECALCSCH )
     {
         // Calculate the new schedule
-        HNIS_RESULT_T result = m_schedule.buildSchedule( m_targetSchedulerEnabled );
+        HNIS_RESULT_T result = m_schedule.buildSchedule();
         if( result != HNIS_RESULT_SUCCESS )
         {
             actBits = HNID_ACTBIT_ERROR;
