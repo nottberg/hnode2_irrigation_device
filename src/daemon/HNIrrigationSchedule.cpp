@@ -1553,7 +1553,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     std::string schInhibitName;
     if( schInhibitID.empty() == false )
       m_inhibits->getInhibitName( schInhibitID, schInhibitName );
-    jsRoot.set( "scehdulerInhibitName", schInhibitName );
+    jsRoot.set( "schedulerInhibitName", schInhibitName );
 
     std::string schExpireStr;
     if( schInhibitID.empty() == false )
@@ -1639,7 +1639,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         if( maxEntryCnt == 0 )
             maxEntryCnt = 1;
 
-        pjs::Object zstpdObj;
+        pjs::Object zstartsObj;
         pjs::Object nullEntry;
         nullEntry.set("startTime", "");
         nullEntry.set("duration", "");
@@ -1660,9 +1660,9 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
                 }
             }
 
-            zspdObj.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) dayIndx ), dayArray );
+            zstartsObj.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) dayIndx ), dayArray );
         }
-        jzoneStats.set( "startsPerDay", zstpdObj );
+        jzoneStats.set( "startsByDay", zstartsObj );
 
         jzsStats.add( jzoneStats );
     }
