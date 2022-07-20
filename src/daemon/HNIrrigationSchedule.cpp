@@ -1140,6 +1140,21 @@ HNISPeriod::getEndTimeStr()
     return m_endTime.getHMSStr();
 }
 
+uint 
+HNISPeriod::getDurationSeconds()
+{
+    uint duration = (m_endTime.getSeconds() - m_startTime.getSeconds());
+    return duration;
+}
+
+std::string 
+HNISPeriod::getDurationStr()
+{
+    HNI24HTime duration;
+    duration.setFromSeconds( getDurationSeconds() );
+    return duration.getHMSStr();
+}
+
 HNISDay::HNISDay()
 {
     m_dayIndex = HNIS_DINDX_NOTSET;
@@ -1239,6 +1254,23 @@ HNISDay::getPeriodList( std::vector< HNISPeriod > &periodList )
     }
 }
 
+void 
+HNISDay::getZonePeriodList( std::string zoneid, std::vector< HNISPeriod > &periodList )
+{
+    periodList.clear();
+
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        //std::cout << "PL: " << it->getType() << "  " << it->getStartTimeStr() << std::endl;
+        if( it->hasZone( zoneid ) == true )
+        {
+            periodList.push_back( *it );
+        }
+    }
+
+    std::cout << "getZonePeriodList: " << periodList.size() << std::endl;
+}
+
 std::string 
 HNISDay::getDayName()
 {
@@ -1333,6 +1365,12 @@ void
 HNISchedule::getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList )
 {
     m_dayArr[ dayIndex ].getPeriodList( periodList );
+}
+
+void 
+HNISchedule::getZonePeriodList( std::string zoneid, HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList )
+{
+    m_dayArr[ dayIndex ].getZonePeriodList( zoneid, periodList );
 }
 
 void
@@ -1585,6 +1623,47 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
         }
         jzoneStats.set( "secondsPerDay", zspdObj );
 
+        std::vector< HNISPeriod > zoneSchedule[HNIS_DINDX_NOTSET];
+        int maxEntryCnt = 0;
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        {
+            std::vector< HNISPeriod > emptyArr;
+            m_schedule.getZonePeriodList( zit->getZoneID(), (HNIS_DAY_INDX_T) dayIndx, zoneSchedule[dayIndx] );
+
+            if( zoneSchedule[dayIndx].size() > maxEntryCnt )
+                maxEntryCnt = zoneSchedule[dayIndx].size();
+        }
+
+        // Always ensure we put at least one entry into the datastructure
+        // even if it is a null row.
+        if( maxEntryCnt == 0 )
+            maxEntryCnt = 1;
+
+        pjs::Object zstpdObj;
+        pjs::Object nullEntry;
+        nullEntry.set("startTime", "");
+        nullEntry.set("duration", "");
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        {
+            pjs::Array dayArray;
+
+            for( int entryIndx = 0; entryIndx < maxEntryCnt; entryIndx++ )
+            {
+                if( entryIndx >= zoneSchedule[dayIndx].size() )
+                    dayArray.add( nullEntry );
+                else
+                {
+                    pjs::Object periodEntry;
+                    periodEntry.set( "startTime", zoneSchedule[dayIndx][entryIndx].getStartTimeStr() );
+                    periodEntry.set( "duration", zoneSchedule[dayIndx][entryIndx].getDurationStr() );
+                    dayArray.add( periodEntry );
+                }
+            }
+
+            zspdObj.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) dayIndx ), dayArray );
+        }
+        jzoneStats.set( "startsPerDay", zstpdObj );
+
         jzsStats.add( jzoneStats );
     }
 
@@ -1611,6 +1690,7 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
                 
                 jsSWAction.set( "startTime", it->getStartTimeStr() );
                 jsSWAction.set( "endTime", it->getEndTimeStr() );
+                jsSWAction.set( "duration", it->getDurationStr() );
                 jsSWAction.set( "zoneid", zoneid );
 
                 std::string zName;

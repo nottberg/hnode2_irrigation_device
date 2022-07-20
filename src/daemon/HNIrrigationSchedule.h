@@ -122,6 +122,9 @@ class HNISPeriod
         uint getEndTimeSeconds();
         std::string getEndTimeStr();
 
+        uint getDurationSeconds();
+        std::string getDurationStr();
+
         bool containsTimeSeconds( uint seconds );
         bool hasZone( std::string zoneID );
         
@@ -159,6 +162,8 @@ class HNISDay
 
         void getPeriodList( std::vector< HNISPeriod > &periodList );
 
+        void getZonePeriodList( std::string zoneid, std::vector< HNISPeriod > &periodList );
+
         void debugPrint();
 };
 
@@ -193,7 +198,8 @@ class HNISchedule
        
         std::string getDayName( HNIS_DAY_INDX_T dayIndex );       
         void getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
-                
+        void getZonePeriodList( std::string zoneid, HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList );
+
         HNISZoneStats *createZoneStatsTracker( std::string zoneID, uint baseSeconds );
         void addToZoneStatDailyTime( std::string zoneID, HNIS_DAY_INDX_T dayIndex, uint seconds );
         void getZoneStatList( std::vector< HNISZoneStats > &zsList );
