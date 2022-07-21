@@ -1143,7 +1143,13 @@ HNISPeriod::getEndTimeStr()
 uint 
 HNISPeriod::getDurationSeconds()
 {
+    // Difference in start and end times.
     uint duration = (m_endTime.getSeconds() - m_startTime.getSeconds());
+
+    // If there is a duration then make it inclusive of both endpoints.
+    if( duration != 0 )
+        duration += 1;
+        
     return duration;
 }
 
