@@ -1918,7 +1918,7 @@ HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
     std::string schInhibitName;
     if( schInhibitID.empty() == false )
       m_inhibits.getInhibitName( schInhibitID, schInhibitName );
-    jsRoot.set( "scehdulerInhibitName", schInhibitName );
+    jsRoot.set( "schedulerInhibitName", schInhibitName );
 
     std::string schExpireStr;
     if( schInhibitID.empty() == false )
