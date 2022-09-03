@@ -55,7 +55,7 @@ typedef enum HNIDStartActionBitsEnum
     HNID_ACTBIT_SENDREQ   = 0x0010
 } HNID_ACTBIT_T;
 
-class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNEPLoopCallbacks
+class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNDEventNotifyInf, public HNEPLoopCallbacks
 {
     private:
         bool _helpRequested   = false;
@@ -76,6 +76,8 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         HNIDActionRequest *m_curAction;
 
         HNEPLoop       m_evLoop;
+
+        bool m_deviceCfgUpdate;
 
         HNodeDevice m_hnodeDev;
 
@@ -146,6 +148,9 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
     protected:
         // HNDevice REST callback
         virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );
+
+        // Notification for hnode device config changes.
+        virtual void hndnConfigChange( HNodeDevice *parent );
 
         // Event loop callbacks
         virtual void loopIteration();

@@ -822,6 +822,10 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     setState( HNID_STATE_INITIALIZED );
 
+    // Start accepting device notifications
+    m_deviceCfgUpdate = false;
+    m_hnodeDev.setNotifySink( this );
+
     // Start up the hnode device
     m_hnodeDev.start();
 
@@ -1417,6 +1421,18 @@ HNIrrigationDevice::loopIteration()
                 return;
             }
 
+            // Periodic scan of the inhibits to look for changes that would effect
+            // zone scheduling.
+            if( m_deviceCfgUpdate == true )
+            {
+                std::cout << "Update config due to device level change." << std::endl;
+
+                // Commit config update since inhibit state changed.
+                updateConfig();
+
+                // Clear the flag
+                m_deviceCfgUpdate = false;
+            }
 
             // Check if health state should be aquired
 
@@ -3021,4 +3037,10 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     opData->responseSend();
 }
 
+void
+HNIrrigationDevice::hndnConfigChange( HNodeDevice *parent )
+{
+    std::cout << "HNIrrigationDevice::hndnConfigChange() - entry" << std::endl;
+    m_deviceCfgUpdate = true;
+}
 
