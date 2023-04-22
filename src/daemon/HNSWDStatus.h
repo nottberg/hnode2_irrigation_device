@@ -27,6 +27,8 @@ class HNSWDStatus
         //schCRC32 = strtol( schCRC32Str.c_str(), NULL, 0 );
         uint m_schCRC32;
                
+        std::string m_activeSequenceID;
+
         std::string m_ohstat;
         std::string m_ohmsg; 
 
@@ -39,8 +41,22 @@ class HNSWDStatus
 
         bool healthDegraded();
 
+        std::string getSchedulerState();
+
+        bool hasActiveSequence();
+        std::string getActiveSequenceID();
+
+        std::string getDateStr();
+        std::string getTimeStr();
+        std::string getTimezoneStr();
+
+        std::string getOverallHealthStatus();
+        std::string getOverallHealthMessage();
+        
+        void setSchedulerState( std::string value );
+
         void setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones );
-        HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
+        //HNIS_RESULT_T getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones );
 };
 
 #endif // __HN_SWD_STATUS_H__

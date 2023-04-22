@@ -18,6 +18,8 @@
 //#include "HNIrrigationZone.h"
 #include "HNIDActionRequest.h"
 #include "HNIrrigationSchedule.h"
+#include "HNIrrigationSequence.h"
+#include "HNIrrigationInhibit.h"
 
 #define HNODE_IRRIGATION_DEVTYPE   "hnode2-irrigation-device"
 
@@ -31,6 +33,7 @@ typedef enum HNIrrigationDeviceProcessStateEnum
   HNID_STATE_WAIT_SET_SCHEDULE,
   HNID_STATE_WAIT_SWINFO,
   HNID_STATE_WAIT_SCHCTL,
+  HNID_STATE_WAIT_SEQSTART,
   HNID_STATE_WAIT_ZONECTL
 }HNID_STATE_T;
 
@@ -42,7 +45,17 @@ typedef enum HNIrrigationDeviceResultEnum
   HNID_RESULT_SERVER_ERROR
 }HNID_RESULT_T;
 
-class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNEPLoopCallbacks
+typedef enum HNIDStartActionBitsEnum
+{
+    HNID_ACTBIT_CLEAR     = 0x0000,
+    HNID_ACTBIT_COMPLETE  = 0x0001,
+    HNID_ACTBIT_UPDATE    = 0x0002,
+    HNID_ACTBIT_RECALCSCH = 0x0004,
+    HNID_ACTBIT_ERROR     = 0x0008,
+    HNID_ACTBIT_SENDREQ   = 0x0010
+} HNID_ACTBIT_T;
+
+class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNDEventNotifyInf, public HNEPLoopCallbacks
 {
     private:
         bool _helpRequested   = false;
@@ -64,14 +77,30 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
 
         HNEPLoop       m_evLoop;
 
+        bool m_deviceCfgUpdate;
+
         HNodeDevice m_hnodeDev;
 
         HNIrrigationZoneSet      m_zones;
         HNIrrigationPlacementSet m_placements;
         HNIrrigationModifierSet  m_modifiers;
+        HNIrrigationSequenceSet  m_sequences;
+
         HNIrrigationSchedule     m_schedule;
 
+        uint m_nextInhibitID;
+        HNIrrigationInhibitSet   m_inhibits;
+
+        uint m_nextOpID;
+        HNIrrigationOperationQueue m_opQueue;
+
+        HNIrrigationOperation *m_pendingActiveSequence;
+        HNIrrigationOperation *m_currentActiveSequence;
+
+        bool m_targetSchedulerEnabled;
+
         bool m_sendSchedule;
+        bool m_sendSchedulerState;
 
         void displayHelp();
 
@@ -86,6 +115,9 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         bool getUniqueZoneID( HNIDActionRequest *action );
         bool getUniquePlacementID( HNIDActionRequest *action );
         bool getUniqueModifierID( HNIDActionRequest *action );
+        bool getUniqueSequenceID( HNIDActionRequest *action );
+        bool getUniqueInhibitID( HNIDActionRequest *action );
+        bool getUniqueOperationID( HNIDActionRequest *action );
 
         bool openSWDSocket();
 
@@ -94,19 +126,31 @@ class HNIrrigationDevice : public Poco::Util::ServerApplication, public HNDEPDis
         void startAction();
 
         void sendScheduleUpdate();
+        void sendSchedulerStateUpdate();
 
         void handleSWDStatus( HNSWDPacketClient &packet );
         void handleSWDEvent( HNSWDPacketClient &packet );
         void handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet );
         void handleSWDSwitchInfoRsp( HNSWDPacketClient &packet );
         void handleScheduleStateRsp( HNSWDPacketClient &packet );
-        void handleZoneCtrlRsp( HNSWDPacketClient &packet );
+        void handleSequenceStartRsp( HNSWDPacketClient &packet );
+        void handleSequenceCancelRsp( HNSWDPacketClient &packet );
 
-        //bool getIrrigationStatusJSON( std::ostream &ostr );
+        HNIS_RESULT_T buildIrrigationStatusResponse( std::ostream &ostr );
+
+        HNID_RESULT_T buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr );
+        HNID_RESULT_T buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr );
+
+        HNID_ACTBIT_T executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet );
+
+        bool checkForInhibitChanges( time_t curTime );
 
     protected:
         // HNDevice REST callback
         virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );
+
+        // Notification for hnode device config changes.
+        virtual void hndnConfigChange( HNodeDevice *parent );
 
         // Event loop callbacks
         virtual void loopIteration();

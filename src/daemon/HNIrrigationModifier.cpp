@@ -1,5 +1,6 @@
 #include <iostream>
 #include <regex>
+#include <cmath>
 
 #include "HNIrrigationModifier.h"
 
@@ -128,16 +129,24 @@ HNIrrigationModifier::validateSettings()
 }
 
 double
-HNIrrigationModifier::calculateDelta( uint baseDuration )
+HNIrrigationModifier::calculateDelta( uint baseDuration, std::string &calculationStr )
 {
     double delta = 0;
-            
+    char   calcStr[512];
+    
+    calculationStr.clear();
+
     switch( getType() )
     {
         case HNIM_TYPE_LOCAL_DURATION:
         {
-            double value = strtod( m_value.c_str(), NULL );
-            delta = value;
+            HNI24HTime duration;
+            if( duration.parseTime( m_value ) == HNIS_RESULT_SUCCESS )
+                delta = duration.getSeconds();
+            else
+                delta = 0;
+
+            sprintf(calcStr, "%s %.0f seconds", ((delta < 0) ? "Subtract" : "Add"), delta);
         }
         break;
     
@@ -146,14 +155,29 @@ HNIrrigationModifier::calculateDelta( uint baseDuration )
             double value = strtod( m_value.c_str(), NULL );
             
             value /= 100.0;
-            delta = ((double)baseDuration) * value;       
+            if( value < 0 )
+            {
+                delta = ((double)baseDuration) * value;
+
+                sprintf(calcStr, "Subtract %.0f%% of %d sec base duration", (double)std::abs(value), baseDuration);
+
+            }
+            else
+            {
+                delta = ((double)baseDuration) * value;
+
+                sprintf(calcStr, "Add %.0f%% of %d sec base duration", value, baseDuration);
+            }
         }
         break;
         
         default:
+            calcStr[0] = '\0';
         break;
     }
     
+    calculationStr = calcStr;
+
     return delta;
 }
 
@@ -259,6 +283,23 @@ HNIrrigationModifierSet::getModifier( std::string id, HNIrrigationModifier &even
     return HNIS_RESULT_SUCCESS;
 }
 
+HNIS_RESULT_T 
+HNIrrigationModifierSet::getModifierName( std::string id, std::string &name )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationModifier >::iterator it = m_modifiersMap.find( id );
+
+    name.clear();
+
+    if( it == m_modifiersMap.end() )
+        return HNIS_RESULT_FAILURE;
+
+    name = it->second.getName();
+    return HNIS_RESULT_SUCCESS;
+}
+
 void 
 HNIrrigationModifierSet::getModifiersForZone( std::string zoneID, std::vector< HNIrrigationModifier > &modifiersList )
 {
@@ -337,6 +378,21 @@ HNIrrigationModifierSet::readModifiersListSection( HNodeConfig &cfg )
             modifierPtr->setDesc( rstStr );
         }
 
+        if( objPtr->getValueByName( "type", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setTypeFromStr( rstStr );
+        }
+
+        if( objPtr->getValueByName( "value", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setValue( rstStr );
+        }
+
+        if( objPtr->getValueByName( "zoneid", rstStr ) == HNC_RESULT_SUCCESS )
+        {
+            modifierPtr->setZoneID( rstStr );
+        }
+
     }
           
     return HNIS_RESULT_SUCCESS;
@@ -368,6 +424,9 @@ HNIrrigationModifierSet::updateModifiersListSection( HNodeConfig &cfg )
 
         objPtr->updateValue( "name", it->second.getName() );
         objPtr->updateValue( "description", it->second.getDesc() );
+        objPtr->updateValue( "type", it->second.getTypeAsStr() );
+        objPtr->updateValue( "value", it->second.getValue() );
+        objPtr->updateValue( "zoneid", it->second.getZoneID() );
     }
 
     return HNIS_RESULT_SUCCESS;

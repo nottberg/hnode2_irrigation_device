@@ -48,6 +48,81 @@ HNSWDStatus::healthDegraded()
     return false;
 }
 
+std::string
+HNSWDStatus::getSchedulerState()
+{
+    return m_schState;
+}
+
+bool
+HNSWDStatus::hasActiveSequence()
+{
+    return ( m_activeSequenceID.empty() == false );
+}
+
+std::string
+HNSWDStatus::getActiveSequenceID()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_activeSequenceID;
+}
+
+std::string 
+HNSWDStatus::getDateStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_date;
+}
+
+std::string 
+HNSWDStatus::getTimeStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_time;
+}
+
+std::string 
+HNSWDStatus::getTimezoneStr()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_tz;
+}
+
+std::string 
+HNSWDStatus::getOverallHealthStatus()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_ohstat;
+}
+
+std::string 
+HNSWDStatus::getOverallHealthMessage()
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    return m_ohmsg;
+}
+
+void 
+HNSWDStatus::setSchedulerState( std::string value )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    m_schState = value;
+}
+
 void
 HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *zones )
 {
@@ -78,6 +153,8 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
         m_schCRC32Str = jsRoot->optValue( "scheduleCRC32", empty );
         m_schCRC32 = strtoul( m_schCRC32Str.c_str(), NULL, 0 );
 
+        m_activeSequenceID = jsRoot->optValue( "activeSequenceID", empty );
+
         pjs::Object::Ptr jsOHealth = jsRoot->getObject( "overallHealth" );
                             
         m_ohstat = jsOHealth->optValue( "status", empty );
@@ -88,12 +165,12 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
         std::string swONStr = jsRoot->optValue( "swOnList", empty );
 
         // Set zone status
-        zones->clearStatus();
+        zones->clearAllActive();
         std::sregex_token_iterator it( swONStr.begin(), swONStr.end(), ws_re, -1 );
         const std::sregex_token_iterator end;
         while( it != end )
         {
-            zones->setStatusActive( *it );
+            zones->setActiveFromSWID( *it );
             it++;
         }
 
@@ -105,6 +182,7 @@ HNSWDStatus::setFromSwitchDaemonJSON( std::string jsonStr, HNIrrigationZoneSet *
 
 }
 
+#if 0
 HNIS_RESULT_T
 HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones )
 {
@@ -189,4 +267,4 @@ HNSWDStatus::getAsIrrigationJSON( std::ostream &ostr, HNIrrigationZoneSet *zones
     // Success
     return HNIS_RESULT_SUCCESS;
 }
-
+#endif

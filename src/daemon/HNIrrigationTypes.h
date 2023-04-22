@@ -33,7 +33,7 @@ typedef enum HNIrrigationScheduleDayIndexEnum
 class HNI24HTime
 {
     private:
-        uint secOfDay;
+        uint m_secOfDay;
 
     public:
         HNI24HTime();

@@ -1,8 +1,11 @@
+#include <iostream>
+#include <regex>
+
 #include "HNIrrigationTypes.h"
 
 HNI24HTime::HNI24HTime()
 {
-    secOfDay = 0;
+    m_secOfDay = 0;
 }
 
 HNI24HTime::~HNI24HTime()
@@ -13,15 +16,15 @@ HNI24HTime::~HNI24HTime()
 uint
 HNI24HTime::getSeconds() const
 {
-    return secOfDay;
+    return m_secOfDay;
 }
 
 void
 HNI24HTime::getHMS( uint &hour, uint &minute, uint &second )
 {
-    hour    = (secOfDay / (60 * 60));
-    minute  = (secOfDay - (hour * 60 * 60))/60;
-    second  = secOfDay - ((hour * 60 * 60) + (minute * 60));
+    hour    = (m_secOfDay / (60 * 60));
+    minute  = (m_secOfDay - (hour * 60 * 60))/60;
+    second  = m_secOfDay - ((hour * 60 * 60) + (minute * 60));
 }
 
 //#include <string.h>
@@ -49,7 +52,7 @@ HNI24HTime::getHMSStr()
 HNIS_RESULT_T
 HNI24HTime::setFromHMS( uint hour, uint min, uint sec )
 {
-    secOfDay = (hour * 60 * 60) + (min * 60) + sec;
+    m_secOfDay = (hour * 60 * 60) + (min * 60) + sec;
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -58,9 +61,9 @@ HNIS_RESULT_T
 HNI24HTime::setFromSeconds( uint seconds )
 {
     // Set to provided value, cieling 24 hours.
-    secOfDay = seconds;
-    if( secOfDay > HNIS_SECONDS_IN_24H )
-        secOfDay = HNIS_SECONDS_IN_24H;
+    m_secOfDay = seconds;
+    if( m_secOfDay > HNIS_SECONDS_IN_24H )
+        m_secOfDay = HNIS_SECONDS_IN_24H;
 
     return HNIS_RESULT_SUCCESS;
 }
@@ -68,22 +71,37 @@ HNI24HTime::setFromSeconds( uint seconds )
 HNIS_RESULT_T 
 HNI24HTime::parseTime( std::string value )
 {
-    uint hour;
-    uint min;
-    uint sec;
+    const std::regex secRegEx("^[0-9]+$");
+    const std::regex durRegEx("^([0-9]+):([0-9]{2}):([0-9]{2})$");
+    std::smatch matchRec;
 
-    sscanf( value.c_str(), "%d:%d:%d", &hour, &min, &sec );
+    if( std::regex_match( value, matchRec, secRegEx ) == true )
+    {
+        std::cout << "parseTime sec match: " << matchRec[1] << std::endl;
+        m_secOfDay = strtol( matchRec[1].str().c_str(), NULL, 10 );
+        return HNIS_RESULT_SUCCESS;
+    }
+    else if( std::regex_match( value, matchRec, durRegEx ) == true )
+    {
+        uint hour = strtol( matchRec[1].str().c_str(), NULL, 10 );
+        uint min = strtol( matchRec[2].str().c_str(), NULL, 10 );
+        uint sec = strtol( matchRec[3].str().c_str(), NULL, 10 );
 
-    return setFromHMS( hour, min, sec );
+        std::cout << "parseTime dur match - h: " << hour << " m: " << min << " s: " << sec << std::endl;
+
+        return setFromHMS( hour, min, sec );
+    }
+
+    return HNIS_RESULT_SUCCESS;
 }
 
 void
 HNI24HTime::addSeconds( uint seconds )
 {
     // Add the two times, cap 24 hours
-    secOfDay = (secOfDay + seconds); 
-    if( secOfDay > HNIS_SECONDS_IN_24H )
-        secOfDay = HNIS_SECONDS_IN_24H;
+    m_secOfDay = (m_secOfDay + seconds); 
+    if( m_secOfDay > HNIS_SECONDS_IN_24H )
+        m_secOfDay = HNIS_SECONDS_IN_24H;
 }
 
 void
@@ -91,9 +109,9 @@ HNI24HTime::subtractSeconds( uint seconds )
 {
     // Subtract seconds, cap at 0 hour
 
-    if( secOfDay <= seconds )
-        secOfDay = 0;
+    if( m_secOfDay <= seconds )
+        m_secOfDay = 0;
 
-    secOfDay = (secOfDay - seconds); 
+    m_secOfDay = (m_secOfDay - seconds); 
 }
 

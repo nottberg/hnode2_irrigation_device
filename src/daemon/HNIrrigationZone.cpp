@@ -89,29 +89,29 @@ HNIrrigationZone::addSWIDSet( std::set< std::string > &swidSet )
 }
 
 void 
-HNIrrigationZone::clearStatus()
+HNIrrigationZone::clearActive()
 {
-    m_statusFlags = HNIZ_STATUS_NOTSET;
-    m_inhibitUntil.clear();
+    m_statusFlags &= ~HNIZ_STATUS_ACTIVE;
 }
 
 void 
-HNIrrigationZone::setStatusActive()
+HNIrrigationZone::setActive()
 {
     m_statusFlags |= HNIZ_STATUS_ACTIVE;
 }
 
-void 
-HNIrrigationZone::setStatusDisabled()
+void
+HNIrrigationZone::clearInhibited()
 {
-    m_statusFlags |= HNIZ_STATUS_DISABLED;
+    m_statusFlags &= ~HNIZ_STATUS_INHIBITED;
+    m_inhibitBy.clear();
 }
 
 void 
-HNIrrigationZone::setStatusInhibited( std::string until )
+HNIrrigationZone::setInhibited( std::string inhibitID )
 {
     m_statusFlags |= HNIZ_STATUS_INHIBITED;
-    m_inhibitUntil = until;
+    m_inhibitBy = inhibitID;
 }
 
 HNIS_RESULT_T 
@@ -183,21 +183,15 @@ HNIrrigationZone::getMaximumCycleTimeSeconds()
 }
 
 std::string 
-HNIrrigationZone::getInhibitedUntil()
+HNIrrigationZone::getInhibitedByID()
 {
-    return m_inhibitUntil;
+    return m_inhibitBy;
 }
 
 bool 
 HNIrrigationZone::isActive()
 {
     return ( ( m_statusFlags & HNIZ_STATUS_ACTIVE ) == HNIZ_STATUS_ACTIVE );
-}
-
-bool 
-HNIrrigationZone::isDisabled()
-{
-    return ( ( m_statusFlags & HNIZ_STATUS_DISABLED ) == HNIZ_STATUS_DISABLED );
 }
 
 bool 
@@ -470,18 +464,45 @@ HNIrrigationZoneSet::updateZoneListSection( HNodeConfig &cfg )
 }
 
 void 
-HNIrrigationZoneSet::clearStatus()
+HNIrrigationZoneSet::clearAllActive()
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
     for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
-        it->second.clearStatus(); 
-
+        it->second.clearActive(); 
 }
 
 void 
-HNIrrigationZoneSet::setStatusActive( std::string swid )
+HNIrrigationZoneSet::clearActive( std::string zoneid )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneid );
+
+    if( it == m_zoneMap.end() )
+        return;
+
+    it->second.clearActive();
+}
+
+void 
+HNIrrigationZoneSet::setActive( std::string zoneid )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneid );
+
+    if( it == m_zoneMap.end() )
+        return;
+
+    it->second.setActive();
+}
+
+void 
+HNIrrigationZoneSet::setActiveFromSWID( std::string swid )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
@@ -489,12 +510,12 @@ HNIrrigationZoneSet::setStatusActive( std::string swid )
     for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
     {
         if( it->second.hasSwitch( swid ) )
-            it->second.setStatusActive();
+            it->second.setActive();
     }
 }
 
 void 
-HNIrrigationZoneSet::setStatusDisabled( std::string swid )
+HNIrrigationZoneSet::clearActiveFromSWID( std::string swid )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
@@ -502,21 +523,36 @@ HNIrrigationZoneSet::setStatusDisabled( std::string swid )
     for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
     {
         if( it->second.hasSwitch( swid ) )
-            it->second.setStatusDisabled();
+            it->second.clearActive();
     }
 }
 
 void 
-HNIrrigationZoneSet::setStatusInhibited( std::string swid, std::string until )
+HNIrrigationZoneSet::clearInhibited( std::string zoneid )
 {
     // Scope lock
     const std::lock_guard<std::mutex> lock(m_accessMutex);
 
-    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
-    {
-        if( it->second.hasSwitch( swid ) )
-            it->second.setStatusInhibited( until );
-    }
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneid );
+
+    if( it == m_zoneMap.end() )
+        return;
+
+    it->second.clearInhibited();
+}
+
+void 
+HNIrrigationZoneSet::setInhibited( std::string zoneid, std::string inhibitID )
+{
+    // Scope lock
+    const std::lock_guard<std::mutex> lock(m_accessMutex);
+
+    std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.find( zoneid );
+
+    if( it == m_zoneMap.end() )
+        return;
+
+    it->second.setInhibited( inhibitID );
 }
 
 void 
@@ -528,19 +564,6 @@ HNIrrigationZoneSet::getActiveZones( std::vector< HNIrrigationZone > &zoneList )
     for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
     {
         if( it->second.isActive() )
-            zoneList.push_back( it->second );
-    }
-}
-
-void 
-HNIrrigationZoneSet::getDisabledZones( std::vector< HNIrrigationZone > &zoneList )
-{
-    // Scope lock
-    const std::lock_guard<std::mutex> lock(m_accessMutex);
-
-    for( std::map< std::string, HNIrrigationZone >::iterator it = m_zoneMap.begin(); it != m_zoneMap.end(); it++ )
-    {
-        if( it->second.isDisabled() )
             zoneList.push_back( it->second );
     }
 }

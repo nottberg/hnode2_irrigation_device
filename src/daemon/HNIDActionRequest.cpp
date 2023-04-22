@@ -43,6 +43,25 @@ HNIDActionRequest::setModifierID( std::string value )
 }
 
 void 
+HNIDActionRequest::setSequenceID( std::string value )
+{
+    m_sequenceID = value;
+}
+
+void 
+HNIDActionRequest::setInhibitID( std::string value )
+{
+    m_inhibitID = value;
+}
+
+void 
+HNIDActionRequest::setOperationID( std::string value )
+{
+    m_operationID = value;
+}
+
+#if 0
+void 
 HNIDActionRequest::setScheduleStateRequestType( HNID_SSR_T value )
 {
     m_schReqType = value;
@@ -71,6 +90,7 @@ HNIDActionRequest::setOffDuration( std::string value )
 {
    m_offDuration = value;
 }
+#endif
 
 HNID_AR_TYPE_T
 HNIDActionRequest::getType()
@@ -96,6 +116,25 @@ HNIDActionRequest::getModifierID()
     return m_modifierID;
 }
 
+std::string 
+HNIDActionRequest::getSequenceID()
+{
+    return m_sequenceID;
+}
+
+std::string 
+HNIDActionRequest::getInhibitID()
+{
+    return m_inhibitID;
+}
+
+std::string 
+HNIDActionRequest::getOperationID()
+{
+    return m_operationID;
+}
+
+#if 0
 HNID_SSR_T 
 HNIDActionRequest::getScheduleStateRequestType()
 {
@@ -125,6 +164,7 @@ HNIDActionRequest::getOffDuration()
 {
    return m_offDuration;
 }
+#endif
 
 bool
 HNIDActionRequest::decodeZoneUpdate( std::istream& bodyStream )
@@ -143,8 +183,6 @@ HNIDActionRequest::decodeZoneUpdate( std::istream& bodyStream )
 
         // Get a pointer to the root object
         pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-        //HNIrrigationZone *zone = m_schedule.updateZone( zoneID );
 
         if( jsRoot->has( "name" ) )
         {
@@ -426,7 +464,7 @@ HNIDActionRequest::decodeModifierUpdate( std::istream& bodyStream )
 
         if( jsRoot->has( "zoneid" ) )
         {
-            modifier.setDesc( jsRoot->getValue<std::string>( "zoneid" ) );
+            modifier.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
             m_modifierUpdateMask |= HNID_MU_FLDMASK_ZONEID;
         }
    
@@ -474,6 +512,326 @@ HNIDActionRequest::applyModifierUpdate( HNIrrigationModifier *tgtModifier )
         
 }
 
+bool
+HNIDActionRequest::decodeSequenceUpdate( std::istream& bodyStream )
+{
+    std::string rstStr;
+    HNIrrigationSequence sequence;
+
+    // Clear the update mask
+    m_sequenceUpdateMask = HNID_SQU_FLDMASK_CLEAR;
+
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        if( jsRoot->has( "name" ) )
+        {
+            sequence.setName( jsRoot->getValue<std::string>( "name" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_NAME;
+        }
+
+        if( jsRoot->has( "description" ) )
+        {
+            sequence.setDesc( jsRoot->getValue<std::string>( "description" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_DESC;
+        }
+
+        if( jsRoot->has( "type" ) )
+        {
+            sequence.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_TYPE;
+        }
+
+        if( jsRoot->has( "onDuration" ) )
+        {
+            sequence.setOnDurationFromStr( jsRoot->getValue<std::string>( "onDuration" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_ONDUR;
+        }
+
+        if( jsRoot->has( "offDuration" ) )
+        {
+            sequence.setOffDurationFromStr( jsRoot->getValue<std::string>( "offDuration" ) );
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OFFDUR;
+        }
+
+        if( jsRoot->has( "objIDList" ) )
+        {
+            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objIDList" );
+
+            sequence.clearObjIDList();
+            
+            for( uint index = 0; index < jsObjList->size(); index++ )
+            {
+                std::string value = jsObjList->getElement<std::string>(index);
+                sequence.addObjID( value );
+            }
+            
+            m_sequenceUpdateMask |= HNID_SQU_FLDMASK_OBJIDLIST;
+        }
+
+        if( sequence.validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateSequence validate failed" << std::endl;
+            // zoneid parameter is required
+            //return HNID_RESULT_BAD_REQUEST;
+            return true;
+        }
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "updateSequence exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        //return HNID_RESULT_BAD_REQUEST;
+        return true;
+    }
+
+    // Add the zone info to the list
+    m_sequencesList.push_back( sequence );
+
+    return false;
+}
+
+void 
+HNIDActionRequest::applySequenceUpdate( HNIrrigationSequence *tgtSequence )
+{
+    HNIrrigationSequence *srcSequence = &m_sequencesList[0];
+
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_NAME )
+        tgtSequence->setName( srcSequence->getName() );
+       
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_DESC )
+        tgtSequence->setDesc( srcSequence->getDesc() );
+
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_TYPE )
+        tgtSequence->setType( srcSequence->getType() );
+        
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_ONDUR )
+        tgtSequence->setOnDuration( srcSequence->getOnDuration() );
+        
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OFFDUR )
+        tgtSequence->setOffDuration( srcSequence->getOffDuration() );
+
+    if( m_sequenceUpdateMask & HNID_SQU_FLDMASK_OBJIDLIST )
+    {
+        tgtSequence->setObjIDListFromStr( srcSequence->getObjIDListAsStr() );
+    }
+}
+
+bool
+HNIDActionRequest::decodeInhibitUpdate( std::istream& bodyStream )
+{
+    std::string rstStr;
+    HNIrrigationInhibit inhibit;
+
+    // Clear the update mask
+    m_inhibitUpdateMask = HNID_INU_FLDMASK_CLEAR;
+
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        //HNIrrigationModifier *event = m_schedule.updateModifier( modifierID );
+
+        if( jsRoot->has( "name" ) )
+        {
+            inhibit.setName( jsRoot->getValue<std::string>( "name" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_NAME;
+        }
+
+        if( jsRoot->has( "type" ) )
+        {
+            inhibit.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_TYPE;
+        }
+
+        if( jsRoot->has( "duration" ) )
+        {
+            time_t curTime = time(NULL);
+            inhibit.setExpirationFromDurationStr( curTime, jsRoot->getValue<std::string>( "duration" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_EXPIRATION;
+        }
+
+        if( jsRoot->has( "zoneid" ) )
+        {
+            inhibit.setZoneID( jsRoot->getValue<std::string>( "zoneid" ) );
+            m_inhibitUpdateMask |= HNID_INU_FLDMASK_ZONEID;
+        }
+   
+        if( inhibit.validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateInhibit validate failed" << std::endl;
+            // zoneid parameter is required
+            //return HNID_RESULT_BAD_REQUEST;
+            return true;
+        }
+  
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "updateInhibit exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        //return HNID_RESULT_BAD_REQUEST;
+        return true;
+    }
+
+    // Add the zone info to the list
+    m_inhibitsList.push_back( inhibit );
+
+    return false;
+}
+
+void 
+HNIDActionRequest::applyInhibitUpdate( HNIrrigationInhibit *tgtInhibit )
+{
+    HNIrrigationInhibit *srcInhibit = &m_inhibitsList[0];
+
+    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_NAME )
+        tgtInhibit->setName( srcInhibit->getName() );
+     
+    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_TYPE )
+        tgtInhibit->setType( srcInhibit->getType() );
+        
+    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_EXPIRATION )
+        tgtInhibit->setExpiration( srcInhibit->getExpiration() );
+        
+    if( m_inhibitUpdateMask & HNID_INU_FLDMASK_ZONEID )
+        tgtInhibit->setZoneID( srcInhibit->getZoneID() );        
+}
+
+bool
+HNIDActionRequest::decodeOperationUpdate( std::istream& bodyStream )
+{
+    std::string rstStr;
+    HNIrrigationOperation operation;
+
+    // Clear the update mask
+    m_operationUpdateMask = HNID_OPU_FLDMASK_CLEAR;
+
+    // Parse the json body of the request
+    try
+    {
+        // Attempt to parse the json    
+        pjs::Parser parser;
+        pdy::Var varRoot = parser.parse( bodyStream );
+
+        // Get a pointer to the root object
+        pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
+
+        if( jsRoot->has( "type" ) )
+        {
+            std::cout << "type string: " << jsRoot->getValue<std::string>( "type" ) << std::endl;
+            operation.setTypeFromStr( jsRoot->getValue<std::string>( "type" ) );
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_TYPE;
+        }
+
+        if( jsRoot->has( "schedulerState" ) )
+        {
+            std::string stateStr = jsRoot->getValue<std::string>( "schedulerState" );
+            if( stateStr == "enabled" )
+            {
+                operation.setEnable( true );
+                m_operationUpdateMask |= HNID_OPU_FLDMASK_SCHEDULER_STATE;
+            }
+            else if( stateStr == "disable" )
+            {
+                operation.setEnable( false );
+                m_operationUpdateMask |= HNID_OPU_FLDMASK_SCHEDULER_STATE;
+            }
+        }
+
+        if( jsRoot->has( "onDuration" ) )
+        {
+            std::string durStr = jsRoot->getValue<std::string>( "onDuration" );
+            operation.setOnDurationFromStr( durStr );
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_ONDUR;
+        }
+
+        if( jsRoot->has( "offDuration" ) )
+        {
+            std::string durStr = jsRoot->getValue<std::string>( "offDuration" );
+            operation.setOffDurationFromStr( durStr );
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_OFFDUR;
+        }
+
+        if( jsRoot->has( "objIDList" ) )
+        {
+            pjs::Array::Ptr jsObjList = jsRoot->getArray( "objIDList" );
+
+            operation.clearObjIDList();
+            
+            for( uint index = 0; index < jsObjList->size(); index++ )
+            {
+                std::string value = jsObjList->getElement<std::string>(index);
+                operation.addObjID( value );
+            }
+            
+            m_operationUpdateMask |= HNID_OPU_FLDMASK_OBJLIST;
+        }
+   
+        if( operation.validateSettings() != HNIS_RESULT_SUCCESS )
+        {
+            std::cout << "updateOperation validate failed" << std::endl;
+            // zoneid parameter is required
+            //return HNID_RESULT_BAD_REQUEST;
+            return true;
+        }
+    }
+    catch( Poco::Exception ex )
+    {
+        std::cout << "updateOperation exception: " << ex.displayText() << std::endl;
+        // Request body was not understood
+        //return HNID_RESULT_BAD_REQUEST;
+        return true;
+    }
+
+    // Add the zone info to the list
+    m_operationsList.push_back( operation );
+
+    return false;
+}
+
+void 
+HNIDActionRequest::applyOperationUpdate( HNIrrigationOperation *tgtOperation )
+{
+    HNIrrigationOperation *srcOperation = &m_operationsList[0];
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_TYPE )
+    {
+        std::cout << "Src Op: " << srcOperation << std::endl;
+        std::cout << "Op Src Type: " << srcOperation->getType() << std::endl;
+        tgtOperation->setType( srcOperation->getType() );
+    }
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_SCHEDULER_STATE )
+        tgtOperation->setEnable( srcOperation->getEnable() );
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_ONDUR )
+        tgtOperation->setOnDuration( srcOperation->getOnDuration() );
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_OFFDUR )
+        tgtOperation->setOffDuration( srcOperation->getOffDuration() );
+
+    if( m_operationUpdateMask & HNID_OPU_FLDMASK_OBJLIST )
+    {
+        tgtOperation->clearObjIDList();
+        tgtOperation->addObjIDList( srcOperation->getObjIDListRef() );
+    }
+}
+
+#if 0
 bool
 HNIDActionRequest::decodeSchedulerState( std::istream& bodyStream )
 {
@@ -584,6 +942,7 @@ HNIDActionRequest::decodeZoneCtrl( std::istream& bodyStream )
     // Done
     return false;
 }
+#endif
 
 bool 
 HNIDActionRequest::hasRspContent( std::string &contentType )
@@ -600,7 +959,13 @@ HNIDActionRequest::hasRspContent( std::string &contentType )
         case HNID_AR_TYPE_PLACEINFO:
         case HNID_AR_TYPE_IRRSTATUS:
         case HNID_AR_TYPE_MODIFIERSLIST:
-        case HNID_AR_TYPE_MODIFIERINFO:        
+        case HNID_AR_TYPE_MODIFIERINFO:
+        case HNID_AR_TYPE_SEQUENCESLIST:
+        case HNID_AR_TYPE_SEQUENCEINFO:
+        case HNID_AR_TYPE_INHIBITSLIST:
+        case HNID_AR_TYPE_INHIBITINFO:
+        case HNID_AR_TYPE_OPERATIONSLIST:
+        case HNID_AR_TYPE_OPERATIONINFO:
             contentType = "application/json";
             return true;
 
@@ -628,6 +993,18 @@ HNIDActionRequest::hasNewObject( std::string &newID )
 
         case HNID_AR_TYPE_MODIFIERCREATE:
             newID = getModifierID();
+            return true;
+
+        case HNID_AR_TYPE_SEQUENCECREATE:
+            newID = getSequenceID();
+            return true;
+
+        case HNID_AR_TYPE_INHIBITCREATE:
+            newID = getInhibitID();
+            return true;
+
+        case HNID_AR_TYPE_OPERATIONCREATE:
+            newID = getOperationID();
             return true;
 
         default:
@@ -828,7 +1205,6 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
-
         case HNID_AR_TYPE_MODIFIERSLIST:
         {
             // Create a json root object
@@ -871,6 +1247,144 @@ HNIDActionRequest::generateRspContent( std::ostream &ostr )
         }
         break;
 
+        case HNID_AR_TYPE_SEQUENCESLIST:
+        {
+            // Create a json root object
+            pjs::Array jsRoot;
+
+            for( std::vector< HNIrrigationSequence >::iterator sit = refSequencesList().begin(); sit != refSequencesList().end(); sit++ )
+            { 
+                pjs::Object sObj;
+                pjs::Array objIDList;
+
+                sObj.set( "sequenceid", sit->getID() );
+                sObj.set( "name", sit->getName() );
+                sObj.set( "description", sit->getDesc() );
+                sObj.set( "type", sit->getTypeAsStr() );
+                sObj.set( "onDuration", sit->getOnDurationAsStr() );
+                sObj.set( "offDuration", sit->getOffDurationAsStr() );
+                
+                // Compose Object ID List
+                for( std::list< std::string >::iterator oit = sit->getObjIDListRef().begin(); oit != sit->getObjIDListRef().end(); oit++ )
+                {
+                    objIDList.add( *oit );
+                }
+
+                // Add Zonelist field
+                sObj.set( "objIDList", objIDList );
+
+                // Add new placement object to return list
+                jsRoot.add( sObj );
+            }
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEINFO:
+        {
+            // Create a json root object
+            pjs::Object jsRoot;
+            pjs::Array  objIDList;
+
+            std::vector< HNIrrigationSequence >::iterator sequence = refSequencesList().begin();
+
+            jsRoot.set( "sequenceid", sequence->getID() );
+            jsRoot.set( "name", sequence->getName() );
+            jsRoot.set( "description", sequence->getDesc() );
+
+            jsRoot.set( "type", sequence->getTypeAsStr() );
+            jsRoot.set( "onDuration", sequence->getOnDurationAsStr() );
+            jsRoot.set( "offDuration", sequence->getOffDurationAsStr() );
+                
+            // Compose Object ID List
+            for( std::list< std::string >::iterator oit = sequence->getObjIDListRef().begin(); oit != sequence->getObjIDListRef().end(); oit++ )
+            {
+                objIDList.add( *oit );
+            }
+
+            // Add Zonelist field
+            jsRoot.set( "objIDList", objIDList );
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITSLIST:
+        {
+            // Create a json root object
+            pjs::Array jsRoot;
+
+            for( std::vector< HNIrrigationInhibit >::iterator iit = refInhibitsList().begin(); iit != refInhibitsList().end(); iit++ )
+            { 
+                pjs::Object iObj;
+
+                iObj.set( "inhibitid", iit->getID() );
+                iObj.set( "name", iit->getName() );
+                iObj.set( "type", iit->getTypeAsStr() );
+                iObj.set( "expirationDateStr", iit->getExpirationDateStr() );
+                iObj.set( "zoneid", iit->getZoneID() );
+
+                // Add new placement object to return list
+                jsRoot.add( iObj );
+            }
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITINFO:
+        {
+            // Create a json root object
+            pjs::Object      jsRoot;
+
+            std::vector< HNIrrigationInhibit >::iterator inhibit = refInhibitsList().begin();
+
+            jsRoot.set( "inhibitid", inhibit->getID() );
+            jsRoot.set( "name", inhibit->getName() );
+            jsRoot.set( "type", inhibit->getTypeAsStr() );
+            jsRoot.set( "expirationDateStr", inhibit->getExpirationDateStr() );
+            jsRoot.set( "zoneid", inhibit->getZoneID() );
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONSLIST:
+        {
+            // Create a json root object
+            pjs::Array jsRoot;
+
+            for( std::vector< HNIrrigationOperation >::iterator oit = refOperationsList().begin(); oit != refOperationsList().end(); oit++ )
+            { 
+                pjs::Object opObj;
+
+                opObj.set( "operationid", oit->getID() );
+                opObj.set( "type", oit->getTypeAsStr() );
+
+                // Add new placement object to return list
+                jsRoot.add( opObj );
+            }
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONINFO:
+        {
+            // Create a json root object
+            pjs::Object      jsRoot;
+
+            std::vector< HNIrrigationOperation >::iterator operation = refOperationsList().begin();
+
+            jsRoot.set( "operationid", operation->getID() );
+            jsRoot.set( "type", operation->getTypeAsStr() );
+
+
+            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+        }
+        break;
+
         case HNID_AR_TYPE_SCHINFO:
         case HNID_AR_TYPE_IRRSTATUS:
             Poco::StreamCopier::copyStream( refRspStream(), ostr );
@@ -897,6 +1411,24 @@ std::vector< HNIrrigationModifier >&
 HNIDActionRequest::refModifiersList()
 {
     return m_modifiersList;
+}
+
+std::vector< HNIrrigationSequence >&
+HNIDActionRequest::refSequencesList()
+{
+    return m_sequencesList;
+}
+
+std::vector< HNIrrigationInhibit >&
+HNIDActionRequest::refInhibitsList()
+{
+    return m_inhibitsList;
+}
+
+std::vector< HNIrrigationOperation >&
+HNIDActionRequest::refOperationsList()
+{
+    return m_operationsList;
 }
 
 std::vector< HNSWDSwitchInfo >&

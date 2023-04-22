@@ -187,7 +187,6 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
-
       "/hnode2/irrigation/schedule": {
         "get": {
           "summary": "Get information about the current zone schedule.",
@@ -229,29 +228,8 @@ const std::string g_HNode2IrrigationRest = R"(
               "description": "Invalid status value"
             }
           }
-        },
-        "put": {
-          "summary": "Set scheduler to a specific state.",
-          "operationId": "setSchedulerState",
-          "responses": {
-            "200": {
-              "description": "successful operation",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid status value"
-            }
-          }
         }
-
       },
-
 
       "/hnode2/irrigation/placement": {
         "get": {
@@ -457,10 +435,259 @@ const std::string g_HNode2IrrigationRest = R"(
         }
       },
 
-      "/hnode2/irrigation/zonectl": {
+      "/hnode2/irrigation/sequence": {
+        "get": {
+          "summary": "Get list of zone sequences.",
+          "operationId": "getSequencesList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new zone sequence.",
+          "operationId": "createSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/sequence/{sequenceid}": {
+        "get": {
+          "summary": "Get information about a specific zone sequence.",
+          "operationId": "getSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
         "put": {
-          "summary": "Send manual control request for one or more zones.",
-          "operationId": "putZoneControlRequest",
+          "summary": "Update an existing sequence.",
+          "operationId": "updateSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing sequence.",
+          "operationId": "deleteSequence",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/inhibit": {
+        "get": {
+          "summary": "Get list of zone inhibits.",
+          "operationId": "getInhibitsList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Create a new zone inhibit.",
+          "operationId": "createInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/inhibit/{inhibitid}": {
+        "get": {
+          "summary": "Get information about a specific zone inhibit.",
+          "operationId": "getInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete an existing inhibit.",
+          "operationId": "deleteInhibit",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+
+
+
+      "/hnode2/irrigation/operation": {
+        "get": {
+          "summary": "Get list of active and queued operations.",
+          "operationId": "getOperationsList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+
+        "post": {
+          "summary": "Queue a new operation.",
+          "operationId": "createOperation",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/irrigation/operation/{operationid}": {
+        "get": {
+          "summary": "Get information about a specific operation.",
+          "operationId": "getOperation",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Cancel an active operation.",
+          "operationId": "cancelOperation",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -478,7 +705,7 @@ const std::string g_HNode2IrrigationRest = R"(
           }
         }
       }
-    }
+  }
 }
 )";
 
@@ -541,7 +768,16 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     setState( HNID_STATE_NOINIT );
 
     m_getSWDHealthDetail = false;
-    m_sendSchedule = false;
+    m_sendSchedule       = false;
+    m_sendSchedulerState = false;
+
+    m_nextInhibitID      = 1;
+    m_nextOpID           = 1;
+
+    m_pendingActiveSequence = NULL;
+    m_currentActiveSequence = NULL;
+
+    m_targetSchedulerEnabled = false;
 
     m_instanceName = "default";
     if( _instancePresent == true )
@@ -559,7 +795,7 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
 
     m_hnodeDev.addEndpoint( hndEP );
 
-    m_schedule.init( &m_placements, &m_zones, &m_modifiers );
+    m_schedule.init( &m_placements, &m_zones, &m_modifiers, &m_inhibits );
 
     std::cout << "Looking for config file" << std::endl;
     
@@ -585,6 +821,10 @@ HNIrrigationDevice::main( const std::vector<std::string>& args )
     }
 
     setState( HNID_STATE_INITIALIZED );
+
+    // Start accepting device notifications
+    m_deviceCfgUpdate = false;
+    m_hnodeDev.setNotifySink( this );
 
     // Start up the hnode device
     m_hnodeDev.start();
@@ -639,6 +879,36 @@ HNIrrigationDevice::sendScheduleUpdate()
     std::cout << "Schedule Sent" << std::endl;
 }
 
+void 
+HNIrrigationDevice::sendSchedulerStateUpdate()
+{
+    HNSWDPacketClient packet;
+    pjs::Object       jsRoot;
+    std::stringstream msg;
+
+    // Build the payload message
+    // Add the new requested state
+    if( m_targetSchedulerEnabled == true )
+    {
+        jsRoot.set( "state", "enable" );
+        jsRoot.set( "inhibitDuration", "00:00:00" );
+    }
+    else
+    {
+        jsRoot.set( "state", "disable" );
+        jsRoot.set( "inhibitDuration", "00:00:00" );
+    }
+
+    // Render into a json string.
+    try { pjs::Stringifier::stringify( jsRoot, msg ); } catch( ... ) { return; }
+
+    packet.setType( HNSWD_PTYPE_SCH_STATE_REQ );
+    packet.setMsg( msg.str() );
+    packet.sendAll( m_swdFD );
+
+    std::cout << "Scheduler State Update Sent" << std::endl;
+}
+
 void
 HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
 {
@@ -658,6 +928,49 @@ HNIrrigationDevice::handleSWDStatus( HNSWDPacketClient &packet )
         m_sendSchedule = true;
     }
 
+    // If the scheduler state is not as desired then setup
+    // to correct that.
+    if( (m_targetSchedulerEnabled == true) && (m_swdStatus.getSchedulerState() != "enabled") )
+    {
+        std::cout << "=== Daemon Status schedulerState - " << m_swdStatus.getSchedulerState() << " : " << m_targetSchedulerEnabled << std::endl;
+        m_sendSchedulerState = true;
+    }
+    else if( (m_targetSchedulerEnabled == false) && (m_swdStatus.getSchedulerState() != "disabled") )
+    {
+        std::cout << "=== Daemon Status schedulerState - " << m_swdStatus.getSchedulerState() << " : " << m_targetSchedulerEnabled << std::endl;
+        m_sendSchedulerState = true;
+    }
+
+    // If there is a pending sequence watch for the switch daemon to acknowledge it is running.
+    if( m_pendingActiveSequence != NULL )
+    {
+        if( m_swdStatus.hasActiveSequence() && (m_swdStatus.getActiveSequenceID() == m_pendingActiveSequence->getSeqReqID()) )
+        {
+            std::cout << "=== Moving pending sequence to active sequence - " << m_pendingActiveSequence->getSeqReqID() << std::endl;
+            m_currentActiveSequence = m_pendingActiveSequence;
+            m_pendingActiveSequence = NULL;
+        }
+    }
+
+    // If there is a running sequence operation watch for its completion
+    if( m_currentActiveSequence != NULL )
+    {
+        if( (m_swdStatus.hasActiveSequence() == false) || (m_swdStatus.getActiveSequenceID() != m_currentActiveSequence->getSeqReqID()) )
+        {
+            std::cout << "=== Daemon Status Active Sequence Completed: " << m_currentActiveSequence->getSeqReqID() << std::endl;
+
+            // The switch daemon is no longer running our active sequence so,
+            // cleanup as it has completed.
+            std::string oid = m_currentActiveSequence->getID();
+            m_opQueue.deleteOperation( oid );
+            m_currentActiveSequence = NULL;
+        }
+        else
+        {
+            std::cout << "=== Daemon Status Active Sequence: " << m_swdStatus.getActiveSequenceID() << std::endl;
+        }
+    }
+
     // Check if the switch daemon is unhealthy,
     // if so collect additional health information
     if( m_swdStatus.healthDegraded() )
@@ -673,22 +986,6 @@ HNIrrigationDevice::handleSWDEvent( HNSWDPacketClient &packet )
 
     packet.getMsg( msg );
     std::cout << "=== Daemon Event Recieved - result code: " << packet.getResult() << " ===" << std::endl;
-}
-
-void
-HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
-{
-    if( m_state != HNID_STATE_WAIT_SET_SCHEDULE )
-    {
-        return;
-    }
-
-    // Clear the action
-    m_sendSchedule = false;
-
-    setState( HNID_STATE_READY );
-
-    return;
 }
 
 void
@@ -761,6 +1058,22 @@ HNIrrigationDevice::handleSWDSwitchInfoRsp( HNSWDPacketClient &packet )
 }
 
 void
+HNIrrigationDevice::handleSWDScheduleUpdateRsp( HNSWDPacketClient &packet )
+{
+    if( m_state != HNID_STATE_WAIT_SET_SCHEDULE )
+    {
+        return;
+    }
+
+    // Clear the action
+    m_sendSchedule = false;
+
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+void
 HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
 {
     std::string msg;
@@ -777,9 +1090,34 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
     // TODO error handling
 
     // Finish the request
-    m_curAction->complete( true );
+    m_sendSchedulerState = false;
+
+    // Since we know our request succeeded update the status block
+    // with the expected value, without waiting for a status update
+    m_swdStatus.setSchedulerState( (m_targetSchedulerEnabled == true) ? "enabled" : "disabled" );
 
     // Retire the request
+    setState( HNID_STATE_READY );
+
+    return;
+}
+
+void
+HNIrrigationDevice::handleSequenceStartRsp( HNSWDPacketClient &packet )
+{
+    std::string msg;
+
+    std::cout << "Response RX: " << m_state << std::endl;
+    // If response was spurious then ignore it
+    if( m_state != HNID_STATE_WAIT_SEQSTART )
+    {
+        return;
+    }
+
+    // TODO error handling
+
+    // Finish the request
+    m_curAction->complete( true );
     m_curAction = NULL;
     setState( HNID_STATE_READY );
 
@@ -787,7 +1125,7 @@ HNIrrigationDevice::handleScheduleStateRsp( HNSWDPacketClient &packet )
 }
 
 void
-HNIrrigationDevice::handleZoneCtrlRsp( HNSWDPacketClient &packet )
+HNIrrigationDevice::handleSequenceCancelRsp( HNSWDPacketClient &packet )
 {
     std::string msg;
 
@@ -802,8 +1140,6 @@ HNIrrigationDevice::handleZoneCtrlRsp( HNSWDPacketClient &packet )
 
     // Finish the request
     m_curAction->complete( true );
-
-    // Retire the request
     m_curAction = NULL;
     setState( HNID_STATE_READY );
 
@@ -867,9 +1203,14 @@ HNIrrigationDevice::handleSWDPacket()
         break;
 
         case HNSWD_PTYPE_USEQ_ADD_RSP:
+        {
+            handleSequenceStartRsp( packet );
+        }
+        break;
+
         case HNSWD_PTYPE_SEQ_CANCEL_RSP:
         {
-            handleZoneCtrlRsp( packet );
+            handleSequenceCancelRsp( packet );
         }
         break;
     }
@@ -906,11 +1247,106 @@ HNIrrigationDevice::fdError( int sfd )
 
 }
 
+bool
+HNIrrigationDevice::checkForInhibitChanges( time_t curTime )
+{
+    std::string inhibitID;
+    std::vector< std::string > inhibitDeleteList;
+    bool rtnValue = false;
+
+    // Get the current time to check for inhibit expirations
+    switch( m_inhibits.checkSchedulerAction( curTime, inhibitID ) )
+    {
+        case HNII_INHIBIT_ACTION_NONE:
+            if( m_targetSchedulerEnabled == false )
+            {
+                std::cout << "== Inhibit - no-action - scheduler change to enabled" << std::endl;
+                m_targetSchedulerEnabled = true;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            } 
+        break;
+
+        case HNII_INHIBIT_ACTION_ACTIVE:
+            if( m_targetSchedulerEnabled == true )
+            {
+                std::cout << "== Inhibit - active - scheduler change to disabled: " << inhibitID << std::endl;
+                m_targetSchedulerEnabled = false;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            }
+        break;
+
+        case HNII_INHIBIT_ACTION_EXPIRED:
+            if( m_targetSchedulerEnabled == false )
+            {
+                std::cout << "== Inhibit - expired - scheduler change to enabled: " << inhibitID << std::endl;
+                m_targetSchedulerEnabled = true;
+                sendSchedulerStateUpdate();
+                rtnValue = true;
+            }
+            inhibitDeleteList.push_back( inhibitID );
+        break;
+    }
+
+    // Scan through each zone and check for an inhibit
+    std::vector< HNIrrigationZone > zoneList;
+    m_zones.getZoneList( zoneList );
+    for( std::vector< HNIrrigationZone >::iterator zit = zoneList.begin(); zit != zoneList.end(); zit++ )
+    {    
+        switch( m_inhibits.checkZoneAction( curTime, zit->getID(), inhibitID ) )
+        {
+            case HNII_INHIBIT_ACTION_NONE:
+                if( zit->isInhibited() == true )
+                {
+                    std::cout << "== Inhibit - none - zone " << zit->getID() << " inhibit cleared" << std::endl;
+                    m_zones.clearInhibited( zit->getID() );
+                    rtnValue = true;
+                }
+            break;
+
+            case HNII_INHIBIT_ACTION_ACTIVE:
+                if( zit->isInhibited() == false )
+                {
+                    std::cout << "== Inhibit - active - zone " << zit->getID() << " inhibit set : " << inhibitID << std::endl;
+                    m_zones.setInhibited( zit->getID(), inhibitID );
+                    rtnValue = true;
+                }
+            break;
+
+            case HNII_INHIBIT_ACTION_EXPIRED:
+                if( zit->isInhibited() == true )
+                {
+                    std::cout << "== Inhibit - expired - zone " << zit->getID() << " inhibit set : " << inhibitID << std::endl;
+                    m_zones.clearInhibited( zit->getID() );
+                    rtnValue = true;
+                }
+                inhibitDeleteList.push_back( inhibitID );
+            break;
+        }
+    }
+
+    // Cleanup expired inhibits
+    for( std::vector< std::string >::iterator it = inhibitDeleteList.begin(); it != inhibitDeleteList.end(); it++ )
+    {
+        std::cout << "Deleting inhibit: " << *it << std::endl;
+        m_inhibits.deleteInhibit( *it );
+        rtnValue = true;
+    }
+
+    // No update needed.
+    return rtnValue;
+}
+
 void 
 HNIrrigationDevice::loopIteration()
 {
-    // Get current timestamp
+    //struct tm newtime;
+    time_t ltime;
 
+    // Get current timestamp
+    ltime = time(NULL);
+    //localtime_r( &ltime, &newtime );
 
 //    std::cout << "EV Loop Iteration Handler" << std::endl;
     switch( getState() )
@@ -948,6 +1384,19 @@ HNIrrigationDevice::loopIteration()
 
         case HNID_STATE_READY:
 
+            // Periodic scan of the inhibits to look for changes that would effect
+            // zone scheduling.
+            if( checkForInhibitChanges( ltime ) == true )
+            {
+                std::cout << "Update config and rebuilding schedule due to inhibit change." << std::endl;
+
+                // Commit config update since inhibit state changed.
+                updateConfig();
+
+                // Rebuild the schedule
+                m_schedule.buildSchedule();
+            }
+
             // Schedule Update?
             if( m_sendSchedule == true )
             {
@@ -958,6 +1407,31 @@ HNIrrigationDevice::loopIteration()
                 sendScheduleUpdate();
 
                 return;
+            }
+
+            // Schedule State Update?
+            if( m_sendSchedulerState == true )
+            {
+                // Wait for reply before further action
+                setState( HNID_STATE_WAIT_SCHCTL );
+
+                // Send schedule update request
+                sendSchedulerStateUpdate();
+
+                return;
+            }
+
+            // Periodic scan of the inhibits to look for changes that would effect
+            // zone scheduling.
+            if( m_deviceCfgUpdate == true )
+            {
+                std::cout << "Update config due to device level change." << std::endl;
+
+                // Commit config update since inhibit state changed.
+                updateConfig();
+
+                // Clear the flag
+                m_deviceCfgUpdate = false;
             }
 
             // Check if health state should be aquired
@@ -989,8 +1463,13 @@ HNIrrigationDevice::configExists()
 HNID_RESULT_T
 HNIrrigationDevice::initConfig()
 {
-    HNodeConfigFile cfgFile;
-    HNodeConfig     cfg;
+    HNodeConfigFile  cfgFile;
+    HNodeConfig      cfg;
+    HNCSection      *secPtr;
+
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    secPtr->updateValue("targetSchedulerState", (m_targetSchedulerEnabled == true) ? "enabled" : "disabled" );
 
     m_hnodeDev.initConfigSections( cfg );
 
@@ -998,7 +1477,11 @@ HNIrrigationDevice::initConfig()
 
     m_placements.initPlacementsListSection( cfg );
 
-    //m_schedule.initConfigSections( cfg );
+    m_modifiers.initModifiersListSection( cfg );
+
+    m_sequences.initSequencesListSection( cfg );
+
+    m_inhibits.initInhibitsListSection( cfg );
 
     cfg.debugPrint(2);
     
@@ -1017,6 +1500,8 @@ HNIrrigationDevice::readConfig()
 {
     HNodeConfigFile cfgFile;
     HNodeConfig     cfg;
+    HNCSection      *secPtr;
+    std::string     targetSchedulerState;
 
     if( configExists() == false )
         return HNID_RESULT_FAILURE;
@@ -1029,6 +1514,16 @@ HNIrrigationDevice::readConfig()
         return HNID_RESULT_FAILURE;
     }
   
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    // Get a list pointer
+    secPtr->getValueByName( "targetSchedulerState", targetSchedulerState );
+    if( targetSchedulerState == "enabled" )
+        m_targetSchedulerEnabled = true;
+    else
+        m_targetSchedulerEnabled = false;
+
     std::cout << "cl1" << std::endl;
     m_hnodeDev.readConfigSections( cfg );
 
@@ -1038,8 +1533,14 @@ HNIrrigationDevice::readConfig()
     std::cout << "cl3" << std::endl;
     m_placements.readPlacementsListSection( cfg );
 
-    //std::cout << "cl4" << std::endl;
-    //m_schedule.readConfigSections( cfg );
+    std::cout << "cl4" << std::endl;
+    m_modifiers.readModifiersListSection( cfg );
+
+    std::cout << "cl5" << std::endl;
+    m_sequences.readSequencesListSection( cfg );
+
+    std::cout << "cl6" << std::endl;
+    m_inhibits.readInhibitsListSection( cfg );
 
     std::cout << "Config loaded" << std::endl;
 
@@ -1049,8 +1550,15 @@ HNIrrigationDevice::readConfig()
 HNID_RESULT_T
 HNIrrigationDevice::updateConfig()
 {
-    HNodeConfigFile cfgFile;
-    HNodeConfig     cfg;
+    HNodeConfigFile  cfgFile;
+    HNodeConfig      cfg;
+    HNCSection      *secPtr;
+
+    // Aquire a pointer to the "device" section
+    cfg.updateSection( "irrDeviceInfo", &secPtr );
+
+    // Get a list pointer
+    secPtr->updateValue( "targetSchedulerState", (m_targetSchedulerEnabled == true) ? "enabled" : "disabled" );
 
     m_hnodeDev.updateConfigSections( cfg );
 
@@ -1058,7 +1566,11 @@ HNIrrigationDevice::updateConfig()
 
     m_placements.updatePlacementsListSection( cfg );
 
-    //m_schedule.updateConfigSections( cfg );
+    m_modifiers.updateModifiersListSection( cfg );
+
+    m_sequences.updateSequencesListSection( cfg );
+
+    m_inhibits.updateInhibitsListSection( cfg );
 
     cfg.debugPrint(2);
     
@@ -1142,15 +1654,377 @@ HNIrrigationDevice::getUniqueModifierID( HNIDActionRequest *action )
     return false;    
 }
 
-typedef enum HNIDStartActionBitsEnum
+bool
+HNIrrigationDevice::getUniqueSequenceID( HNIDActionRequest *action )
 {
-    HNID_ACTBIT_CLEAR     = 0x0000,
-    HNID_ACTBIT_COMPLETE  = 0x0001,
-    HNID_ACTBIT_UPDATE    = 0x0002,
-    HNID_ACTBIT_RECALCSCH = 0x0004,
-    HNID_ACTBIT_ERROR     = 0x0008,
-    HNID_ACTBIT_SENDREQ   = 0x0010
-} HNID_ACTBIT_T;
+    char tmpID[ 64 ];
+    uint idNum = 1;
+
+    do
+    {
+        sprintf( tmpID, "sq%d", idNum );
+
+        if( m_sequences.hasID( tmpID ) == false )
+        {
+            action->setSequenceID( tmpID );
+            return true;
+        }
+
+        idNum += 1;
+
+    }while( idNum < 2000 );
+
+    return false;    
+}
+
+bool
+HNIrrigationDevice::getUniqueInhibitID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+
+    sprintf( tmpID, "in%d", m_nextInhibitID );
+    m_nextInhibitID += 1;
+    action->setInhibitID( tmpID );
+
+    return true;
+}
+
+bool
+HNIrrigationDevice::getUniqueOperationID( HNIDActionRequest *action )
+{
+    char tmpID[ 64 ];
+
+    sprintf( tmpID, "op%d", m_nextOpID );
+    m_nextOpID += 1;
+    action->setOperationID( tmpID );
+
+    return true;    
+}
+
+HNID_RESULT_T 
+HNIrrigationDevice::buildStoredSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr )
+{
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    HNIrrigationSequence seqObj;
+    if( m_sequences.getSequence( opObj->getFirstObjID(), seqObj ) != HNIS_RESULT_SUCCESS ) 
+    {
+        return HNID_RESULT_FAILURE;
+    }
+            
+    switch( seqObj.getType() )
+    {
+        case HNISQ_TYPE_UNIFORM:
+        {
+            jsRoot.set( "requestID", opObj->getSeqReqID() );
+            jsRoot.set( "seqType", "uniform" );
+            jsRoot.set( "onDuration", seqObj.getOnDurationAsStr() );
+            jsRoot.set( "offDuration", seqObj.getOffDurationAsStr() );
+
+            // Convert the zone references into switch references.   
+            std::string swidStr;
+            bool first = true;
+            for( std::list< std::string >::iterator oit = seqObj.getObjIDListRef().begin(); oit != seqObj.getObjIDListRef().end(); oit++ )
+            {
+                HNIrrigationZone zone;
+
+                if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+                    continue;
+
+                if( first == false )
+                    swidStr += " ";
+                swidStr += zone.getSWIDListStr();
+                first = false;
+            }
+
+            jsRoot.set( "swidList", swidStr );          
+        }
+        break;
+
+        case HNISQ_TYPE_CHAIN:
+        {
+            return HNID_RESULT_FAILURE;
+        }
+        break;
+    }
+
+    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return HNID_RESULT_FAILURE; }
+
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_RESULT_T 
+HNIrrigationDevice::buildOneTimeSequenceJSON( HNIrrigationOperation *opObj, std::ostream &ostr )
+{
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    jsRoot.set( "requestID", opObj->getSeqReqID() );
+    jsRoot.set( "seqType", "uniform" );
+    jsRoot.set( "onDuration", opObj->getOnDurationAsStr() );
+    jsRoot.set( "offDuration", opObj->getOffDurationAsStr() );
+
+    // Convert the zone references into switch references. 
+    std::string swidStr;
+    bool first = true;
+    for( std::vector< std::string >::iterator oit = opObj->getObjIDListRef().begin(); oit != opObj->getObjIDListRef().end(); oit++ )
+    {
+        HNIrrigationZone zone;
+
+        if( m_zones.getZone( *oit, zone ) != HNIS_RESULT_SUCCESS )
+            continue;
+
+        if( first == false )
+            swidStr += " ";
+        swidStr += zone.getSWIDListStr();
+        first = false;
+    }
+
+    jsRoot.set( "swidList", swidStr );
+
+    try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return HNID_RESULT_FAILURE; }
+
+    return HNID_RESULT_SUCCESS;
+}
+
+HNID_ACTBIT_T
+HNIrrigationDevice::executeOperation( HNIrrigationOperation *opReq, HNSWDPacketClient &packet )
+{
+    std::cout << "Start Execute Operation - type: " << opReq->getType() << std::endl;
+
+    switch( opReq->getType() )
+    {
+#if 0      
+        // Enable/Disable the scheduler
+        case HNOP_TYPE_SCHEDULER_STATE:
+        {
+            // Add the new requested state
+            if( opReq->getEnable() == true )
+                m_targetSchedulerState = "enabled";
+            else
+                m_targetSchedulerState = "disabled";
+       
+            // Check if we think the scheduler state needs to be updated
+            if( m_targetSchedulerState != m_swdStatus.getSchedulerState() )
+            {
+                std::cout << "=== Operation Check schedulerState - " << m_swdStatus.getSchedulerState() << " : " << m_targetSchedulerState << std::endl;
+                m_sendSchedulerState = true;
+            }
+
+            // Get rid of operation record
+            std::string opID = opReq->getID();
+            m_opQueue.deleteOperation( opID );
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+#endif
+
+        // Execute a stored sequence
+        case HNOP_TYPE_EXEC_SEQUENCE:
+        {
+            std::stringstream msg;
+            pjs::Object       jsRoot;
+
+            // If there is already an active sequence then reject
+            // this new sequence?
+            if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
+            {
+                return HNID_ACTBIT_ERROR;  
+            }
+             
+            // Build the payload message
+            HNID_RESULT_T result = buildStoredSequenceJSON( opReq, msg );
+            if( result != HNID_RESULT_SUCCESS )
+            {
+                return HNID_ACTBIT_ERROR;
+            }
+
+            // Wait for sequence start response
+            setState( HNID_STATE_WAIT_SEQSTART );
+
+            std::cout << "Sending a Sequence Start request..." << std::endl;
+            packet.setType( HNSWD_PTYPE_USEQ_ADD_REQ );
+            packet.setMsg( msg.str() );
+       
+            // Keep track of this current sequence request
+            m_pendingActiveSequence = opReq;
+
+            std::cout << "=== Starting Active Sequence: " << m_pendingActiveSequence->getFirstObjID() << std::endl;
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
+        }
+        break;
+
+        // Execute a onetime sequence
+        case HNOP_TYPE_EXEC_ONETIMESEQ:
+        {
+            std::stringstream msg;
+            pjs::Object       jsRoot;
+
+            // If there is already an active sequence then reject
+            // this new sequence?
+            if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
+            {
+                return HNID_ACTBIT_ERROR;  
+            }
+             
+            // Build the payload message
+            HNID_RESULT_T result = buildOneTimeSequenceJSON( opReq, msg );
+            if( result != HNID_RESULT_SUCCESS )
+            {
+                return HNID_ACTBIT_ERROR;
+            }
+
+            // Wait for sequence start response
+            setState( HNID_STATE_WAIT_SEQSTART );
+
+            std::cout << "Sending a One Time Sequence Start request..." << std::endl;
+            packet.setType( HNSWD_PTYPE_USEQ_ADD_REQ );
+            packet.setMsg( msg.str() );
+       
+            // Keep track of this current sequence request
+            m_pendingActiveSequence = opReq;
+
+            std::cout << "=== Starting One Time Sequence: " << m_pendingActiveSequence->getID() << std::endl;
+
+            return (HNID_ACTBIT_T)(HNID_ACTBIT_SENDREQ);
+        }        
+        break;
+    }
+
+    // Unrecognized operation
+    std::cout << "ERROR: Unrecognized operation." << std::endl;
+
+    return HNID_ACTBIT_ERROR;
+
+#if 0
+            else if( _seqcancelRequested == true )
+            {
+                HNSWDPacketClient packet;
+
+                packet.setType( HNSWD_PTYPE_SEQ_CANCEL_REQ );
+
+                std::cout << "Sending a SEQUENCE CANCEL request..." << std::endl;
+
+                packet.sendAll( sockfd );
+            }
+#endif    
+}
+
+HNIS_RESULT_T
+HNIrrigationDevice::buildIrrigationStatusResponse( std::ostream &ostr )
+{
+    std::string seqIDStr;
+    std::string seqNameStr;
+    pjs::Object jsRoot;
+
+    // Create a json root object
+    jsRoot.set( "date", m_swdStatus.getDateStr() );
+    jsRoot.set( "time", m_swdStatus.getTimeStr() );
+    jsRoot.set( "timezone", m_swdStatus.getTimezoneStr() );
+
+    jsRoot.set( "schedulerState", (m_targetSchedulerEnabled == true) ? "enabled" : "disabled" );
+    
+    std::string schInhibitID;
+    m_inhibits.getSchedulerInhibitID( schInhibitID );
+    jsRoot.set( "schedulerInhibitID", schInhibitID );
+
+    std::string schInhibitName;
+    if( schInhibitID.empty() == false )
+      m_inhibits.getInhibitName( schInhibitID, schInhibitName );
+    jsRoot.set( "schedulerInhibitName", schInhibitName );
+
+    std::string schExpireStr;
+    if( schInhibitID.empty() == false )
+      m_inhibits.getInhibitExpirationDateStr( schInhibitID, schExpireStr );
+    jsRoot.set( "schedulerInhibitExpirationDateStr", schExpireStr );
+
+    pjs::Object ovHealth;
+
+    ovHealth.set( "status", m_swdStatus.getOverallHealthStatus() );
+    ovHealth.set( "msg", m_swdStatus.getOverallHealthMessage() );
+
+    jsRoot.set( "overallHealth", ovHealth );
+
+    if( (m_pendingActiveSequence != NULL) || (m_currentActiveSequence != NULL) )
+    {
+        HNIrrigationOperation *curSeq = (m_pendingActiveSequence) ? m_pendingActiveSequence : m_currentActiveSequence;
+        if( curSeq->getType() == HNOP_TYPE_EXEC_ONETIMESEQ )
+        {
+            seqNameStr = "One-Time Sequence (" + curSeq->getSeqReqID() + ")";
+        }
+        else
+        {
+            if( m_sequences.getSequenceName( curSeq->getSeqReqID(), seqNameStr ) == HNIS_RESULT_SUCCESS )
+                seqIDStr = curSeq->getSeqReqID();
+            else
+                seqNameStr = "Unknown Sequence";
+        }
+    }
+
+    jsRoot.set( "activeSequenceName", seqNameStr );
+    jsRoot.set( "activeSequenceID", seqIDStr );
+
+    pjs::Array activeZones;
+    std::vector< HNIrrigationZone > azoneList;
+    m_zones.getActiveZones( azoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = azoneList.begin(); it != azoneList.end(); it++ )
+    {
+        pjs::Object azone;
+        azone.set( "id", it->getID() );
+        azone.set( "name", it->getName() );
+        activeZones.add( azone );
+    }
+    jsRoot.set( "activeZones", activeZones );
+
+    pjs::Array inhibitedZones;
+    std::vector< HNIrrigationZone > izoneList;
+    m_zones.getInhibitedZones( izoneList );
+    for( std::vector< HNIrrigationZone >::iterator it = izoneList.begin(); it != izoneList.end(); it++ )
+    {
+        std::string expireStr;
+        std::string nameStr;
+        pjs::Object izone;
+        izone.set( "id", it->getID() );
+        izone.set( "name", it->getName() );
+        izone.set( "inhibitByID", it->getInhibitedByID() );
+
+        m_inhibits.getInhibitName( it->getInhibitedByID(), nameStr );
+        izone.set( "inhibitName", nameStr );
+
+        m_inhibits.getInhibitExpirationDateStr( it->getInhibitedByID(), expireStr );
+        izone.set( "inhibitExpirationDateStr", expireStr );
+        
+        inhibitedZones.add( izone );
+    }
+    jsRoot.set( "inhibitedZones", inhibitedZones );
+
+    try
+    {
+        // Write out the generated json
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 );
+    }
+    catch( Poco::Exception& ex )
+    {
+        std::cerr << "Stringify Exception: " << ex.displayText() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( std::exception& ex )
+    {
+        std::cerr << "Standard Exception: " << ex.what() << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+    catch( ... )
+    {
+        std::cerr << "Stringify Exception: Uncaught Type" << std::endl;
+        return HNIS_RESULT_FAILURE;
+    }
+
+    // Success
+    return HNIS_RESULT_SUCCESS;
+}
 
 void
 HNIrrigationDevice::startAction()
@@ -1174,7 +2048,7 @@ HNIrrigationDevice::startAction()
         case HNID_AR_TYPE_IRRSTATUS:
         {
             // Get current device status as JSON
-            if( m_swdStatus.getAsIrrigationJSON( m_curAction->refRspStream(), &m_zones ) != HNIS_RESULT_SUCCESS )
+            if( buildIrrigationStatusResponse( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
             {
                 //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
                 actBits = HNID_ACTBIT_ERROR;
@@ -1441,6 +2315,200 @@ HNIrrigationDevice::startAction()
         }
         break;
         
+        case HNID_AR_TYPE_SEQUENCESLIST:
+            // Populate the event list in the action
+            m_sequences.getSequencesList( m_curAction->refSequencesList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEINFO:
+        {
+            HNIrrigationSequence event;
+
+            if( m_sequences.getSequence( m_curAction->getSequenceID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refSequencesList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCECREATE:
+        {
+            // Allocate a unique zone identifier
+            if( getUniqueSequenceID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the zone record
+            HNIrrigationSequence *event = m_sequences.updateSequence( m_curAction->getSequenceID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applySequenceUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEUPDATE:
+        {
+            if( m_sequences.hasID( m_curAction->getSequenceID() ) == false )
+            {
+                // Zone doesn't exist, return error
+                // opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Get a point to zone record
+            HNIrrigationSequence *event = m_sequences.updateSequence( m_curAction->getSequenceID() );
+
+            // Update the fields of the zone record.
+            m_curAction->applySequenceUpdate( event );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_SEQUENCEDELETE:
+        {
+            // Remove the zone record
+            m_sequences.deleteSequence( m_curAction->getSequenceID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITSLIST:
+            // Populate the event list in the action
+            m_inhibits.getInhibitsList( m_curAction->refInhibitsList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_INHIBITINFO:
+        {
+            HNIrrigationInhibit event;
+
+            if( m_inhibits.getInhibit( m_curAction->getInhibitID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the zone list in the action
+            m_curAction->refInhibitsList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITCREATE:
+        {
+            // Allocate a unique inhibit identifier
+            if( getUniqueInhibitID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the inhibit record
+            HNIrrigationInhibit *event = m_inhibits.updateInhibit( m_curAction->getInhibitID() );
+
+            // Update the fields of the inhibit record.
+            m_curAction->applyInhibitUpdate( event );
+
+            // Special processing to update the inhibit maps.
+            m_inhibits.reconcileNewObject( m_curAction->getInhibitID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_INHIBITDELETE:
+        {
+            // Remove the zone record
+            m_inhibits.deleteInhibit( m_curAction->getInhibitID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_UPDATE | HNID_ACTBIT_RECALCSCH | HNID_ACTBIT_COMPLETE);
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONSLIST:
+            // Populate the event list in the action
+            m_opQueue.getOperationsList( m_curAction->refOperationsList() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        break;
+
+        case HNID_AR_TYPE_OPERATIONINFO:
+        {
+            HNIrrigationOperation event;
+
+            if( m_opQueue.getOperation( m_curAction->getOperationID(), event ) != HNIS_RESULT_SUCCESS )
+            {
+                //opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Populate the operation list in the action
+            m_curAction->refOperationsList().push_back( event );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONCREATE:
+        {
+            // Allocate a unique operation identifier
+            if( getUniqueOperationID( m_curAction ) == false )
+            {
+                // opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                actBits = HNID_ACTBIT_ERROR;
+                break;
+            }
+
+            // Create the operation record
+            HNIrrigationOperation *event = m_opQueue.addOperation( m_curAction->getOperationID() );
+
+            // Update the fields of the operation record.
+            m_curAction->applyOperationUpdate( event );
+
+            // Execute the requested local operation
+            actBits = executeOperation( event, packet );
+
+        }
+        break;
+
+        case HNID_AR_TYPE_OPERATIONCANCEL:
+        {
+            // Cancel any ongoing operation
+            m_opQueue.deleteOperation( m_curAction->getOperationID() );
+
+            actBits = (HNID_ACTBIT_T)(HNID_ACTBIT_COMPLETE);
+        }
+        break; 
+
+
         // Get detailed health information
         //HNSWD_PTYPE_HEALTH_REQ,
         //HNSWD_PTYPE_HEALTH_RSP,
@@ -1448,39 +2516,13 @@ HNIrrigationDevice::startAction()
         // Implement Me
         case HNID_AR_TYPE_GETSCHSTATE:
         {
-            actBits = HNID_ACTBIT_ERROR;
-        }
-        break;
-
-        case HNID_AR_TYPE_SETSCHSTATE:
-        {
-            std::stringstream msg;
-
-            // Wait for scheduling state change response
-            setState( HNID_STATE_WAIT_SCHCTL );
-          
             // Build the payload message
-            // Create a json root object
+            // Create a json root object          
+            std::stringstream msg;
             pjs::Object jsRoot;
 
-            // Add the new requested state
-            switch( m_curAction->getScheduleStateRequestType() )
-            {
-                case HNID_SSR_ENABLE:
-                    jsRoot.set( "state", "enable" );
-                    jsRoot.set( "inhibitDuration", "00:00:00" );
-                break;
- 
-                case HNID_SSR_DISABLE:
-                    jsRoot.set( "state", "disable" );
-                    jsRoot.set( "inhibitDuration", "00:00:00" );
-                break;
-
-                case HNID_SSR_INHIBIT:
-                    jsRoot.set( "state", "inhibit" );
-                    jsRoot.set( "inhibitDuration", "00:10:00" );
-                break;
-            }
+            jsRoot.set( "state", m_swdStatus.getSchedulerState() );
+            jsRoot.set( "inhibitDuration", "00:00:00" );
 
             // Render into a json string.
             try
@@ -1493,145 +2535,8 @@ HNIrrigationDevice::startAction()
                 break;
             }
 
-            std::cout << "Sending a SCHEDULING STATE request..." << std::endl;
-            packet.setType( HNSWD_PTYPE_SCH_STATE_REQ );
-            packet.setMsg( msg.str() );
-            actBits = HNID_ACTBIT_SENDREQ;
-        }
-        break;
-
-        case HNID_AR_TYPE_ZONECTL:
-        {
-            // Wait for zone control response
-            setState( HNID_STATE_WAIT_ZONECTL );
-
-            // Switch Daemon Requests
-            // HNSWD_PTYPE_RESET_REQ, // Reset switch daemon      
-            // HNSWD_PTYPE_USEQ_ADD_REQ,   // Add a one time sequence of switch actions.
-            // HNSWD_PTYPE_SEQ_CANCEL_REQ, // Cancel all future sequence actions.
-            // HNSWD_PTYPE_SCH_STATE_REQ,  // Change scheduling state. Enable/Disable/Inhibit
-
-#if 0
-                HNSWDPacketClient packet;
-                uint32_t length;
-
-                packet.setType( HNSWD_PTYPE_RESET_REQ );
-
-                std::cout << "Sending a RESET request..." << std::endl;
-
-            else if( _seqaddRequested == true )
-            {
-                std::stringstream msg;
-
-                Poco::Path path( _seqaddFilePath );
-                Poco::File file( path );
-
-                if( file.exists() == false || file.isFile() == false )
-                {
-                    std::cerr << "ERROR: Sequence definition file does not exist: " << path.toString() << std::endl;
-                    return Application::EXIT_SOFTWARE;
-                }
-            
-                // Open a stream for reading
-                std::ifstream its;
-                its.open( path.toString() );
-
-                if( its.is_open() == false )
-                {
-                    std::cerr << "ERROR: Sequence definition file could not be opened: " << path.toString() << std::endl;
-                    return Application::EXIT_SOFTWARE;
-                }
-
-                // Invoke the json parser
-                try
-                {
-                    // Attempt to parse the json    
-                    pjs::Parser parser;
-                    pdy::Var varRoot = parser.parse( its );
-                    its.close();
-
-                    // Get a pointer to the root object
-                    pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-                    // Write out the generated json
-                    pjs::Stringifier::stringify( jsRoot, msg );
-                }
-                catch( Poco::Exception ex )
-                {
-                    its.close();
-                    std::cerr << "ERROR: Sequence definition file json parsing failure: " << ex.displayText().c_str() << std::endl;
-                    return Application::EXIT_SOFTWARE;
-                }
-
-                HNSWDPacketClient packet( HNSWD_PTYPE_USEQ_ADD_REQ, HNSWD_RCODE_NOTSET, msg.str() );
-
-                std::cout << "Sending a Uniform Sequence Add request..." << std::endl;
-
-                packet.sendAll( sockfd );
-            }
-            else if( _seqcancelRequested == true )
-            {
-                HNSWDPacketClient packet;
-
-                packet.setType( HNSWD_PTYPE_SEQ_CANCEL_REQ );
-
-                std::cout << "Sending a SEQUENCE CANCEL request..." << std::endl;
-
-                packet.sendAll( sockfd );
-            }
-            else if( _schstateRequested == true )
-            {
-                std::stringstream msg;
-
-                // Error check the provided parameters
-                if(   ( _schstateNewState != "enable" )
-                   && ( _schstateNewState != "disable" )
-                   && ( _schstateNewState != "inhibit" ) )
-                {
-                    std::cout << "ERROR: Request scheduling state is not supported: " << _schstateNewState << std::endl;
-                    return Application::EXIT_SOFTWARE;
-                }
-
-                if( ( _schstateNewState == "inhibit" ) && ( _durationPresent == false ) )
-                {
-                    std::cout << "ERROR: When requesting the inhibit state a duration must be provided: " << _durationStr << std::endl;
-                    return Application::EXIT_SOFTWARE;
-                }
-          
-                // Build the payload message
-                // Create a json root object
-                pjs::Object jsRoot;
-
-                // Add the timezone setting
-                jsRoot.set( "state", _schstateNewState );
-
-                // Add the current date
-                if( _durationPresent )
-                    jsRoot.set( "inhibitDuration", _durationStr );
-                else
-                    jsRoot.set( "inhibitDuration", "00:00:00" );
-
-                // Render into a json string.
-                try
-                {
-                    pjs::Stringifier::stringify( jsRoot, msg );
-                }
-                catch( ... )
-                {
-                    return Application::EXIT_SOFTWARE;
-                }
-
-                // Build the request packet.
-                HNSWDPacketClient packet( HNSWD_PTYPE_SCH_STATE_REQ, HNSWD_RCODE_NOTSET, msg.str() );
-
-                std::cout << "Sending a SCHEDULING STATE request..." << std::endl;
-
-                packet.sendAll( sockfd );
-            }
-#endif
-
-            packet.setType( HNSWD_PTYPE_SWINFO_REQ );
-            actBits = HNID_ACTBIT_SENDREQ;
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
         }
         break;
 
@@ -1896,6 +2801,148 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         action.setType( HNID_AR_TYPE_MODIFIERDELETE );
         action.setModifierID( modifierID );
     }
+    else if( "getSequencesList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_SEQUENCESLIST );
+    }
+    else if( "createSequence" == opID )
+    {
+        action.setType( HNID_AR_TYPE_SEQUENCECREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeSequenceUpdate( bodyStream );
+    }
+    else if( "getSequence" == opID )
+    {
+        std::string sequenceID;
+
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEINFO );
+        action.setSequenceID( sequenceID );
+    }
+    else if( "updateSequence" == opID )
+    {
+        std::string sequenceID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            // zoneid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEUPDATE );
+        action.setSequenceID( sequenceID );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeSequenceUpdate( bodyStream );
+    }
+    else if( "deleteSequence" == opID )
+    {
+        std::string sequenceID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "sequenceid", sequenceID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_SEQUENCEDELETE );
+        action.setSequenceID( sequenceID );
+    }
+    else if( "getInhibitsList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_INHIBITSLIST );
+    }
+    else if( "createInhibit" == opID )
+    {
+        action.setType( HNID_AR_TYPE_INHIBITCREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeInhibitUpdate( bodyStream );
+    }
+    else if( "getInhibit" == opID )
+    {
+        std::string inhibitID;
+
+        if( opData->getParam( "inhibitid", inhibitID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_INHIBITINFO );
+        action.setInhibitID( inhibitID );
+    }
+    else if( "deleteInhibit" == opID )
+    {
+        std::string inhibitID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "inhibitid", inhibitID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_INHIBITDELETE );
+        action.setInhibitID( inhibitID );
+    }    
+    else if( "getOperationsList" == opID )
+    {
+        action.setType( HNID_AR_TYPE_OPERATIONSLIST );
+    }
+    else if( "createOperation" == opID )
+    {
+        action.setType( HNID_AR_TYPE_OPERATIONCREATE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeOperationUpdate( bodyStream );
+    }
+    else if( "getOperation" == opID )
+    {
+        std::string operationID;
+
+        if( opData->getParam( "operationid", operationID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_OPERATIONINFO );
+        action.setOperationID( operationID );
+    }
+    else if( "cancelOperation" == opID )
+    {
+        std::string operationID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "operationid", operationID ) == true )
+        {
+            // eventid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        action.setType( HNID_AR_TYPE_OPERATIONCANCEL );
+        action.setOperationID( operationID );
+    }    
     else if( "getScheduleInfo" == opID )
     {
         action.setType( HNID_AR_TYPE_SCHINFO );
@@ -1904,6 +2951,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     {
         action.setType( HNID_AR_TYPE_GETSCHSTATE );
     }
+#if 0    
     else if( "setSchedulerState" == opID )
     {
         action.setType( HNID_AR_TYPE_SETSCHSTATE );
@@ -1918,6 +2966,7 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
         std::istream& bodyStream = opData->requestBody();
         action.decodeZoneCtrl( bodyStream );
     }
+#endif
     else
     {
         // Send back not implemented
@@ -1988,4 +3037,10 @@ HNIrrigationDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
     opData->responseSend();
 }
 
+void
+HNIrrigationDevice::hndnConfigChange( HNodeDevice *parent )
+{
+    std::cout << "HNIrrigationDevice::hndnConfigChange() - entry" << std::endl;
+    m_deviceCfgUpdate = true;
+}
 

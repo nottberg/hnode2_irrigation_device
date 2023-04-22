@@ -250,7 +250,10 @@ class HNISZoneTracker
     public:
       HNISZoneTracker();
      ~HNISZoneTracker();
-     
+
+      void setInhibited( bool value );
+      bool isInhibited();
+
       void setDuration( uint durSec );
       uint getDuration();
       
@@ -258,20 +261,33 @@ class HNISZoneTracker
       std::string getZoneID();
       
     private:
+      bool        m_inhibited;
       uint        m_duration;
       std::string m_zoneID;
 };
 
 HNISZoneTracker::HNISZoneTracker()
 {
-
+    m_inhibited = false;
 }
 
 HNISZoneTracker::~HNISZoneTracker()
 {
 
 }
-     
+
+void 
+HNISZoneTracker::setInhibited( bool value )
+{
+    m_inhibited = value;
+}
+
+bool 
+HNISZoneTracker::isInhibited()
+{
+    return m_inhibited;
+}
+
 void 
 HNISZoneTracker::setDuration( uint durSec )
 {
@@ -518,6 +534,10 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
     // Try to allocate a slot for each zone.
     for( std::vector<HNISZoneTracker>::iterator zit = zoneTrackers.begin(); zit != zoneTrackers.end(); zit++ )
     {
+        // Skip zones that are inhibited
+        if( zit->isInhibited() )
+            continue; 
+
         // Skip zones that have been fully placed.
         if( zit->getDuration() == 0 )
             continue;
@@ -540,14 +560,14 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                         
             if( (it->hasZone( zid ) == true) && (it->getDuration() >= minCycle) )
             {                        
-                printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
+                //printf( "Found slot for %s - totalNeeded: %d secNeeded: %d  secAvail: %d  maxCycle: %d\n", zid.c_str(), zit->getDuration(), secNeeded, it->getDuration(), maxCycle );
 
                 // If the period immediately proceeding this slot is for this same zone,
                 // then skip this slot so that the zone is not on continuously for more than
                 // zones max cycle time.
                 if( tgtSched.proceedingZonePeriod( m_dayIndx, zit->getZoneID(), it->getStartSec() ) == true )
                 {
-                    printf( "  Slot is immediatly proceeded by same zone -- skipping\n" );
+                    //printf( "  Slot is immediatly proceeded by same zone -- skipping\n" );
                     continue;
                 } 
 
@@ -558,6 +578,9 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                     // Add the new slot to the schedule.
                     tgtSched.addPeriodZoneOn( m_dayIndx, zit->getZoneID(), it->getStartSec(), secNeeded );
                             
+                    // Track the zone statistics
+                    tgtSched.addToZoneStatDailyTime( zit->getZoneID(), m_dayIndx, secNeeded );
+
                     // Account for allocated time
                     zit->setDuration( zit->getDuration() - secNeeded );
                     it->setStartSec( it->getStartSec() + secNeeded );
@@ -568,7 +591,10 @@ HNISPlacerDay::placeZones( std::vector< HNISZoneTracker > &zoneTrackers, HNIrrig
                     // This will consume all of the time slot exactly.
                     // Add the new slot to the schedule.
                     tgtSched.addPeriodZoneOn( m_dayIndx, zit->getZoneID(), it->getStartSec(), it->getDuration() );
-                            
+                    
+                    // Track the zone statistics
+                    tgtSched.addToZoneStatDailyTime( zit->getZoneID(), m_dayIndx, it->getDuration() );
+
                     // Account for allocated time
                     zit->setDuration( zit->getDuration() - it->getDuration() );
                     it->setStartSec( it->getStartSec() + it->getDuration() );
@@ -606,7 +632,7 @@ class HNISPlacer
       HNIS_RESULT_T calculateZoneMaxCycleDurations( HNIS_DAY_INDX_T dayIndex, HNIrrigationZoneSet *zones );
       HNIS_RESULT_T generateTimeSlots( HNIS_DAY_INDX_T dayIndex );
 
-      HNIS_RESULT_T initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers );
+      HNIS_RESULT_T initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers, HNISchedule &tgtSched );
       
       HNIS_RESULT_T placeZones( HNIrrigationZoneSet *zones, HNISchedule &tgtSched );
       
@@ -652,7 +678,7 @@ HNISPlacer::generateTimeSlots( HNIS_DAY_INDX_T dayIndex )
 }
 
 HNIS_RESULT_T
-HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers )
+HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers, HNISchedule &tgtSched )
 {
     // Create a tracker for each zone
     std::vector< HNIrrigationZone > zoneList;
@@ -665,11 +691,20 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
         
         printf( "%s - Base Duration: %d\n", zit->getID().c_str(), baseDur );
         
+        // Start a zone statistic tracker entry
+        HNISZoneStats *zStats = tgtSched.createZoneStatsTracker( zit->getID(), baseDur );
+
+        // Check if the zone is currently inhibited
+        zStats->setInhibitedByID( zit->getInhibitedByID() );
+
         std::vector< HNIrrigationModifier > modifierList;
         modifiers->getModifiersForZone( zit->getID(), modifierList );
         for( std::vector< HNIrrigationModifier >::iterator mit = modifierList.begin(); mit != modifierList.end(); mit++ )
         {
-            double delta = mit->calculateDelta( baseDur );
+            std::string calcStr;
+            double delta = mit->calculateDelta( baseDur, calcStr );
+
+            zStats->addAppliedModifier( mit->getID(), calcStr, delta );
 
             duration += delta;
                         
@@ -680,12 +715,15 @@ HNISPlacer::initZoneTracking( HNIrrigationZoneSet *zones, HNIrrigationModifierSe
             duration = 0;
         
         uint finalDur = (uint) duration;
-        
+
         printf( "%s - Final Duration: %d\n", zit->getID().c_str(), finalDur );
+
+        zStats->setTotalSeconds( finalDur );
         
         ztrack.setDuration( finalDur );
         ztrack.setZoneID( zit->getID() );
-        
+        ztrack.setInhibited( zit->isInhibited() );
+
         m_zoneTrackers.push_back(ztrack);
     }  
     
@@ -728,6 +766,9 @@ HNISPlacer::checkForUnplacedZones( std::string &zoneStr )
     
     for( std::vector< HNISZoneTracker >::iterator it = m_zoneTrackers.begin(); it != m_zoneTrackers.end(); it++ ) 
     {
+        if( it->isInhibited() )
+            continue;
+
         if( it->getDuration() != 0 )
         {
             zoneStr += it->getZoneID() + " ";
@@ -735,6 +776,199 @@ HNISPlacer::checkForUnplacedZones( std::string &zoneStr )
     }
     
     return ( (zoneStr.empty() == true) ? HNIS_RESULT_SUCCESS : HNIS_RESULT_FAILURE );
+}
+
+
+HNISZoneAppliedModifier::HNISZoneAppliedModifier()
+{
+    m_deltaSec = 0;
+}
+
+HNISZoneAppliedModifier::HNISZoneAppliedModifier( std::string modID, std::string calculationStr, int deltaSec )
+{
+    m_id        = modID;
+    m_calcStr   = calculationStr;
+    m_deltaSec  = deltaSec;
+}
+
+HNISZoneAppliedModifier::~HNISZoneAppliedModifier()
+{
+
+}
+
+void 
+HNISZoneAppliedModifier::setID( std::string modID )
+{
+    m_id = modID;
+}
+
+void 
+HNISZoneAppliedModifier::setCalculationStr( std::string calculationStr )
+{
+    m_calcStr = calculationStr;
+}
+
+void 
+HNISZoneAppliedModifier::setDeltaSeconds( int deltaSec )
+{
+    m_deltaSec = deltaSec;
+}
+
+std::string 
+HNISZoneAppliedModifier::getID()
+{
+    return m_id;
+}
+
+std::string 
+HNISZoneAppliedModifier::getCalculationStr()
+{
+    return m_calcStr;
+}
+
+int 
+HNISZoneAppliedModifier::getDeltaSeconds()
+{
+    return m_deltaSec;
+}
+
+
+HNISZoneStats::HNISZoneStats()
+{
+    m_baseSeconds      = 0;
+    m_totalSeconds     = 0;
+    m_avgSecondsPerDay = 0;
+
+    for( int i = 0; i < HNIS_DINDX_NOTSET; i++ )
+        m_secPerDay[i] = 0;
+}
+
+HNISZoneStats::HNISZoneStats( std::string zoneID, uint baseSeconds )
+{
+    m_zoneID       = zoneID;
+    m_baseSeconds  = baseSeconds;
+
+    m_totalSeconds     = 0;
+    m_avgSecondsPerDay = 0;
+
+    for( int i = 0; i < HNIS_DINDX_NOTSET; i++ )
+        m_secPerDay[i] = 0;    
+}
+
+HNISZoneStats::~HNISZoneStats()
+{
+
+}
+
+void 
+HNISZoneStats::setZoneID( std::string zoneID )
+{
+    m_zoneID = zoneID;
+}
+
+void 
+HNISZoneStats::setInhibitedByID( std::string inhibitID )
+{
+    m_inhibitByID = inhibitID;
+}
+
+void 
+HNISZoneStats::setBaseSeconds( uint value )
+{
+    m_baseSeconds = value;
+}
+
+void 
+HNISZoneStats::setTotalSeconds( uint value )
+{
+    m_totalSeconds = value;
+}
+
+void 
+HNISZoneStats::setSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value )
+{
+    if( dayIndx >= HNIS_DINDX_NOTSET )
+        return;
+
+    m_secPerDay[ dayIndx ] = value;
+}
+
+void 
+HNISZoneStats::addToSecondsPerDay( HNIS_DAY_INDX_T dayIndx, uint value )
+{
+    if( dayIndx >= HNIS_DINDX_NOTSET )
+        return;
+
+    m_secPerDay[ dayIndx ] += value;
+}
+
+void 
+HNISZoneStats::addAppliedModifier( std::string modID, std::string calculationStr, double deltaSeconds )
+{
+    HNISZoneAppliedModifier amod( modID, calculationStr, deltaSeconds );
+    m_appliedModList.push_back( amod );
+}
+
+std::string 
+HNISZoneStats::getZoneID()
+{
+    return m_zoneID;
+}
+
+std::string 
+HNISZoneStats::getInhibitedByID()
+{
+    return m_inhibitByID;
+}
+
+uint
+HNISZoneStats::getBaseSeconds()
+{
+    return m_baseSeconds;
+}
+
+uint
+HNISZoneStats::getTotalSeconds()
+{
+    return m_totalSeconds;
+}
+
+double
+HNISZoneStats::getAverageSecondsPerDay()
+{
+    return m_avgSecondsPerDay;
+}
+
+uint
+HNISZoneStats::getSecondsForDay( HNIS_DAY_INDX_T dayIndx )
+{
+    if( dayIndx >= HNIS_DINDX_NOTSET )
+        return 0;
+
+    return m_secPerDay[ dayIndx ];
+}
+
+void
+HNISZoneStats::getAppliedModifiersList( std::vector< HNISZoneAppliedModifier > &amList )
+{
+    amList.clear();
+
+    for( std::vector< HNISZoneAppliedModifier >::iterator it = m_appliedModList.begin(); it != m_appliedModList.end(); it++ )
+    {
+        amList.push_back( *it );
+    }
+}
+
+bool 
+HNISZoneStats::isInhibited()
+{
+    return (m_inhibitByID.empty() == false);
+}
+
+void 
+HNISZoneStats::finalize()
+{
+    m_avgSecondsPerDay = ((double) m_totalSeconds) / 7.0;
 }
 
 HNISPeriod::HNISPeriod()
@@ -906,6 +1140,27 @@ HNISPeriod::getEndTimeStr()
     return m_endTime.getHMSStr();
 }
 
+uint 
+HNISPeriod::getDurationSeconds()
+{
+    // Difference in start and end times.
+    uint duration = (m_endTime.getSeconds() - m_startTime.getSeconds());
+
+    // If there is a duration then make it inclusive of both endpoints.
+    if( duration != 0 )
+        duration += 1;
+        
+    return duration;
+}
+
+std::string 
+HNISPeriod::getDurationStr()
+{
+    HNI24HTime duration;
+    duration.setFromSeconds( getDurationSeconds() );
+    return duration.getHMSStr();
+}
+
 HNISDay::HNISDay()
 {
     m_dayIndex = HNIS_DINDX_NOTSET;
@@ -1003,7 +1258,23 @@ HNISDay::getPeriodList( std::vector< HNISPeriod > &periodList )
         //std::cout << "PL: " << it->getType() << "  " << it->getStartTimeStr() << std::endl;
         periodList.push_back( *it );
     }
+}
 
+void 
+HNISDay::getZonePeriodList( std::string zoneid, std::vector< HNISPeriod > &periodList )
+{
+    periodList.clear();
+
+    for( std::list< HNISPeriod >::iterator it = m_periodList.begin(); it != m_periodList.end(); it++ )
+    {
+        //std::cout << "PL: " << it->getType() << "  " << it->getStartTimeStr() << std::endl;
+        if( it->hasZone( zoneid ) == true )
+        {
+            periodList.push_back( *it );
+        }
+    }
+
+    std::cout << "getZonePeriodList: " << periodList.size() << std::endl;
 }
 
 std::string 
@@ -1042,8 +1313,9 @@ HNISchedule::clear()
     for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
         m_dayArr[ indx ].clear();
 
-    m_timezone.clear();
     m_schCRC32 = 0;
+
+    m_zoneStats.clear();
 }
 
 void 
@@ -1073,6 +1345,13 @@ HNISchedule::addPeriodZoneOn( HNIS_DAY_INDX_T dayIndex, std::string zoneID, uint
 HNIS_RESULT_T 
 HNISchedule::finalize()
 {
+    // Calculate the schedule CRC to allow update comparisons.
+    calculateSMCRC32();
+    
+    // Finish any stat calculations
+    for( std::vector< HNISZoneStats >::iterator it = m_zoneStats.begin(); it != m_zoneStats.end(); it++ )
+        it->finalize();
+
     return HNIS_RESULT_SUCCESS;
 }
   
@@ -1092,6 +1371,12 @@ void
 HNISchedule::getPeriodList( HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList )
 {
     m_dayArr[ dayIndex ].getPeriodList( periodList );
+}
+
+void 
+HNISchedule::getZonePeriodList( std::string zoneid, HNIS_DAY_INDX_T dayIndex, std::vector< HNISPeriod > &periodList )
+{
+    m_dayArr[ dayIndex ].getZonePeriodList( zoneid, periodList );
 }
 
 void
@@ -1124,6 +1409,38 @@ HNISchedule::calculateSMCRC32()
     m_schCRC32 = digest.checksum();
 }
 
+HNISZoneStats*
+HNISchedule::createZoneStatsTracker( std::string zoneID, uint baseSeconds )
+{
+    HNISZoneStats zstat( zoneID, baseSeconds );
+    m_zoneStats.push_back( zstat );
+    return &(m_zoneStats.back());
+}
+
+void 
+HNISchedule::addToZoneStatDailyTime( std::string zoneID, HNIS_DAY_INDX_T dayIndx, uint seconds )
+{
+    for( std::vector< HNISZoneStats >::iterator it = m_zoneStats.begin(); it != m_zoneStats.end(); it++ )
+    {
+        if( it->getZoneID() == zoneID )
+        {
+            it->addToSecondsPerDay( dayIndx, seconds );
+            return;
+        }
+    }
+}
+
+void 
+HNISchedule::getZoneStatList( std::vector< HNISZoneStats > &zsList )
+{
+    zsList.clear();
+
+    for( std::vector< HNISZoneStats >::iterator it = m_zoneStats.begin(); it != m_zoneStats.end(); it++ )
+    {
+        zsList.push_back( *it );
+    }
+}
+
 void
 HNISchedule::debugPrint()
 {
@@ -1145,13 +1462,14 @@ HNIrrigationSchedule::~HNIrrigationSchedule()
 }
 
 void
-HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers )
+HNIrrigationSchedule::init( HNIrrigationPlacementSet *placements, HNIrrigationZoneSet *zones, HNIrrigationModifierSet *modifiers, HNIrrigationInhibitSet *inhibits )
 {
     std::cout << "HNIrrigationSchedule -- init" << std::endl;
 
     m_placements = placements;
     m_zones = zones;
     m_modifiers = modifiers;
+    m_inhibits = inhibits;
 }
 
 void 
@@ -1205,10 +1523,10 @@ HNIrrigationSchedule::buildSchedule()
         placer.generateTimeSlots( (HNIS_DAY_INDX_T) dayIndx );
     }
    
-    placer.initZoneTracking( m_zones, m_modifiers );
+    placer.initZoneTracking( m_zones, m_modifiers, m_schedule );
 
     placer.placeZones( m_zones, m_schedule );
-    
+        
     if( placer.checkForUnplacedZones( checkStr ) != HNIS_RESULT_SUCCESS )
     {
         std::cout << "WARNING: Could not successfully place all zones - failing zone list: " << checkStr << std::endl;
@@ -1217,6 +1535,8 @@ HNIrrigationSchedule::buildSchedule()
     {
         std::cout << "All zones successfully placed." << std::endl;
     }
+    
+    m_schedule.finalize();
     
     m_schedule.debugPrint();
 
@@ -1230,7 +1550,130 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
     pjs::Object jsRoot;
 
     // Add the timezone name field
-    jsRoot.set( "scheduleTimezone", "Americas/Denver" );
+    jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() );
+    
+    std::string schInhibitID;
+    m_inhibits->getSchedulerInhibitID( schInhibitID );
+    jsRoot.set( "schedulerInhibitID", schInhibitID );
+
+    std::string schInhibitName;
+    if( schInhibitID.empty() == false )
+      m_inhibits->getInhibitName( schInhibitID, schInhibitName );
+    jsRoot.set( "schedulerInhibitName", schInhibitName );
+
+    std::string schExpireStr;
+    if( schInhibitID.empty() == false )
+      m_inhibits->getInhibitExpirationDateStr( schInhibitID, schExpireStr );
+    jsRoot.set( "schedulerInhibitExpirationDateStr", schExpireStr );
+
+    // Add statistics data for each zone
+    pjs::Array jzsStats;
+
+    std::vector< HNISZoneStats > zsList;
+    m_schedule.getZoneStatList( zsList );
+
+    for( std::vector< HNISZoneStats >::iterator zit = zsList.begin(); zit != zsList.end(); zit++ )
+    {
+        pjs::Object jzoneStats;
+        std::string zName;
+
+        m_zones->getZoneName( zit->getZoneID(), zName );
+
+        jzoneStats.set( "zoneid", zit->getZoneID() );
+        jzoneStats.set( "zoneName", zName );
+        jzoneStats.set( "baseSeconds", zit->getBaseSeconds() );
+        jzoneStats.set( "totalSeconds", zit->getTotalSeconds() );
+        jzoneStats.set( "avgSecondsPerDay", zit->getAverageSecondsPerDay() );
+
+        if( zit->isInhibited() == true )
+        {
+            jzoneStats.set( "inhibitedByID", zit->getInhibitedByID() );
+
+            std::string nameStr;
+            m_inhibits->getInhibitName( zit->getInhibitedByID(), nameStr );
+            jzoneStats.set( "inhibitName", nameStr );
+
+            std::string expireStr;
+            m_inhibits->getInhibitExpirationDateStr( zit->getInhibitedByID(), expireStr );
+            jzoneStats.set( "inhibitExpirationDateStr", expireStr );
+        }
+        else
+            jzoneStats.set( "inhibitedByID", "");
+
+        pjs::Array zamArray;
+
+        std::vector< HNISZoneAppliedModifier > amList;
+        zit->getAppliedModifiersList( amList );
+
+        for( std::vector< HNISZoneAppliedModifier >::iterator mit = amList.begin(); mit != amList.end(); mit++ )
+        {
+            pjs::Object amObj;
+            std::string mName;
+
+            m_modifiers->getModifierName( mit->getID(), mName );
+
+            amObj.set( "modifierid", mit->getID() );
+            amObj.set( "modifierName", mName );
+            amObj.set( "calculationStr", mit->getCalculationStr() );
+            amObj.set( "deltaSeconds", mit->getDeltaSeconds() );
+
+            zamArray.add( amObj );
+        }
+
+        jzoneStats.set( "appliedModifiers", zamArray );
+
+        pjs::Object zspdObj;
+        for( int indx = 0; indx < HNIS_DINDX_NOTSET; indx++ )
+        {
+            zspdObj.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) indx ), zit->getSecondsForDay( (HNIS_DAY_INDX_T) indx ) );
+        }
+        jzoneStats.set( "secondsPerDay", zspdObj );
+
+        std::vector< HNISPeriod > zoneSchedule[HNIS_DINDX_NOTSET];
+        int maxEntryCnt = 0;
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        {
+            std::vector< HNISPeriod > emptyArr;
+            m_schedule.getZonePeriodList( zit->getZoneID(), (HNIS_DAY_INDX_T) dayIndx, zoneSchedule[dayIndx] );
+
+            if( zoneSchedule[dayIndx].size() > maxEntryCnt )
+                maxEntryCnt = zoneSchedule[dayIndx].size();
+        }
+
+        // Always ensure we put at least one entry into the datastructure
+        // even if it is a null row.
+        if( maxEntryCnt == 0 )
+            maxEntryCnt = 1;
+
+        pjs::Object zstartsObj;
+        pjs::Object nullEntry;
+        nullEntry.set("startTime", "");
+        nullEntry.set("duration", "");
+        for( int dayIndx = 0; dayIndx < HNIS_DINDX_NOTSET; dayIndx++ )
+        {
+            pjs::Array dayArray;
+
+            for( int entryIndx = 0; entryIndx < maxEntryCnt; entryIndx++ )
+            {
+                if( entryIndx >= zoneSchedule[dayIndx].size() )
+                    dayArray.add( nullEntry );
+                else
+                {
+                    pjs::Object periodEntry;
+                    periodEntry.set( "startTime", zoneSchedule[dayIndx][entryIndx].getStartTimeStr() );
+                    periodEntry.set( "duration", zoneSchedule[dayIndx][entryIndx].getDurationStr() );
+                    dayArray.add( periodEntry );
+                }
+            }
+
+            zstartsObj.set( m_schedule.getDayName( (HNIS_DAY_INDX_T) dayIndx ), dayArray );
+        }
+        jzoneStats.set( "startsByDay", zstartsObj );
+
+        jzsStats.add( jzoneStats );
+    }
+
+    jsRoot.set( "zoneStatistics", jzsStats );
 
     // Add data for each day
     pjs::Object jsDays;
@@ -1251,9 +1694,9 @@ HNIrrigationSchedule::getScheduleInfoJSON( std::ostream &ostr )
             {
                 std::string zoneid = *zsit;
                 
-                jsSWAction.set( "action", "on" );
                 jsSWAction.set( "startTime", it->getStartTimeStr() );
                 jsSWAction.set( "endTime", it->getEndTimeStr() );
+                jsSWAction.set( "duration", it->getDurationStr() );
                 jsSWAction.set( "zoneid", zoneid );
 
                 std::string zName;
@@ -1292,7 +1735,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
     pjs::Object jsRoot;
 
     // Add the timezone name field
-    jsRoot.set( "scheduleTimezone", getTimezoneStr() ); // "Americas/Denver" );
+    jsRoot.set( "scheduleTimezone", m_schedule.getTimezoneStr() ); // "Americas/Denver" );
 
     // Add the scheduleMatrix hash value
     jsRoot.set( "scheduleCRC32", getSMCRC32Str() );
@@ -1304,7 +1747,7 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
     {
         pjs::Array jsActions;
 
-        std::cout << "js chk day: " << indx << std::endl;
+        //std::cout << "js chk day: " << indx << std::endl;
 
         std::vector< HNISPeriod > periodList;
         m_schedule.getPeriodList( (HNIS_DAY_INDX_T) indx, periodList );       
@@ -1314,16 +1757,16 @@ HNIrrigationSchedule::getSwitchDaemonJSON()
         {
             pjs::Object jsSWAction;
 
-            std::cout << "js add action" << std::endl;
+            //std::cout << "js add action" << std::endl;
 
             jsSWAction.set( "action", "swon" );
 
-            std::cout << "act st: " << it->getStartTimeStr() << std::endl;
+            //std::cout << "act st: " << it->getStartTimeStr() << std::endl;
 
             jsSWAction.set( "startTime", it->getStartTimeStr() );
             jsSWAction.set( "endTime", it->getEndTimeStr() );
 
-            std::cout << "zone id: " << it->getID() << std::endl;
+            //std::cout << "zone id: " << it->getID() << std::endl;
 
             HNIrrigationZone zone;
             m_zones->getZone( it->getZoneSetAsStr(), zone );
